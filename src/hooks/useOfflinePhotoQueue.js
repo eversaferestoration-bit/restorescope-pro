@@ -154,14 +154,17 @@ export function useOfflinePhotoQueue() {
 
         const file = new File([blob], item.fileName, { type: item.mimeType });
 
-        // Use uploadPhoto backend function — enforces company/job membership check
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('job_id', item.jobId);
-        if (item.roomId) formData.append('room_id', item.roomId);
-        formData.append('taken_at', item.takenAt);
-
-        const res = await base44.functions.invoke('uploadPhoto', formData);
+        // Upload binary via Core integration, then record via backend function
+        const { file_url } = await base44.integrations.Core.UploadFile({ file });
+        const res = await base44.functions.invoke('uploadPhoto', {
+          job_id: item.jobId,
+          room_id: item.roomId || null,
+          file_url,
+          mime_type: item.mimeType,
+          file_size: item.fileSize,
+          taken_at: item.takenAt,
+          taken_by: item.takenBy,
+        });
         const entity = res.data?.photo;
         if (!entity) throw new Error('Upload failed: no photo returned');
 

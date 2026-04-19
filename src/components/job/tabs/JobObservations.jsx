@@ -38,7 +38,7 @@ export default function JobObservations({ job }) {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.Observation.update(id, { is_deleted: true }),
+    mutationFn: (id) => base44.functions.invoke('softDeleteRecord', { entity_type: 'Observation', entity_id: id }),
     onSuccess: () => qc.invalidateQueries(['observations', job.id]),
   });
 

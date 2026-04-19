@@ -37,13 +37,8 @@ export default function JobEquipment({ job }) {
     },
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.EquipmentLog.update(id, { is_deleted: true }),
-    onSuccess: () => qc.invalidateQueries(['equipment', job.id]),
-  });
-
   const removeMutation = useMutation({
-    mutationFn: (id) => base44.entities.EquipmentLog.update(id, { status: 'removed', removed_at: new Date().toISOString() }),
+    mutationFn: (id) => base44.functions.invoke('softDeleteRecord', { entity_type: 'EquipmentLog', entity_id: id }),
     onSuccess: () => qc.invalidateQueries(['equipment', job.id]),
   });
 
@@ -131,7 +126,7 @@ export default function JobEquipment({ job }) {
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${eq.status === 'removed' ? 'bg-muted text-muted-foreground' : 'bg-green-100 text-green-700'}`}>{eq.status}</span>
                 </div>
                 {eq.serial_number && <p className="text-xs text-muted-foreground mt-0.5">S/N: {eq.serial_number}</p>}
-                <p className="text-xs text-muted-foreground mt-0.5">{eq.placed_by} · {eq.placed_at && format(new Date(eq.placed_at), 'MMM d, h:mm a')}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{eq.placed_by}{eq.placed_at ? ' · ' + format(new Date(eq.placed_at), 'MMM d, h:mm a') : ''}</p>
               </div>
               <div className="flex gap-1 shrink-0">
                 {eq.status !== 'removed' && (

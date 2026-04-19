@@ -129,11 +129,11 @@ export default function JobReadings({ job }) {
   });
 
   const deleteMoisture = useMutation({
-    mutationFn: (id) => base44.entities.MoistureReading.update(id, { is_deleted: true }),
+    mutationFn: (id) => base44.functions.invoke('softDeleteRecord', { entity_type: 'MoistureReading', entity_id: id }),
     onSuccess: () => qc.invalidateQueries(['moisture', job.id]),
   });
   const deleteEnv = useMutation({
-    mutationFn: (id) => base44.entities.EnvironmentalReading.update(id, { is_deleted: true }),
+    mutationFn: (id) => base44.functions.invoke('softDeleteRecord', { entity_type: 'EnvironmentalReading', entity_id: id }),
     onSuccess: () => qc.invalidateQueries(['env', job.id]),
   });
 

@@ -19,8 +19,13 @@ Deno.serve(async (req) => {
     return Response.json({ error: `Forbidden: only admins/managers can delete ${entity_type}` }, { status: 403 });
   }
 
-  const records = await base44.asServiceRole.entities[entity_type].filter({ id: entity_id, is_deleted: false });
-  if (!records.length) return Response.json({ error: 'Record not found' }, { status: 404 });
+  let records;
+  try {
+    records = await base44.asServiceRole.entities[entity_type].filter({ id: entity_id, is_deleted: false });
+  } catch {
+    return Response.json({ error: 'Record not found' }, { status: 404 });
+  }
+  if (!records || !records.length) return Response.json({ error: 'Record not found' }, { status: 404 });
   const record = records[0];
 
   // Resolve company_id from the record

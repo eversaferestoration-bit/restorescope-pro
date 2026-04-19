@@ -37,7 +37,7 @@ export default function JobContainment({ job }) {
   });
 
   const removeMutation = useMutation({
-    mutationFn: (id) => base44.entities.Containment.update(id, { status: 'removed', removed_at: new Date().toISOString() }),
+    mutationFn: (id) => base44.functions.invoke('softDeleteRecord', { entity_type: 'Containment', entity_id: id }),
     onSuccess: () => qc.invalidateQueries(['containments', job.id]),
   });
 
@@ -109,7 +109,7 @@ export default function JobContainment({ job }) {
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${c.status === 'removed' ? 'bg-muted text-muted-foreground' : 'bg-orange-100 text-orange-700'}`}>{c.status}</span>
                 </div>
                 {c.description && <p className="text-xs text-muted-foreground mt-0.5">{c.description}</p>}
-                <p className="text-xs text-muted-foreground mt-0.5">{c.installed_by} · {c.installed_at && format(new Date(c.installed_at), 'MMM d, h:mm a')}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{c.installed_by}{c.installed_at ? ' · ' + format(new Date(c.installed_at), 'MMM d, h:mm a') : ''}</p>
               </div>
               {c.status !== 'removed' && (
                 <button onClick={() => removeMutation.mutate(c.id)} className="h-7 px-2 rounded-lg text-xs border hover:bg-muted transition shrink-0">Remove</button>
