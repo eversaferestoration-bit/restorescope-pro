@@ -1,0 +1,160 @@
+{
+  "name": "ValidationReport",
+  "type": "object",
+  "properties": {
+    "validation_type": {
+      "type": "string",
+      "enum": [
+        "full_dominance",
+        "claim_lifecycle",
+        "negotiation",
+        "supplements",
+        "analytics",
+        "performance",
+        "security"
+      ],
+      "description": "Type of validation performed"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "passed",
+        "failed",
+        "partial",
+        "critical"
+      ],
+      "description": "Overall validation status"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "total_tests": {
+      "type": "integer",
+      "default": 0
+    },
+    "passed_tests": {
+      "type": "integer",
+      "default": 0
+    },
+    "failed_tests": {
+      "type": "integer",
+      "default": 0
+    },
+    "warnings": {
+      "type": "integer",
+      "default": 0
+    },
+    "issues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "severity": {
+            "type": "string",
+            "enum": [
+              "critical",
+              "high",
+              "medium",
+              "low"
+            ]
+          },
+          "category": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "affected_component": {
+            "type": "string"
+          },
+          "remediation": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "identified",
+              "in_progress",
+              "resolved"
+            ]
+          }
+        }
+      }
+    },
+    "performance_metrics": {
+      "type": "object",
+      "properties": {
+        "avg_response_time_ms": {
+          "type": "number"
+        },
+        "p95_response_time_ms": {
+          "type": "number"
+        },
+        "p99_response_time_ms": {
+          "type": "number"
+        },
+        "error_rate_percent": {
+          "type": "number"
+        },
+        "throughput_requests_per_sec": {
+          "type": "number"
+        }
+      }
+    },
+    "data_integrity_checks": {
+      "type": "object",
+      "properties": {
+        "orphaned_records": {
+          "type": "integer"
+        },
+        "missing_relationships": {
+          "type": "integer"
+        },
+        "invalid_calculations": {
+          "type": "integer"
+        },
+        "anonymization_violations": {
+          "type": "integer"
+        }
+      }
+    },
+    "security_checklist": {
+      "type": "object",
+      "properties": {
+        "auth_verified": {
+          "type": "boolean"
+        },
+        "rls_enforced": {
+          "type": "boolean"
+        },
+        "pii_protected": {
+          "type": "boolean"
+        },
+        "audit_logging_enabled": {
+          "type": "boolean"
+        },
+        "encryption_validated": {
+          "type": "boolean"
+        }
+      }
+    },
+    "is_dominance_ready": {
+      "type": "boolean",
+      "default": false,
+      "description": "System certified dominance-ready"
+    },
+    "certification_notes": {
+      "type": "string"
+    },
+    "is_deleted": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "validation_type",
+    "status",
+    "timestamp"
+  ]
+}
