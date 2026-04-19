@@ -1,35 +1,79 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
-import { ArrowLeft, Save } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
+import { logAction } from '@/lib/auditLog';
+import { ArrowLeft, ArrowRight, Check, Save } from 'lucide-react';
+import InsuredSelector from '@/components/job/InsuredSelector';
+import PropertySelector from '@/components/job/PropertySelector';
+import UserSelector from '@/components/job/UserSelector';
+import { cn } from '@/lib/utils';
 
-const LOSS_TYPES = ['Water', 'Fire', 'Mold', 'Storm', 'Wind', 'Smoke', 'Biohazard', 'Other'];
+const LOSS_TYPES = [
+  { value: 'water', label: 'Water' },
+  { value: 'mold', label: 'Mold' },
+  { value: 'fire', label: 'Fire' },
+  { value: 'mixed_loss', label: 'Mixed Loss' },
+];
 const SERVICE_TYPES = ['Mitigation', 'Restoration', 'Contents', 'Reconstruction', 'Inspection Only'];
 const STATUS_OPTIONS = ['new', 'in_progress', 'pending_approval', 'approved', 'closed'];
-const COMPLEXITY = ['Low', 'Medium', 'High', 'Complex'];
-const ACCESS_DIFF = ['Easy', 'Moderate', 'Difficult', 'Restricted'];
 
-function Field({ label, children, required }) {
+const inputCls = 'w-full h-10 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring transition';
+const selectCls = 'w-full h-10 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring transition';
+
+function Field({ label, required, error, children }) {
   return (
     <div>
       <label className="block text-sm font-medium mb-1.5">
         {label}{required && <span className="text-destructive ml-0.5">*</span>}
       </label>
       {children}
+      {error && <p className="text-xs text-destructive mt-1">{error}</p>}
     </div>
   );
 }
 
-const inputCls = 'w-full h-10 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring transition';
-const selectCls = 'w-full h-10 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring transition';
+function StepIndicator({ steps, current }) {
+  return (
+    <div className="flex items-center gap-1 mb-6">
+      {steps.map((s, i) => (
+        <div key={s} className="flex items-center gap-1 flex-1">
+          <div className={cn(
+            'w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 transition-all',
+            i < current ? 'bg-primary text-white' :
+            i === current ? 'bg-primary text-white ring-4 ring-primary/20' :
+            'bg-muted text-muted-foreground'
+          )}>
+            {i < current ? <Check size={13} /> : i + 1}
+          </div>
+          {i < steps.length - 1 && (
+            <div className={cn('flex-1 h-px transition-colors', i < current ? 'bg-primary' : 'bg-border')} />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Generate job number: RSP-YYYYMMDD-XXXX */
+function generateJobNumber() {
+  const d = new Date();
+  const date = `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+  const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
+  return `RSP-${date}-${rand}`;
+}
+
+const STEPS = ['Job Info', 'Insured & Property', 'Assignment', 'Review'];
 
 export default function NewJob() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [errors, setErrors] = useState({});
+
   const [form, setForm] = useState({
-    job_number: '',
+    job_number: generateJobNumber(),
     loss_type: '',
     service_type: '',
     cause_of_loss: '',
@@ -38,140 +82,228 @@ export default function NewJob() {
     inspection_date: '',
     emergency_flag: false,
     after_hours_flag: false,
-    complexity_level: '',
-    access_difficulty: '',
     summary_notes: '',
   });
+  const [insured, setInsured] = useState(null);
+  const [property, setProperty] = useState(null);
+  const [assignedManagerId, setAssignedManagerId] = useState('');
+  const [assignedEstimatorId, setAssignedEstimatorId] = useState('');
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target?.value ?? e }));
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  // Validate per step
+  const validate = (s) => {
+    const errs = {};
+    if (s === 0) {
+      if (!form.loss_type) errs.loss_type = 'Loss type is required.';
+      if (!form.service_type) errs.service_type = 'Service type is required.';
+    }
+    if (s === 1) {
+      if (!insured) errs.insured = 'Insured is required.';
+      if (!property) errs.property = 'Property is required.';
+    }
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
+  const next = () => {
+    if (validate(step)) setStep((s) => s + 1);
+  };
+  const back = () => { setErrors({}); setStep((s) => s - 1); };
+
+  const handleSubmit = async () => {
+    if (!validate(step)) return;
     setSaving(true);
     const job = await base44.entities.Job.create({
       ...form,
-      company_id: user?.company_id || 'default',
+      insured_id: insured?.id,
+      property_id: property?.id,
+      assigned_manager_id: assignedManagerId || undefined,
+      assigned_estimator_id: assignedEstimatorId || undefined,
+      company_id: user?.company_id || '',
       created_by: user?.email,
       is_deleted: false,
+    });
+    await logAction(user, 'Job', job.id, 'created', `Job ${job.job_number} created`, {
+      loss_type: job.loss_type,
+      service_type: job.service_type,
+      insured_id: insured?.id,
+      property_id: property?.id,
     });
     navigate(`/jobs/${job.id}`);
   };
 
   return (
-    <div className="p-4 md:p-6 max-w-2xl mx-auto">
+    <div className="p-4 md:p-6 max-w-xl mx-auto">
       <button
-        onClick={() => navigate(-1)}
+        onClick={() => step === 0 ? navigate(-1) : back()}
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-5 transition"
       >
-        <ArrowLeft size={15} /> Back
+        <ArrowLeft size={15} /> {step === 0 ? 'Back' : 'Previous'}
       </button>
 
-      <div className="mb-6">
+      <div className="mb-5">
         <h1 className="text-2xl font-bold font-display">New Job</h1>
-        <p className="text-sm text-muted-foreground mt-1">Start a new restoration job</p>
+        <p className="text-sm text-muted-foreground mt-0.5">Step {step + 1} of {STEPS.length} — {STEPS[step]}</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-5">
-        {/* Basic Info */}
+      <StepIndicator steps={STEPS} current={step} />
+
+      {/* Step 0: Job Info */}
+      {step === 0 && (
         <div className="bg-card rounded-xl border border-border p-5 space-y-4">
-          <h2 className="text-sm font-semibold font-display text-muted-foreground uppercase tracking-wide">Basic Info</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="Job Number">
-              <input className={inputCls} value={form.job_number} onChange={set('job_number')} placeholder="e.g. JOB-2024-001" />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2">
+              <Field label="Job Number">
+                <div className="flex gap-2">
+                  <input className={inputCls} value={form.job_number} onChange={set('job_number')} />
+                  <button type="button" onClick={() => setForm((f) => ({ ...f, job_number: generateJobNumber() }))} className="h-10 px-3 rounded-lg border border-border text-xs hover:bg-muted transition whitespace-nowrap">Regenerate</button>
+                </div>
+              </Field>
+            </div>
+
+            <Field label="Loss Type" required error={errors.loss_type}>
+              <select className={cn(selectCls, errors.loss_type && 'border-destructive')} value={form.loss_type} onChange={set('loss_type')}>
+                <option value="">Select…</option>
+                {LOSS_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </select>
             </Field>
+
+            <Field label="Service Type" required error={errors.service_type}>
+              <select className={cn(selectCls, errors.service_type && 'border-destructive')} value={form.service_type} onChange={set('service_type')}>
+                <option value="">Select…</option>
+                {SERVICE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </Field>
+
             <Field label="Status">
               <select className={selectCls} value={form.status} onChange={set('status')}>
                 {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
               </select>
             </Field>
-            <Field label="Loss Type" required>
-              <select className={selectCls} value={form.loss_type} onChange={set('loss_type')} required>
-                <option value="">Select…</option>
-                {LOSS_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-              </select>
-            </Field>
-            <Field label="Service Type">
-              <select className={selectCls} value={form.service_type} onChange={set('service_type')}>
-                <option value="">Select…</option>
-                {SERVICE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-              </select>
-            </Field>
+
             <Field label="Date of Loss">
               <input type="date" className={inputCls} value={form.date_of_loss} onChange={set('date_of_loss')} />
             </Field>
+
             <Field label="Inspection Date">
               <input type="date" className={inputCls} value={form.inspection_date} onChange={set('inspection_date')} />
             </Field>
-            <Field label="Complexity">
-              <select className={selectCls} value={form.complexity_level} onChange={set('complexity_level')}>
-                <option value="">Select…</option>
-                {COMPLEXITY.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </Field>
-            <Field label="Access Difficulty">
-              <select className={selectCls} value={form.access_difficulty} onChange={set('access_difficulty')}>
-                <option value="">Select…</option>
-                {ACCESS_DIFF.map((a) => <option key={a} value={a}>{a}</option>)}
-              </select>
-            </Field>
+
+            <div className="col-span-2">
+              <Field label="Cause of Loss">
+                <input className={inputCls} value={form.cause_of_loss} onChange={set('cause_of_loss')} placeholder="Brief description…" />
+              </Field>
+            </div>
+
+            <div className="col-span-2 flex gap-6">
+              {[{ key: 'emergency_flag', label: 'Emergency' }, { key: 'after_hours_flag', label: 'After Hours' }].map(({ key, label }) => (
+                <label key={key} className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={form[key]} onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.checked }))} className="w-4 h-4 accent-primary" />
+                  <span className="text-sm">{label}</span>
+                </label>
+              ))}
+            </div>
+
+            <div className="col-span-2">
+              <Field label="Summary Notes">
+                <textarea className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring" rows={3} value={form.summary_notes} onChange={set('summary_notes')} placeholder="Initial notes…" />
+              </Field>
+            </div>
           </div>
-          <Field label="Cause of Loss">
-            <input className={inputCls} value={form.cause_of_loss} onChange={set('cause_of_loss')} placeholder="Brief description of the cause" />
-          </Field>
         </div>
+      )}
 
-        {/* Flags */}
-        <div className="bg-card rounded-xl border border-border p-5 space-y-3">
-          <h2 className="text-sm font-semibold font-display text-muted-foreground uppercase tracking-wide">Flags</h2>
-          {[
-            { key: 'emergency_flag', label: 'Emergency', desc: 'Requires immediate response' },
-            { key: 'after_hours_flag', label: 'After Hours', desc: 'Job occurred outside normal hours' },
-          ].map(({ key, label, desc }) => (
-            <label key={key} className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={form[key]}
-                onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.checked }))}
-                className="mt-0.5 w-4 h-4 rounded border-input accent-primary"
-              />
-              <div>
-                <p className="text-sm font-medium">{label}</p>
-                <p className="text-xs text-muted-foreground">{desc}</p>
+      {/* Step 1: Insured & Property */}
+      {step === 1 && (
+        <div className="space-y-4">
+          <div className="bg-card rounded-xl border border-border p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold font-display">Insured <span className="text-destructive">*</span></h2>
+              {errors.insured && <p className="text-xs text-destructive">{errors.insured}</p>}
+            </div>
+            <InsuredSelector value={insured} onChange={setInsured} />
+          </div>
+
+          <div className="bg-card rounded-xl border border-border p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold font-display">Property <span className="text-destructive">*</span></h2>
+              {errors.property && <p className="text-xs text-destructive">{errors.property}</p>}
+            </div>
+            <PropertySelector value={property} onChange={setProperty} />
+          </div>
+        </div>
+      )}
+
+      {/* Step 2: Assignment */}
+      {step === 2 && (
+        <div className="bg-card rounded-xl border border-border p-5 space-y-4">
+          <h2 className="text-sm font-semibold font-display text-muted-foreground uppercase tracking-wide">Assign Team</h2>
+          <UserSelector label="Project Manager" value={assignedManagerId} onChange={setAssignedManagerId} />
+          <UserSelector label="Estimator" value={assignedEstimatorId} onChange={setAssignedEstimatorId} />
+        </div>
+      )}
+
+      {/* Step 3: Review */}
+      {step === 3 && (
+        <div className="space-y-4">
+          <div className="bg-card rounded-xl border border-border p-5 space-y-3">
+            <h2 className="text-sm font-semibold font-display">Job Summary</h2>
+            {[
+              ['Job Number', form.job_number],
+              ['Loss Type', LOSS_TYPES.find((t) => t.value === form.loss_type)?.label],
+              ['Service Type', form.service_type],
+              ['Status', form.status?.replace(/_/g, ' ')],
+              ['Date of Loss', form.date_of_loss],
+              ['Inspection Date', form.inspection_date],
+              ['Cause of Loss', form.cause_of_loss],
+              ['Emergency', form.emergency_flag ? 'Yes' : 'No'],
+              ['After Hours', form.after_hours_flag ? 'Yes' : 'No'],
+            ].map(([label, value]) => value && (
+              <div key={label} className="flex items-start justify-between gap-4">
+                <span className="text-xs text-muted-foreground shrink-0">{label}</span>
+                <span className="text-sm font-medium text-right">{value}</span>
               </div>
-            </label>
-          ))}
-        </div>
+            ))}
+          </div>
 
-        {/* Notes */}
-        <div className="bg-card rounded-xl border border-border p-5">
-          <Field label="Summary Notes">
-            <textarea
-              className="w-full px-3 py-2.5 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring transition resize-none"
-              rows={3}
-              value={form.summary_notes}
-              onChange={set('summary_notes')}
-              placeholder="Initial notes about the job…"
-            />
-          </Field>
+          <div className="bg-card rounded-xl border border-border p-5 space-y-2">
+            <h2 className="text-sm font-semibold font-display">Insured & Property</h2>
+            <div className="flex justify-between"><span className="text-xs text-muted-foreground">Insured</span><span className="text-sm font-medium">{insured?.full_name || '—'}</span></div>
+            <div className="flex justify-between"><span className="text-xs text-muted-foreground">Property</span><span className="text-sm font-medium text-right max-w-[60%]">{property ? [property.address_line_1, property.city].filter(Boolean).join(', ') : '—'}</span></div>
+          </div>
         </div>
+      )}
 
-        <div className="flex justify-end gap-3">
+      {/* Nav buttons */}
+      <div className="flex justify-between mt-5">
+        <button
+          type="button"
+          onClick={() => step === 0 ? navigate(-1) : back()}
+          className="px-4 h-10 rounded-lg border border-border text-sm font-medium hover:bg-muted transition"
+        >
+          {step === 0 ? 'Cancel' : 'Back'}
+        </button>
+
+        {step < STEPS.length - 1 ? (
           <button
             type="button"
-            onClick={() => navigate(-1)}
-            className="px-4 h-10 rounded-lg border border-border text-sm font-medium hover:bg-muted transition"
+            onClick={next}
+            className="inline-flex items-center gap-2 px-5 h-10 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition"
           >
-            Cancel
+            Next <ArrowRight size={15} />
           </button>
+        ) : (
           <button
-            type="submit"
+            type="button"
+            onClick={handleSubmit}
             disabled={saving}
             className="inline-flex items-center gap-2 px-5 h-10 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition disabled:opacity-60"
           >
             <Save size={15} /> {saving ? 'Creating…' : 'Create Job'}
           </button>
-        </div>
-      </form>
+        )}
+      </div>
     </div>
   );
 }
