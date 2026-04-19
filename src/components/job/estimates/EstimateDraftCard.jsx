@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
-import { ChevronDown, ChevronUp, RefreshCw, Loader2, Lock, GitBranch, Shield, MessageSquare, TrendingUp, AlertCircle } from 'lucide-react';
+import { ChevronDown, ChevronUp, RefreshCw, Loader2, Lock, GitBranch, Shield, MessageSquare, TrendingUp, AlertCircle, BarChart3 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import EstimateLineItemRow from './EstimateLineItemRow';
@@ -11,6 +11,7 @@ import RejectModal from './RejectModal';
 import ClaimDefensePanel from './ClaimDefensePanel';
 import CarrierResponseGenerator from './CarrierResponseGenerator';
 import OptimizationPanel from './OptimizationPanel';
+import MarketComparisonPanel from './MarketComparisonPanel';
 
 const STATUS_COLORS = {
   draft:     'bg-blue-100 text-blue-700',
@@ -156,6 +157,12 @@ export default function EstimateDraftCard({ draft, jobId, readOnly }) {
             >
               <TrendingUp size={11} /> Optimize
             </button>
+            <button
+              onClick={() => setActiveTab('market')}
+              className={cn('inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold transition', activeTab === 'market' ? 'border-b-2 border-primary text-primary' : 'text-muted-foreground hover:text-foreground')}
+            >
+              <BarChart3 size={11} /> Market
+            </button>
           </div>
 
           {activeTab === 'defense' && <ClaimDefensePanel draft={draft} />}
@@ -189,6 +196,12 @@ export default function EstimateDraftCard({ draft, jobId, readOnly }) {
               {optimization && (
                 <OptimizationPanel optimization={optimization} estimate={draft} />
               )}
+            </div>
+          )}
+
+          {activeTab === 'market' && (
+            <div className="p-4">
+              <MarketComparisonPanel estimateId={draft.id} />
             </div>
           )}
 
