@@ -1,0 +1,50 @@
+{
+  "name": "Property",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string"
+    },
+    "address_line_1": {
+      "type": "string"
+    },
+    "address_line_2": {
+      "type": "string"
+    },
+    "city": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string"
+    },
+    "zip": {
+      "type": "string"
+    },
+    "country": {
+      "type": "string"
+    },
+    "occupancy_type": {
+      "type": "string"
+    },
+    "structure_type": {
+      "type": "string"
+    },
+    "year_built": {
+      "type": "integer"
+    },
+    "square_feet": {
+      "type": "number"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "is_deleted": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "company_id",
+    "address_line_1"
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "name": "Insured",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string"
+    },
+    "full_name": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string",
+      "format": "email"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "alternate_phone": {
+      "type": "string"
+    },
+    "billing_address": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "is_deleted": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "company_id",
+    "full_name"
+  ]
+}

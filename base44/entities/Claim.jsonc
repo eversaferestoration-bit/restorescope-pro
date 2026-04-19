@@ -1,0 +1,48 @@
+{
+  "name": "Claim",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string"
+    },
+    "carrier_id": {
+      "type": "string"
+    },
+    "adjuster_id": {
+      "type": "string"
+    },
+    "insured_id": {
+      "type": "string"
+    },
+    "claim_number": {
+      "type": "string"
+    },
+    "policy_number": {
+      "type": "string"
+    },
+    "deductible": {
+      "type": "number"
+    },
+    "date_of_loss": {
+      "type": "string",
+      "format": "date"
+    },
+    "reported_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "claim_status": {
+      "type": "string"
+    },
+    "coverage_notes": {
+      "type": "string"
+    },
+    "is_deleted": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "company_id"
+  ]
+}

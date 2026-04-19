@@ -1,0 +1,36 @@
+{
+  "name": "Adjuster",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string"
+    },
+    "carrier_id": {
+      "type": "string"
+    },
+    "full_name": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string",
+      "format": "email"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "is_deleted": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "company_id",
+    "full_name"
+  ]
+}
