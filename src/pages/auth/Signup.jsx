@@ -8,8 +8,31 @@ export default function Signup() {
   const [form, setForm] = useState({ full_name: '', email: '', password: '', confirm: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
 
-  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+  const set = (k) => (e) => {
+    const value = e.target.value;
+    setForm((f) => ({ ...f, [k]: value }));
+    
+    // Real-time validation for password fields
+    if (k === 'password' || k === 'confirm') {
+      validatePasswords(k === 'password' ? value : form.password, k === 'confirm' ? value : form.confirm);
+    }
+  };
+
+  const validatePasswords = (pwd, confirm) => {
+    if (!pwd && !confirm) {
+      setPasswordError('');
+      return;
+    }
+    if (pwd && pwd.length < 8) {
+      setPasswordError('Password must be at least 8 characters');
+    } else if (pwd && confirm && pwd !== confirm) {
+      setPasswordError('Passwords do not match');
+    } else {
+      setPasswordError('');
+    }
+  };
 
   const getSafeErrorMessage = (error) => {
     console.error('Signup error:', error);
@@ -22,10 +45,20 @@ export default function Signup() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    if (form.password !== form.confirm) {
-      setError('Passwords do not match.');
+    
+    // Validate password length
+    if (form.password.length < 8) {
+      setPasswordError('Password must be at least 8 characters');
       return;
     }
+    
+    // Validate passwords match
+    if (form.password !== form.confirm) {
+      setPasswordError('Passwords do not match');
+      return;
+    }
+    
+    setPasswordError('');
     setLoading(true);
     try {
       await base44.auth.register(form.email, form.password, form.full_name);
@@ -93,6 +126,9 @@ export default function Signup() {
                 className="w-full h-10 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring transition"
                 placeholder="Min. 8 characters"
               />
+              {form.password && form.password.length < 8 && (
+                <p className="text-xs text-destructive mt-1">Password must be at least 8 characters</p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium mb-1.5">Confirm password</label>
@@ -104,10 +140,13 @@ export default function Signup() {
                 className="w-full h-10 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring transition"
                 placeholder="••••••••"
               />
+              {form.confirm && form.password !== form.confirm && (
+                <p className="text-xs text-destructive mt-1">Passwords do not match</p>
+              )}
             </div>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !!passwordError || !form.password || !form.confirm}
               className="w-full h-10 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition disabled:opacity-60"
             >
               {loading ? 'Creating account…' : 'Create account'}
