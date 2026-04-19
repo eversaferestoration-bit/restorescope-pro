@@ -1,0 +1,62 @@
+{
+  "name": "Subscription",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string"
+    },
+    "provider": {
+      "type": "string"
+    },
+    "provider_customer_id": {
+      "type": "string"
+    },
+    "provider_subscription_id": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string"
+    },
+    "billing_cycle": {
+      "type": "string"
+    },
+    "trial_start": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "trial_end": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "current_period_start": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "current_period_end": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "cancel_at_period_end": {
+      "type": "boolean",
+      "default": false
+    },
+    "seat_count": {
+      "type": "integer"
+    },
+    "usage_jobs_this_period": {
+      "type": "integer",
+      "default": 0
+    },
+    "usage_ai_this_period": {
+      "type": "integer",
+      "default": 0
+    },
+    "last_sync_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "company_id"
+  ]
+}
