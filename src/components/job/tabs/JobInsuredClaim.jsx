@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
 import { ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
+import AdjusterInsightsPanel from '@/components/job/AdjusterInsightsPanel';
 
 function InfoRow({ label, value }) {
   return (
@@ -109,11 +110,17 @@ export default function JobInsuredClaim({ job }) {
       {/* Adjuster */}
       <Card title="Adjuster">
         {adjuster ? (
-          <div className="grid grid-cols-2 gap-4">
-            <InfoRow label="Name" value={adjuster.full_name} />
-            <InfoRow label="Title" value={adjuster.title} />
-            <InfoRow label="Phone" value={adjuster.phone} />
-            <InfoRow label="Email" value={adjuster.email} />
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-4">
+              <InfoRow label="Name" value={adjuster.full_name} />
+              <InfoRow label="Title" value={adjuster.title} />
+              <InfoRow label="Phone" value={adjuster.phone} />
+              <InfoRow label="Email" value={adjuster.email} />
+            </div>
+            {/* Adjuster Insights Panel */}
+            <div className="pt-3 border-t border-border">
+              <AdjusterInsightsPanel adjusterId={adjuster.id} />
+            </div>
           </div>
         ) : (
           <p className="text-sm text-muted-foreground italic">No adjuster linked.</p>

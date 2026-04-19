@@ -1,0 +1,51 @@
+{
+  "name": "AdjusterBehavior",
+  "type": "object",
+  "properties": {
+    "adjuster_id": {
+      "type": "string"
+    },
+    "adjuster_name": {
+      "type": "string"
+    },
+    "carrier_id": {
+      "type": "string"
+    },
+    "approval_rate": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "avg_reduction_percent": {
+      "type": "number",
+      "minimum": 0
+    },
+    "common_rejected_categories": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "avg_response_time_days": {
+      "type": "number"
+    },
+    "total_interactions": {
+      "type": "integer",
+      "default": 0
+    },
+    "notes": {
+      "type": "string"
+    },
+    "last_updated": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "is_deleted": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "adjuster_id"
+  ]
+}
