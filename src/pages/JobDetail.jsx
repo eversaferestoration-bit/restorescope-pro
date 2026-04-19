@@ -23,6 +23,7 @@ import JobJustification from '@/components/job/tabs/JobJustification';
 import JobApprovals from '@/components/job/tabs/JobApprovals';
 import JobExports from '@/components/job/tabs/JobExports';
 import JobSupplements from '@/components/job/tabs/JobSupplements';
+import OutcomePanel from '@/components/job/OutcomePanel';
 
 const TABS = [
   { key: 'overview', label: 'Overview', component: JobOverview },
@@ -39,6 +40,7 @@ const TABS = [
   { key: 'supplements', label: 'Supplements', component: JobSupplements },
   { key: 'justification', label: 'Justification', component: JobJustification },
   { key: 'approvals', label: 'Approvals', component: JobApprovals },
+  { key: 'outcome', label: 'Outcome', component: () => <OutcomePanel jobId={job?.id} /> },
   { key: 'exports', label: 'Exports', component: JobExports },
 ];
 
@@ -97,7 +99,9 @@ export default function JobDetail() {
     );
   }
 
-  const ActiveComponent = TABS.find((t) => t.key === activeTab)?.component;
+  const ActiveTab = TABS.find((t) => t.key === activeTab);
+  const ActiveComponent = ActiveTab?.component;
+  const isOutcomeTab = activeTab === 'outcome';
 
   return (
     <div className="flex flex-col min-h-full">
@@ -162,7 +166,11 @@ export default function JobDetail() {
 
       {/* Tab content */}
       <div className="flex-1 p-4 md:p-6 max-w-5xl mx-auto w-full">
-        {ActiveComponent && <ActiveComponent job={job} />}
+        {isOutcomeTab ? (
+          <ActiveComponent />
+        ) : (
+          ActiveComponent && <ActiveComponent job={job} />
+        )}
       </div>
 
       {showRiskPanel && riskData && (
