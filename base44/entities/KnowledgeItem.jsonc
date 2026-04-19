@@ -1,0 +1,73 @@
+{
+  "name": "KnowledgeItem",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Knowledge item title"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "best_practice",
+        "negotiation_strategy",
+        "documentation",
+        "scope_guidance",
+        "carrier_insight",
+        "pricing",
+        "dispute_resolution",
+        "technical_procedure"
+      ],
+      "description": "Knowledge category"
+    },
+    "content": {
+      "type": "string",
+      "description": "Detailed knowledge content"
+    },
+    "related_scope": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Related scope categories (e.g., 'containment', 'drying', 'remediation')"
+    },
+    "created_by": {
+      "type": "string",
+      "description": "User email who created this knowledge item"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Searchable tags"
+    },
+    "loss_types": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Applicable loss types (e.g., 'water', 'fire', 'mold')"
+    },
+    "success_count": {
+      "type": "integer",
+      "default": 0,
+      "description": "Number of successful applications"
+    },
+    "is_pinned": {
+      "type": "boolean",
+      "default": false,
+      "description": "Pinned for quick access"
+    },
+    "is_deleted": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "title",
+    "category",
+    "content",
+    "created_by"
+  ]
+}

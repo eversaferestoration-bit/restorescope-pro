@@ -24,6 +24,7 @@ import JobApprovals from '@/components/job/tabs/JobApprovals';
 import JobExports from '@/components/job/tabs/JobExports';
 import JobSupplements from '@/components/job/tabs/JobSupplements';
 import OutcomePanel from '@/components/job/OutcomePanel';
+import KnowledgePanel from '@/components/job/KnowledgePanel';
 
 const TABS = [
   { key: 'overview', label: 'Overview', component: JobOverview },
@@ -41,6 +42,7 @@ const TABS = [
   { key: 'justification', label: 'Justification', component: JobJustification },
   { key: 'approvals', label: 'Approvals', component: JobApprovals },
   { key: 'outcome', label: 'Outcome', component: null },
+  { key: 'knowledge', label: 'Knowledge', component: null },
   { key: 'exports', label: 'Exports', component: JobExports },
 ];
 
@@ -102,6 +104,7 @@ export default function JobDetail() {
   const ActiveTab = TABS.find((t) => t.key === activeTab);
   const ActiveComponent = ActiveTab?.component;
   const isOutcomeTab = activeTab === 'outcome';
+  const isKnowledgeTab = activeTab === 'knowledge';
 
   return (
     <div className="flex flex-col min-h-full">
@@ -168,6 +171,8 @@ export default function JobDetail() {
       <div className="flex-1 p-4 md:p-6 max-w-5xl mx-auto w-full">
         {isOutcomeTab ? (
           <OutcomePanel jobId={job?.id} />
+        ) : isKnowledgeTab ? (
+          <KnowledgePanel jobId={job?.id} />
         ) : (
           ActiveComponent && <ActiveComponent job={job} />
         )}
