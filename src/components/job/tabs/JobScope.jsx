@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
-import { Sparkles, Zap, Plus, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
+import { Sparkles, Zap, Plus, ChevronDown, ChevronUp, AlertTriangle, Search, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import RoomPicker from '@/components/job/RoomPicker';
 import ScopeItemRow from '@/components/job/scope/ScopeItemRow';
@@ -91,6 +91,8 @@ export default function JobScope({ job }) {
   const [generateError, setGenerateError] = useState(null);
   const [useAi, setUseAi] = useState(false);
   const [addingManual, setAddingManual] = useState(false);
+  const [detectingGaps, setDetectingGaps] = useState(false);
+  const [scopeGaps, setScopeGaps] = useState(null);
   const isTechnician = user?.role === 'technician';
 
   const { data: rooms = [] } = useQuery({
@@ -185,6 +187,18 @@ export default function JobScope({ job }) {
     pending.forEach((item) => handleConfirm(item));
   };
 
+  const handleDetectGaps = async () => {
+    setDetectingGaps(true);
+    setScopeGaps(null);
+    try {
+      const res = await base44.functions.invoke('detectScopeGaps', { job_id: job.id });
+      setScopeGaps(res.data);
+    } catch (err) {
+      setGenerateError(err?.response?.data?.message || 'Failed to detect scope gaps.');
+    }
+    setDetectingGaps(false);
+  };
+
   // Group by category
   const grouped = useMemo(() => {
     const map = {};
@@ -221,6 +235,17 @@ export default function JobScope({ job }) {
 
         {!isTechnician && (
           <button
+            onClick={handleDetectGaps}
+            disabled={detectingGaps}
+            className="inline-flex items-center gap-1.5 px-3 h-9 rounded-lg border border-border text-sm font-medium hover:bg-muted transition"
+          >
+            {detectingGaps ? <AlertCircle size={14} className="animate-pulse" /> : <Search size={14} />}
+            {detectingGaps ? 'Analyzing…' : 'Detect Gaps'}
+          </button>
+        )}
+
+        {!isTechnician && (
+          <button
             onClick={() => setAddingManual(!addingManual)}
             className="inline-flex items-center gap-1.5 px-3 h-9 rounded-lg border border-border text-sm font-medium hover:bg-muted transition ml-auto"
           >
@@ -240,6 +265,72 @@ export default function JobScope({ job }) {
         <div className="flex items-center gap-2 bg-destructive/10 border border-destructive/30 rounded-lg px-3 py-2">
           <AlertTriangle size={13} className="text-destructive shrink-0" />
           <p className="text-xs text-destructive">{generateError}</p>
+        </div>
+      )}
+
+      {/* Scope Gap Warnings */}
+      {scopeGaps && (
+        <div className="space-y-3">
+          {scopeGaps.gaps?.length > 0 && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-2">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertCircle size={15} className="text-amber-600 shrink-0" />
+                <h4 className="text-sm font-semibold text-amber-800">Missing Scope Detected ({scopeGaps.gaps.length})</h4>
+              </div>
+              {scopeGaps.gaps.map((gap, idx) => (
+                <div key={idx} className="text-xs text-amber-700 pl-7">
+                  <span className="font-medium capitalize">{gap.category || gap.type}:</span> {gap.reason}
+                  {gap.photo_count && <span className="ml-1 text-amber-600">({gap.photo_count} photos)</span>}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {scopeGaps.inconsistencies?.length > 0 && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-2">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertTriangle size={15} className="text-red-600 shrink-0" />
+                <h4 className="text-sm font-semibold text-red-800">Scope Inconsistencies ({scopeGaps.inconsistencies.length})</h4>
+              </div>
+              {scopeGaps.inconsistencies.map((inc, idx) => (
+                <div key={idx} className="text-xs text-red-700 pl-7">
+                  <span className="font-medium">Observation:</span> {inc.observation}
+                  <div className="mt-0.5 text-red-600">Missing: {inc.missing_scope.join(', ')}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {scopeGaps.recommendations?.length > 0 && (
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-2">
+              <div className="flex items-center gap-2 mb-2">
+                <Search size={15} className="text-blue-600 shrink-0" />
+                <h4 className="text-sm font-semibold text-blue-800">Recommended Actions ({scopeGaps.recommendations.length})</h4>
+              </div>
+              {scopeGaps.recommendations.slice(0, 5).map((rec, idx) => (
+                <div key={idx} className="text-xs text-blue-700 pl-7 flex items-start gap-2">
+                  <span className={`mt-0.5 w-1.5 h-1.5 rounded-full shrink-0 ${
+                    rec.priority === 'critical' ? 'bg-red-500' :
+                    rec.priority === 'high' ? 'bg-amber-500' :
+                    'bg-blue-400'
+                  }`} />
+                  <span><span className="font-medium">{rec.action}</span> — {rec.rationale}</span>
+                </div>
+              ))}
+              {scopeGaps.recommendations.length > 5 && (
+                <p className="text-xs text-blue-600 pl-7 mt-1">+ {scopeGaps.recommendations.length - 5} more recommendations</p>
+              )}
+            </div>
+          )}
+
+          {scopeGaps.gaps?.length === 0 && scopeGaps.inconsistencies?.length === 0 && (
+            <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+              <div className="flex items-center gap-2">
+                <AlertCircle size={15} className="text-green-600 shrink-0" />
+                <p className="text-sm font-medium text-green-800">No scope gaps detected. Scope appears comprehensive.</p>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
