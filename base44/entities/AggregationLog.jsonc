@@ -1,0 +1,59 @@
+{
+  "name": "AggregationLog",
+  "type": "object",
+  "properties": {
+    "aggregation_type": {
+      "type": "string",
+      "enum": [
+        "benchmark",
+        "pricing_trend",
+        "approval_pattern"
+      ],
+      "description": "Type of aggregation performed"
+    },
+    "period_start": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "period_end": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "records_processed": {
+      "type": "integer",
+      "default": 0
+    },
+    "records_aggregated": {
+      "type": "integer",
+      "default": 0
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "success",
+        "partial",
+        "failed"
+      ],
+      "default": "success"
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "anonymization_verified": {
+      "type": "boolean",
+      "default": false
+    },
+    "is_deleted": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "aggregation_type",
+    "period_start",
+    "period_end"
+  ]
+}

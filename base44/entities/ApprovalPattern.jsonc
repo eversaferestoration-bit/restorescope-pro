@@ -1,0 +1,82 @@
+{
+  "name": "ApprovalPattern",
+  "type": "object",
+  "properties": {
+    "region_code": {
+      "type": "string",
+      "description": "Geographic region (anonymized)"
+    },
+    "loss_type": {
+      "type": "string",
+      "description": "Type of loss"
+    },
+    "category": {
+      "type": "string",
+      "description": "Scope category"
+    },
+    "period": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "approval_rate": {
+      "type": "number",
+      "description": "Percentage approved at first submission",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "avg_reduction_percent": {
+      "type": "number",
+      "description": "Average cost reduction negotiated",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "avg_turnaround_hours": {
+      "type": "number",
+      "description": "Average hours to approval"
+    },
+    "dispute_rate": {
+      "type": "number",
+      "description": "Percentage of estimates disputed",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "supplement_success_rate": {
+      "type": "number",
+      "description": "Percentage of supplements approved",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "most_common_objections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string"
+          },
+          "frequency": {
+            "type": "integer"
+          }
+        }
+      }
+    },
+    "sample_size": {
+      "type": "integer",
+      "default": 0
+    },
+    "confidence_score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "is_deleted": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "region_code",
+    "loss_type",
+    "period"
+  ]
+}
