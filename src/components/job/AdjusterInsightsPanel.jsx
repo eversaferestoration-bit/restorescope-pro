@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
 import UpgradePrompt from '@/components/UpgradePrompt';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
@@ -93,11 +92,10 @@ function StatRow({ icon: Icon, label, value, subtext }) {
       </div>
     </div>
   );
-
-  {showUpgrade && <UpgradePrompt feature="adjuster_insights" onClose={() => setShowUpgrade(false)} />}
 }
 
 export default function AdjusterInsightsPanel({ adjusterId }) {
+  const [showUpgrade, setShowUpgrade] = useState(false);
   const { user } = useAuth();
   const isManager = user?.role === 'admin' || user?.role === 'manager';
 
@@ -299,4 +297,6 @@ export default function AdjusterInsightsPanel({ adjusterId }) {
       )}
     </div>
   );
+
+  {showUpgrade && <UpgradePrompt feature="adjuster_insights" onClose={() => setShowUpgrade(false)} />}
 }

@@ -4,7 +4,6 @@ import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/lib/AuthContext';
 import UpgradePrompt from '@/components/UpgradePrompt';
-import { useAuth } from '@/lib/AuthContext';
 import { FolderOpen, Send, Camera, CloudOff, Plus, ChevronRight, AlertCircle, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -14,7 +13,6 @@ import MissingPhotosWidget from '@/components/dashboard/MissingPhotosWidget';
 import SyncErrorsWidget from '@/components/dashboard/SyncErrorsWidget';
 import UsageStatsWidget from '@/components/dashboard/UsageStatsWidget';
 import RecentActivityWidget from '@/components/dashboard/RecentActivityWidget';
-import UpgradePrompt from '@/components/UpgradePrompt';
 
 const STATUS_COLORS = {
   new:              'bg-blue-100 text-blue-700',
@@ -183,8 +181,8 @@ export default function Dashboard() {
           <RecentActivityWidget />
         </div>
       </div>
+
+      {showUpgrade && <UpgradePrompt feature="premium_analytics" onClose={() => setShowUpgrade(false)} />}
     </div>
   );
-
-  {showUpgrade && <UpgradePrompt feature="premium_analytics" onClose={() => setShowUpgrade(false)} />}
 }
