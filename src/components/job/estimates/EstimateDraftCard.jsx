@@ -2,13 +2,14 @@ import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
-import { ChevronDown, ChevronUp, RefreshCw, Loader2, Lock, GitBranch, Shield } from 'lucide-react';
+import { ChevronDown, ChevronUp, RefreshCw, Loader2, Lock, GitBranch, Shield, MessageSquare } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import EstimateLineItemRow from './EstimateLineItemRow';
 import EstimateModifiersBadge from './EstimateModifiersBadge';
 import RejectModal from './RejectModal';
 import ClaimDefensePanel from './ClaimDefensePanel';
+import CarrierResponseGenerator from './CarrierResponseGenerator';
 
 const STATUS_COLORS = {
   draft:     'bg-blue-100 text-blue-700',
@@ -28,7 +29,7 @@ export default function EstimateDraftCard({ draft, jobId, readOnly }) {
   const [actionLoading, setActionLoading] = useState(null);
   const [err, setErr] = useState('');
   const [showRejectModal, setShowRejectModal] = useState(false);
-  const [activeTab, setActiveTab] = useState('details'); // 'details' | 'defense'
+  const [activeTab, setActiveTab] = useState('details'); // 'details' | 'defense' | 'carrier_response'
 
   const isManager = user?.role === 'admin' || user?.role === 'manager';
   const isLocked = draft.status === 'locked';
@@ -126,9 +127,17 @@ export default function EstimateDraftCard({ draft, jobId, readOnly }) {
             >
               <Shield size={11} /> Defense
             </button>
+            <button
+              onClick={() => setActiveTab('carrier_response')}
+              className={cn('inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold transition', activeTab === 'carrier_response' ? 'border-b-2 border-primary text-primary' : 'text-muted-foreground hover:text-foreground')}
+            >
+              <MessageSquare size={11} /> Carrier Response
+            </button>
           </div>
 
           {activeTab === 'defense' && <ClaimDefensePanel draft={draft} />}
+
+          {activeTab === 'carrier_response' && <CarrierResponseGenerator estimateVersionId={draft.id} />}
 
           {activeTab === 'details' && (
           <div>
