@@ -2,10 +2,11 @@ import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
-import { FilePlus, Loader2, AlertTriangle, Lock, ChevronDown, Shield } from 'lucide-react';
+import { FilePlus, Loader2, AlertTriangle, Lock, ChevronDown, Shield, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import EstimateDraftCard from '@/components/job/estimates/EstimateDraftCard';
 import JobDefense from '@/components/job/tabs/JobDefense';
+import JobSupplements from '@/components/job/tabs/JobSupplements';
 
 export default function JobEstimates({ job }) {
   const { user } = useAuth();
@@ -13,7 +14,7 @@ export default function JobEstimates({ job }) {
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState(null);
   const [profileId, setProfileId] = useState('');
-  const [activeTab, setActiveTab] = useState('estimates'); // 'estimates' | 'defense'
+  const [activeTab, setActiveTab] = useState('estimates'); // 'estimates' | 'defense' | 'supplements'
   const [selectedDefenseEstimateId, setSelectedDefenseEstimateId] = useState(null);
   const isTechnician = user?.role === 'technician';
 
@@ -56,11 +57,11 @@ export default function JobEstimates({ job }) {
   return (
     <div className="space-y-4">
       {/* Sub-tab bar */}
-      <div className="flex gap-0 border-b border-border">
+      <div className="flex gap-0 border-b border-border overflow-x-auto">
         <button
           onClick={() => setActiveTab('estimates')}
           className={cn(
-            'px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px',
+            'px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px whitespace-nowrap',
             activeTab === 'estimates' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
           )}
         >
@@ -69,11 +70,20 @@ export default function JobEstimates({ job }) {
         <button
           onClick={() => setActiveTab('defense')}
           className={cn(
-            'inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px',
+            'inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px whitespace-nowrap',
             activeTab === 'defense' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
           )}
         >
           <Shield size={13} /> Defense
+        </button>
+        <button
+          onClick={() => setActiveTab('supplements')}
+          className={cn(
+            'inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px whitespace-nowrap',
+            activeTab === 'supplements' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+          )}
+        >
+          <FileText size={13} /> Supplements
         </button>
       </div>
 
@@ -101,9 +111,12 @@ export default function JobEstimates({ job }) {
         </div>
       )}
 
+      {/* Supplements sub-tab */}
+      {activeTab === 'supplements' && <JobSupplements job={job} />}
+
       {/* Estimates sub-tab */}
       {activeTab === 'estimates' && (
-        <>
+        <div>
       {/* Generate bar */}
       {!isTechnician && (
         <div className="flex items-center gap-2 flex-wrap">
@@ -163,7 +176,7 @@ export default function JobEstimates({ job }) {
           ))}
         </div>
       )}
-        </>
+        </div>
       )}
     </div>
   );

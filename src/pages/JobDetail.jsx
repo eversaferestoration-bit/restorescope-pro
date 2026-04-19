@@ -20,6 +20,7 @@ import JobEstimates from '@/components/job/tabs/JobEstimates';
 import JobJustification from '@/components/job/tabs/JobJustification';
 import JobApprovals from '@/components/job/tabs/JobApprovals';
 import JobExports from '@/components/job/tabs/JobExports';
+import JobSupplements from '@/components/job/tabs/JobSupplements';
 
 const TABS = [
   { key: 'overview', label: 'Overview', component: JobOverview },
@@ -33,6 +34,7 @@ const TABS = [
   { key: 'containment', label: 'Containment', component: JobContainment },
   { key: 'scope', label: 'Scope', component: JobScope },
   { key: 'estimates', label: 'Estimates', component: JobEstimates },
+  { key: 'supplements', label: 'Supplements', component: JobSupplements },
   { key: 'justification', label: 'Justification', component: JobJustification },
   { key: 'approvals', label: 'Approvals', component: JobApprovals },
   { key: 'exports', label: 'Exports', component: JobExports },
