@@ -1,0 +1,81 @@
+{
+  "name": "ScopeItem",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string"
+    },
+    "job_id": {
+      "type": "string"
+    },
+    "room_id": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "containment",
+        "demolition",
+        "drying",
+        "cleaning",
+        "deodorization",
+        "hepa",
+        "contents",
+        "documentation"
+      ]
+    },
+    "description": {
+      "type": "string"
+    },
+    "unit": {
+      "type": "string"
+    },
+    "quantity": {
+      "type": "number"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "rules_engine",
+        "ai_suggested",
+        "manual"
+      ],
+      "default": "rules_engine"
+    },
+    "confidence": {
+      "type": "number"
+    },
+    "rule_id": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "suggested",
+        "confirmed",
+        "rejected"
+      ],
+      "default": "suggested"
+    },
+    "confirmed_by": {
+      "type": "string"
+    },
+    "confirmed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "is_deleted": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "company_id",
+    "job_id",
+    "category",
+    "description"
+  ]
+}
