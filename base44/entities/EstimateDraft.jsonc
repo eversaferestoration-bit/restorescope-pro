@@ -1,0 +1,110 @@
+{
+  "name": "EstimateDraft",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string"
+    },
+    "job_id": {
+      "type": "string"
+    },
+    "version_number": {
+      "type": "integer",
+      "default": 1
+    },
+    "label": {
+      "type": "string"
+    },
+    "pricing_profile_id": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "pending_review",
+        "approved",
+        "rejected",
+        "superseded"
+      ],
+      "default": "draft"
+    },
+    "subtotal": {
+      "type": "number",
+      "default": 0
+    },
+    "modifier_total": {
+      "type": "number",
+      "default": 1.0
+    },
+    "total": {
+      "type": "number",
+      "default": 0
+    },
+    "applied_modifiers": {
+      "type": "object"
+    },
+    "line_items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "scope_item_id": {
+            "type": "string"
+          },
+          "room_id": {
+            "type": "string"
+          },
+          "room_name": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "unit_cost": {
+            "type": "number"
+          },
+          "line_total": {
+            "type": "number"
+          },
+          "override_reason": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "notes": {
+      "type": "string"
+    },
+    "created_by": {
+      "type": "string"
+    },
+    "approved_by": {
+      "type": "string"
+    },
+    "approved_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "is_deleted": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "company_id",
+    "job_id"
+  ]
+}

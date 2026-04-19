@@ -1,0 +1,87 @@
+{
+  "name": "PricingProfile",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "is_default": {
+      "type": "boolean",
+      "default": false
+    },
+    "line_items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "unit_cost": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "modifier_emergency": {
+      "type": "number",
+      "default": 1.25
+    },
+    "modifier_after_hours": {
+      "type": "number",
+      "default": 1.15
+    },
+    "modifier_complexity_standard": {
+      "type": "number",
+      "default": 1.0
+    },
+    "modifier_complexity_complex": {
+      "type": "number",
+      "default": 1.2
+    },
+    "modifier_complexity_very_complex": {
+      "type": "number",
+      "default": 1.4
+    },
+    "modifier_access_easy": {
+      "type": "number",
+      "default": 1.0
+    },
+    "modifier_access_moderate": {
+      "type": "number",
+      "default": 1.1
+    },
+    "modifier_access_difficult": {
+      "type": "number",
+      "default": 1.25
+    },
+    "modifier_containment": {
+      "type": "number",
+      "default": 1.05
+    },
+    "modifier_documentation": {
+      "type": "number",
+      "default": 1.0
+    },
+    "is_deleted": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "company_id",
+    "name"
+  ]
+}
