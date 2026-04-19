@@ -27,6 +27,7 @@ import PricingProfiles from '@/pages/PricingProfiles';
 import AuditLog from '@/pages/AuditLog';
 import Analytics from '@/pages/Analytics';
 import EnterpriseSettings from '@/pages/EnterpriseSettings';
+import TeamPerformance from '@/pages/TeamPerformance';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -86,6 +87,7 @@ const AuthenticatedApp = () => {
         <Route path="/pricing-profiles" element={<PricingProfiles />} />
         <Route path="/audit-log" element={<AuditLog />} />
         <Route path="/analytics" element={<Analytics />} />
+        <Route path="/team-performance" element={<TeamPerformance />} />
         <Route path="/enterprise" element={<EnterpriseSettings />} />
       </Route>
 

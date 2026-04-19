@@ -1,0 +1,88 @@
+{
+  "name": "UserPerformance",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string"
+    },
+    "user_id": {
+      "type": "string"
+    },
+    "user_email": {
+      "type": "string",
+      "format": "email"
+    },
+    "user_name": {
+      "type": "string"
+    },
+    "period_start": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "period_end": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "estimate_accuracy_percent": {
+      "type": "number",
+      "description": "Accuracy of estimates (approved_amount / requested_amount)",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "approval_rate_percent": {
+      "type": "number",
+      "description": "Percentage of estimates approved on first submission",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "supplement_success_percent": {
+      "type": "number",
+      "description": "Percentage of supplements that were approved",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "avg_turnaround_hours": {
+      "type": "number",
+      "description": "Average hours from estimate creation to approval"
+    },
+    "estimates_created": {
+      "type": "integer",
+      "default": 0
+    },
+    "estimates_approved": {
+      "type": "integer",
+      "default": 0
+    },
+    "supplements_filed": {
+      "type": "integer",
+      "default": 0
+    },
+    "supplements_approved": {
+      "type": "integer",
+      "default": 0
+    },
+    "total_estimate_value": {
+      "type": "number",
+      "default": 0
+    },
+    "avg_estimate_value": {
+      "type": "number",
+      "default": 0
+    },
+    "jobs_count": {
+      "type": "integer",
+      "default": 0
+    },
+    "is_deleted": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "company_id",
+    "user_id",
+    "user_email",
+    "period_start",
+    "period_end"
+  ]
+}
