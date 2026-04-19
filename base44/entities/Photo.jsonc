@@ -1,0 +1,80 @@
+{
+  "name": "Photo",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string"
+    },
+    "job_id": {
+      "type": "string"
+    },
+    "room_id": {
+      "type": "string"
+    },
+    "file_url": {
+      "type": "string"
+    },
+    "thumbnail_url": {
+      "type": "string"
+    },
+    "file_size": {
+      "type": "integer"
+    },
+    "mime_type": {
+      "type": "string"
+    },
+    "taken_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "taken_by": {
+      "type": "string"
+    },
+    "photo_type": {
+      "type": "string"
+    },
+    "caption": {
+      "type": "string"
+    },
+    "offline_status": {
+      "type": "string"
+    },
+    "sync_status": {
+      "type": "string"
+    },
+    "analysis_status": {
+      "type": "string"
+    },
+    "damage_tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "material_tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "severity_score": {
+      "type": "number"
+    },
+    "confidence_score": {
+      "type": "number"
+    },
+    "manual_review_required": {
+      "type": "boolean",
+      "default": false
+    },
+    "is_deleted": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "company_id",
+    "job_id",
+    "file_url"
+  ]
+}

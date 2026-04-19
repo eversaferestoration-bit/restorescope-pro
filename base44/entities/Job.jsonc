@@ -1,0 +1,77 @@
+{
+  "name": "Job",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string"
+    },
+    "job_number": {
+      "type": "string"
+    },
+    "insured_id": {
+      "type": "string"
+    },
+    "property_id": {
+      "type": "string"
+    },
+    "claim_id": {
+      "type": "string"
+    },
+    "loss_type": {
+      "type": "string"
+    },
+    "service_type": {
+      "type": "string"
+    },
+    "cause_of_loss": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string"
+    },
+    "inspection_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "date_of_loss": {
+      "type": "string",
+      "format": "date"
+    },
+    "emergency_flag": {
+      "type": "boolean",
+      "default": false
+    },
+    "after_hours_flag": {
+      "type": "boolean",
+      "default": false
+    },
+    "complexity_level": {
+      "type": "string"
+    },
+    "access_difficulty": {
+      "type": "string"
+    },
+    "assigned_manager_id": {
+      "type": "string"
+    },
+    "assigned_estimator_id": {
+      "type": "string"
+    },
+    "created_by": {
+      "type": "string"
+    },
+    "summary_notes": {
+      "type": "string"
+    },
+    "active_estimate_version_id": {
+      "type": "string"
+    },
+    "is_deleted": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "company_id"
+  ]
+}

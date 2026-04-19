@@ -1,0 +1,55 @@
+{
+  "name": "Room",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string"
+    },
+    "job_id": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "floor_level": {
+      "type": "string"
+    },
+    "room_type": {
+      "type": "string"
+    },
+    "size_sqft": {
+      "type": "number"
+    },
+    "ceiling_height_ft": {
+      "type": "number"
+    },
+    "affected_materials": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "contains_contents": {
+      "type": "boolean",
+      "default": false
+    },
+    "status": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "sort_order": {
+      "type": "integer"
+    },
+    "is_deleted": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "company_id",
+    "job_id",
+    "name"
+  ]
+}
