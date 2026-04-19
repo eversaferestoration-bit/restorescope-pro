@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
-import { Building2, Users, DollarSign, BarChart3, MapPin, Plus, Trash2, Save, Building } from 'lucide-react';
+import { Building2, Users, DollarSign, BarChart3, MapPin, Plus, Trash2, Save, Building, Activity } from 'lucide-react';
+import SystemStatusDashboard from '@/components/admin/SystemStatusDashboard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -151,9 +152,13 @@ export default function EnterpriseSettings() {
         <p className="text-sm text-muted-foreground mt-1">Multi-location management, hierarchy, and reporting</p>
       </div>
 
+      {/* System Status */}
+      <SystemStatusDashboard />
+
       {/* Tabs */}
       <div className="flex gap-2 border-b border-border">
         {[
+          { key: 'status', label: 'System Status', icon: Activity },
           { key: 'locations', label: 'Locations', icon: MapPin },
           { key: 'hierarchy', label: 'Admin Hierarchy', icon: Users },
           { key: 'pricing', label: 'Branch Pricing', icon: DollarSign },
@@ -173,6 +178,13 @@ export default function EnterpriseSettings() {
           </button>
         ))}
       </div>
+
+      {/* System Status Tab */}
+      {activeTab === 'status' && (
+        <div className="py-4">
+          <SystemStatusDashboard />
+        </div>
+      )}
 
       {/* Locations Tab */}
       {activeTab === 'locations' && (
