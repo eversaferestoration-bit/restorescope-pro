@@ -25,30 +25,30 @@ function Card({ title, children }) {
 export default function JobInsuredClaim({ job }) {
   const { data: insured } = useQuery({
     queryKey: ['insured', job.insured_id],
-    queryFn: () => base44.entities.Insured.filter({ id: job.insured_id }),
+    queryFn: () => base44.entities.Insured.filter({ id: job.insured_id, company_id: job.company_id, is_deleted: false }),
     select: (d) => d[0],
-    enabled: !!job.insured_id,
+    enabled: !!job.insured_id && !!job.company_id,
   });
 
   const { data: claim } = useQuery({
     queryKey: ['claim', job.claim_id],
-    queryFn: () => base44.entities.Claim.filter({ id: job.claim_id }),
+    queryFn: () => base44.entities.Claim.filter({ id: job.claim_id, company_id: job.company_id, is_deleted: false }),
     select: (d) => d[0],
-    enabled: !!job.claim_id,
+    enabled: !!job.claim_id && !!job.company_id,
   });
 
   const { data: carrier } = useQuery({
     queryKey: ['carrier', claim?.carrier_id],
-    queryFn: () => base44.entities.Carrier.filter({ id: claim?.carrier_id }),
+    queryFn: () => base44.entities.Carrier.filter({ id: claim.carrier_id, company_id: job.company_id, is_deleted: false }),
     select: (d) => d[0],
-    enabled: !!claim?.carrier_id,
+    enabled: !!claim?.carrier_id && !!job.company_id,
   });
 
   const { data: adjuster } = useQuery({
     queryKey: ['adjuster', claim?.adjuster_id],
-    queryFn: () => base44.entities.Adjuster.filter({ id: claim?.adjuster_id }),
+    queryFn: () => base44.entities.Adjuster.filter({ id: claim.adjuster_id, company_id: job.company_id, is_deleted: false }),
     select: (d) => d[0],
-    enabled: !!claim?.adjuster_id,
+    enabled: !!claim?.adjuster_id && !!job.company_id,
   });
 
   return (

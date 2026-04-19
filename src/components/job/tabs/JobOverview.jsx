@@ -7,8 +7,16 @@ import { Save } from 'lucide-react';
 const LOSS_TYPES = ['water', 'fire', 'mold', 'storm', 'wind', 'smoke', 'biohazard', 'other'];
 const SERVICE_TYPES = ['Mitigation', 'Restoration', 'Contents', 'Reconstruction', 'Inspection Only'];
 const STATUS_OPTIONS = ['new', 'in_progress', 'pending_approval', 'approved', 'closed'];
-const COMPLEXITY = ['Low', 'Medium', 'High', 'Complex'];
-const ACCESS_DIFF = ['Easy', 'Moderate', 'Difficult', 'Restricted'];
+const COMPLEXITY = [
+  { value: 'standard', label: 'Standard' },
+  { value: 'complex', label: 'Complex' },
+  { value: 'very_complex', label: 'Very Complex' },
+];
+const ACCESS_DIFF = [
+  { value: 'easy', label: 'Easy' },
+  { value: 'moderate', label: 'Moderate' },
+  { value: 'difficult', label: 'Difficult' },
+];
 
 const inputCls = 'w-full h-10 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring transition';
 const selectCls = 'w-full h-10 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring transition';
@@ -49,8 +57,8 @@ export default function JobOverview({ job }) {
           <InfoRow label="Loss Type" value={job.loss_type ? job.loss_type.charAt(0).toUpperCase() + job.loss_type.slice(1) : null} />
           <InfoRow label="Service Type" value={job.service_type} />
           <InfoRow label="Cause of Loss" value={job.cause_of_loss} />
-          <InfoRow label="Complexity" value={job.complexity_level} />
-          <InfoRow label="Access Difficulty" value={job.access_difficulty} />
+          <InfoRow label="Complexity" value={COMPLEXITY.find(c => c.value === job.complexity_level)?.label || job.complexity_level} />
+          <InfoRow label="Access Difficulty" value={ACCESS_DIFF.find(a => a.value === job.access_difficulty)?.label || job.access_difficulty} />
           <InfoRow label="Date of Loss" value={job.date_of_loss ? format(new Date(job.date_of_loss), 'MMM d, yyyy') : null} />
           <InfoRow label="Inspection Date" value={job.inspection_date ? format(new Date(job.inspection_date), 'MMM d, yyyy') : null} />
           <InfoRow label="Emergency" value={job.emergency_flag ? 'Yes' : 'No'} />
@@ -93,13 +101,13 @@ export default function JobOverview({ job }) {
         <div><label className="block text-xs font-medium mb-1">Complexity</label>
           <select className={selectCls} value={form.complexity_level || ''} onChange={set('complexity_level')}>
             <option value="">Select…</option>
-            {COMPLEXITY.map((c) => <option key={c} value={c}>{c}</option>)}
+            {COMPLEXITY.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
           </select>
         </div>
         <div><label className="block text-xs font-medium mb-1">Access Difficulty</label>
           <select className={selectCls} value={form.access_difficulty || ''} onChange={set('access_difficulty')}>
             <option value="">Select…</option>
-            {ACCESS_DIFF.map((a) => <option key={a} value={a}>{a}</option>)}
+            {ACCESS_DIFF.map((a) => <option key={a.value} value={a.value}>{a.label}</option>)}
           </select>
         </div>
         <div className="sm:col-span-2"><label className="block text-xs font-medium mb-1">Cause of Loss</label><input className={inputCls} value={form.cause_of_loss || ''} onChange={set('cause_of_loss')} /></div>

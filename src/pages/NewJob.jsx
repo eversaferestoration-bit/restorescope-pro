@@ -111,26 +111,34 @@ export default function NewJob() {
   };
   const back = () => { setErrors({}); setStep((s) => s - 1); };
 
+  const [submitError, setSubmitError] = useState('');
+
   const handleSubmit = async () => {
     if (!validate(step)) return;
     setSaving(true);
-    const job = await base44.entities.Job.create({
-      ...form,
-      insured_id: insured?.id,
-      property_id: property?.id,
-      assigned_manager_id: assignedManagerId || undefined,
-      assigned_estimator_id: assignedEstimatorId || undefined,
-      company_id: user?.company_id || '',
-      created_by: user?.email,
-      is_deleted: false,
-    });
-    await logAction(user, 'Job', job.id, 'created', `Job ${job.job_number} created`, {
-      loss_type: job.loss_type,
-      service_type: job.service_type,
-      insured_id: insured?.id,
-      property_id: property?.id,
-    });
-    navigate(`/jobs/${job.id}`);
+    setSubmitError('');
+    try {
+      const job = await base44.entities.Job.create({
+        ...form,
+        insured_id: insured?.id,
+        property_id: property?.id,
+        assigned_manager_id: assignedManagerId || undefined,
+        assigned_estimator_id: assignedEstimatorId || undefined,
+        company_id: user?.company_id || '',
+        created_by: user?.email,
+        is_deleted: false,
+      });
+      await logAction(user, 'Job', job.id, 'created', `Job ${job.job_number} created`, {
+        loss_type: job.loss_type,
+        service_type: job.service_type,
+        insured_id: insured?.id,
+        property_id: property?.id,
+      });
+      navigate(`/jobs/${job.id}`);
+    } catch {
+      setSubmitError('Failed to create job. Please try again.');
+      setSaving(false);
+    }
   };
 
   return (
@@ -273,6 +281,10 @@ export default function NewJob() {
             <div className="flex justify-between"><span className="text-xs text-muted-foreground">Property</span><span className="text-sm font-medium text-right max-w-[60%]">{property ? [property.address_line_1, property.city].filter(Boolean).join(', ') : '—'}</span></div>
           </div>
         </div>
+      )}
+
+      {submitError && (
+        <div className="mt-4 px-4 py-2.5 bg-destructive/10 border border-destructive/30 rounded-lg text-sm text-destructive">{submitError}</div>
       )}
 
       {/* Nav buttons */}

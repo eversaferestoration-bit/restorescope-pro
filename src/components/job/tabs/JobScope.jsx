@@ -88,6 +88,7 @@ export default function JobScope({ job }) {
   const qc = useQueryClient();
   const [roomId, setRoomId] = useState(null);
   const [generating, setGenerating] = useState(false);
+  const [generateError, setGenerateError] = useState(null);
   const [useAi, setUseAi] = useState(false);
   const [addingManual, setAddingManual] = useState(false);
   const isTechnician = user?.role === 'technician';
@@ -124,44 +125,53 @@ export default function JobScope({ job }) {
   const handleGenerate = async () => {
     if (!roomId) return;
     setGenerating(true);
-    const res = await base44.functions.invoke('generateScope', { job_id: job.id, room_id: roomId, use_ai: useAi });
-    const suggestions = res.data.items || [];
+    setGenerateError(null);
+    try {
+      const res = await base44.functions.invoke('generateScope', { job_id: job.id, room_id: roomId, use_ai: useAi });
+      const suggestions = res.data.items || [];
 
-    // Save all suggestions that don't already exist
-    const existingDescs = scopeItems.map((i) => i.description + i.category);
-    const newItems = suggestions.filter((s) => !existingDescs.includes(s.description + s.category));
+      // Save all suggestions that don't already exist
+      const existingDescs = scopeItems.map((i) => i.description + i.category);
+      const newItems = suggestions.filter((s) => !existingDescs.includes(s.description + s.category));
 
-    for (const item of newItems) {
-      await base44.entities.ScopeItem.create({
-        company_id: job.company_id,
-        job_id: job.id,
-        room_id: roomId,
-        category: item.category,
-        description: item.description,
-        unit: item.unit,
-        quantity: item.quantity,
-        source: item.source,
-        confidence: item.confidence,
-        rule_id: item.rule_id || null,
-        status: 'suggested',
-        notes: item.notes || null,
-        is_deleted: false,
-      });
+      for (const item of newItems) {
+        await base44.entities.ScopeItem.create({
+          company_id: job.company_id,
+          job_id: job.id,
+          room_id: roomId,
+          category: item.category,
+          description: item.description,
+          unit: item.unit,
+          quantity: item.quantity,
+          source: item.source,
+          confidence: item.confidence,
+          rule_id: item.rule_id || null,
+          status: 'suggested',
+          notes: item.notes || null,
+          is_deleted: false,
+        });
+      }
+
+      qc.invalidateQueries(['scope', job.id]);
+    } catch (err) {
+      setGenerateError(err?.response?.data?.message || 'Failed to generate scope. Please try again.');
     }
-
-    qc.invalidateQueries(['scope', job.id]);
     setGenerating(false);
   };
 
   const handleAddManual = async (formData) => {
-    await base44.entities.ScopeItem.create({
-      company_id: job.company_id,
-      job_id: job.id,
-      room_id: roomId || undefined,
-      ...formData,
-      is_deleted: false,
-    });
-    qc.invalidateQueries(['scope', job.id]);
+    try {
+      await base44.entities.ScopeItem.create({
+        company_id: job.company_id,
+        job_id: job.id,
+        room_id: roomId || undefined,
+        ...formData,
+        is_deleted: false,
+      });
+      qc.invalidateQueries(['scope', job.id]);
+    } catch {
+      setGenerateError('Failed to add item. Please try again.');
+    }
   };
 
   const handleConfirm = (item) => {
@@ -229,6 +239,13 @@ export default function JobScope({ job }) {
         <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
           <AlertTriangle size={13} className="text-amber-500 shrink-0" />
           <p className="text-xs text-amber-700">Select a room above to generate or filter scope items.</p>
+        </div>
+      )}
+
+      {generateError && (
+        <div className="flex items-center gap-2 bg-destructive/10 border border-destructive/30 rounded-lg px-3 py-2">
+          <AlertTriangle size={13} className="text-destructive shrink-0" />
+          <p className="text-xs text-destructive">{generateError}</p>
         </div>
       )}
 

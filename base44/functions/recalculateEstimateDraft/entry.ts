@@ -14,6 +14,12 @@ Deno.serve(async (req) => {
   if (!drafts.length) return Response.json({ error: 'Draft not found' }, { status: 404 });
   const draft = drafts[0];
 
+  // Verify company membership
+  if (user.role !== 'admin') {
+    const profiles = await base44.asServiceRole.entities.UserProfile.filter({ user_id: user.id, company_id: draft.company_id, is_deleted: false });
+    if (!profiles.length) return Response.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
   if (draft.status !== 'draft') {
     return Response.json({ error: 'Cannot recalculate an approved or superseded estimate.' }, { status: 400 });
   }
