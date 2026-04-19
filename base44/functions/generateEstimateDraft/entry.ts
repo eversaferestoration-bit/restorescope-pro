@@ -74,11 +74,17 @@ Deno.serve(async (req) => {
   if (!jobs.length) return Response.json({ error: 'Job not found' }, { status: 404 });
   const job = jobs[0];
 
-  // Check subscription
-  const companies = await base44.asServiceRole.entities.Company.filter({ id: job.company_id, is_deleted: false });
-  const company = companies[0];
-  if (!company?.plan_id && !company?.subscription_id) {
-    return Response.json({ error: 'subscription_required', message: 'An active subscription is required to generate estimates.' }, { status: 402 });
+  // Check subscription (only if company_id is a valid non-empty value)
+  if (job.company_id && job.company_id !== 'default') {
+    try {
+      const companies = await base44.asServiceRole.entities.Company.filter({ id: job.company_id, is_deleted: false });
+      const company = companies[0];
+      if (company && !company.plan_id && !company.subscription_id) {
+        return Response.json({ error: 'subscription_required', message: 'An active subscription is required to generate estimates.' }, { status: 402 });
+      }
+    } catch {
+      // Non-fatal — proceed without subscription check if company lookup fails
+    }
   }
 
   // Load confirmed scope items only
