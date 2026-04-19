@@ -1,0 +1,55 @@
+{
+  "name": "EquipmentLog",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string"
+    },
+    "job_id": {
+      "type": "string"
+    },
+    "room_id": {
+      "type": "string"
+    },
+    "equipment_type": {
+      "type": "string"
+    },
+    "model": {
+      "type": "string"
+    },
+    "serial_number": {
+      "type": "string"
+    },
+    "quantity": {
+      "type": "integer",
+      "default": 1
+    },
+    "placed_by": {
+      "type": "string"
+    },
+    "placed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "removed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "status": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "is_deleted": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "company_id",
+    "job_id",
+    "room_id",
+    "equipment_type"
+  ]
+}

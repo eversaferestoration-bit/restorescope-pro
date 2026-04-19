@@ -1,0 +1,46 @@
+{
+  "name": "EnvironmentalReading",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string"
+    },
+    "job_id": {
+      "type": "string"
+    },
+    "room_id": {
+      "type": "string"
+    },
+    "temperature_f": {
+      "type": "number"
+    },
+    "relative_humidity": {
+      "type": "number"
+    },
+    "dew_point": {
+      "type": "number"
+    },
+    "gpp": {
+      "type": "number"
+    },
+    "instrument": {
+      "type": "string"
+    },
+    "recorded_by": {
+      "type": "string"
+    },
+    "recorded_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "is_deleted": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "company_id",
+    "job_id",
+    "room_id"
+  ]
+}

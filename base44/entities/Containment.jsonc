@@ -1,0 +1,45 @@
+{
+  "name": "Containment",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string"
+    },
+    "job_id": {
+      "type": "string"
+    },
+    "room_id": {
+      "type": "string"
+    },
+    "containment_type": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "installed_by": {
+      "type": "string"
+    },
+    "installed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "removed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "status": {
+      "type": "string"
+    },
+    "is_deleted": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "company_id",
+    "job_id",
+    "room_id",
+    "containment_type"
+  ]
+}

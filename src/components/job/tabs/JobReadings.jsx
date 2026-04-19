@@ -1,4 +1,210 @@
-import { ComingSoon } from '@/components/job/ComingSoon';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { base44 } from '@/api/base44Client';
+import { useAuth } from '@/lib/AuthContext';
+import { Plus, Save, Droplets, Wind } from 'lucide-react';
+import RoomPicker from '@/components/job/RoomPicker';
+import EntryList from '@/components/job/EntryList';
+
+const MATERIALS = ['Drywall', 'Wood Subfloor', 'Carpet', 'Concrete', 'Plywood', 'OSB', 'Insulation', 'Other'];
+const inputCls = 'w-full h-9 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring';
+
+function MoistureForm({ job, roomId, user, onClose }) {
+  const qc = useQueryClient();
+  const [form, setForm] = useState({ location_description: '', material: '', reading_value: '', unit: '%WME', instrument: '' });
+
+  const addMutation = useMutation({
+    mutationFn: (data) => base44.entities.MoistureReading.create(data),
+    onSuccess: () => { qc.invalidateQueries(['moisture', job.id]); onClose(); },
+  });
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    addMutation.mutate({
+      ...form,
+      reading_value: Number(form.reading_value),
+      job_id: job.id,
+      room_id: roomId,
+      company_id: job.company_id,
+      recorded_by: user?.email,
+      recorded_at: new Date().toISOString(),
+      is_deleted: false,
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="bg-card rounded-xl border border-primary/40 p-4 space-y-3">
+      <p className="text-xs font-semibold text-primary">Moisture Reading</p>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="text-xs font-medium">Reading Value *</label>
+          <input required type="number" step="0.1" className={inputCls} value={form.reading_value} onChange={(e) => setForm((f) => ({ ...f, reading_value: e.target.value }))} placeholder="e.g. 22" />
+        </div>
+        <div>
+          <label className="text-xs font-medium">Unit</label>
+          <select className={inputCls} value={form.unit} onChange={(e) => setForm((f) => ({ ...f, unit: e.target.value }))}>
+            {['%WME', '%MC', 'RH%'].map((u) => <option key={u} value={u}>{u}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="text-xs font-medium">Material</label>
+          <select className={inputCls} value={form.material} onChange={(e) => setForm((f) => ({ ...f, material: e.target.value }))}>
+            <option value="">Select…</option>
+            {MATERIALS.map((m) => <option key={m} value={m}>{m}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="text-xs font-medium">Instrument</label>
+          <input className={inputCls} value={form.instrument} onChange={(e) => setForm((f) => ({ ...f, instrument: e.target.value }))} placeholder="e.g. Delmhorst BD-10" />
+        </div>
+        <div className="col-span-2">
+          <label className="text-xs font-medium">Location Description</label>
+          <input className={inputCls} value={form.location_description} onChange={(e) => setForm((f) => ({ ...f, location_description: e.target.value }))} placeholder="e.g. North wall, 6 in. from floor" />
+        </div>
+      </div>
+      <div className="flex gap-2 justify-end">
+        <button type="button" onClick={onClose} className="px-3 h-8 rounded-lg border text-xs hover:bg-muted transition">Cancel</button>
+        <button type="submit" disabled={addMutation.isPending} className="inline-flex items-center gap-1.5 px-3 h-8 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition disabled:opacity-60">
+          <Save size={12} /> {addMutation.isPending ? 'Saving…' : 'Save'}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function EnvForm({ job, roomId, user, onClose }) {
+  const qc = useQueryClient();
+  const [form, setForm] = useState({ temperature_f: '', relative_humidity: '', dew_point: '', gpp: '', instrument: '' });
+
+  const addMutation = useMutation({
+    mutationFn: (data) => base44.entities.EnvironmentalReading.create(data),
+    onSuccess: () => { qc.invalidateQueries(['env', job.id]); onClose(); },
+  });
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const toNum = (v) => v !== '' ? Number(v) : undefined;
+    addMutation.mutate({
+      temperature_f: toNum(form.temperature_f),
+      relative_humidity: toNum(form.relative_humidity),
+      dew_point: toNum(form.dew_point),
+      gpp: toNum(form.gpp),
+      instrument: form.instrument,
+      job_id: job.id,
+      room_id: roomId,
+      company_id: job.company_id,
+      recorded_by: user?.email,
+      recorded_at: new Date().toISOString(),
+      is_deleted: false,
+    });
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="bg-card rounded-xl border border-primary/40 p-4 space-y-3">
+      <p className="text-xs font-semibold text-primary">Environmental Reading</p>
+      <div className="grid grid-cols-2 gap-3">
+        <div><label className="text-xs font-medium">Temp (°F)</label><input type="number" step="0.1" className={inputCls} value={form.temperature_f} onChange={(e) => setForm((f) => ({ ...f, temperature_f: e.target.value }))} /></div>
+        <div><label className="text-xs font-medium">RH (%)</label><input type="number" step="0.1" className={inputCls} value={form.relative_humidity} onChange={(e) => setForm((f) => ({ ...f, relative_humidity: e.target.value }))} /></div>
+        <div><label className="text-xs font-medium">Dew Point (°F)</label><input type="number" step="0.1" className={inputCls} value={form.dew_point} onChange={(e) => setForm((f) => ({ ...f, dew_point: e.target.value }))} /></div>
+        <div><label className="text-xs font-medium">GPP</label><input type="number" step="0.1" className={inputCls} value={form.gpp} onChange={(e) => setForm((f) => ({ ...f, gpp: e.target.value }))} /></div>
+        <div className="col-span-2"><label className="text-xs font-medium">Instrument</label><input className={inputCls} value={form.instrument} onChange={(e) => setForm((f) => ({ ...f, instrument: e.target.value }))} placeholder="e.g. Flir MR277" /></div>
+      </div>
+      <div className="flex gap-2 justify-end">
+        <button type="button" onClick={onClose} className="px-3 h-8 rounded-lg border text-xs hover:bg-muted transition">Cancel</button>
+        <button type="submit" disabled={addMutation.isPending} className="inline-flex items-center gap-1.5 px-3 h-8 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition disabled:opacity-60">
+          <Save size={12} /> {addMutation.isPending ? 'Saving…' : 'Save'}
+        </button>
+      </div>
+    </form>
+  );
+}
+
 export default function JobReadings({ job }) {
-  return <ComingSoon title="Readings" description="Log moisture, temperature, humidity, and other field readings." />;
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  const [roomId, setRoomId] = useState(null);
+  const [addingType, setAddingType] = useState(null); // 'moisture' | 'env'
+
+  const { data: rooms = [] } = useQuery({
+    queryKey: ['rooms', job.id],
+    queryFn: () => base44.entities.Room.filter({ job_id: job.id, is_deleted: false }, 'sort_order'),
+  });
+
+  const { data: moisture = [] } = useQuery({
+    queryKey: ['moisture', job.id, roomId],
+    queryFn: () => base44.entities.MoistureReading.filter({ job_id: job.id, ...(roomId ? { room_id: roomId } : {}), is_deleted: false }, '-recorded_at'),
+  });
+
+  const { data: envReadings = [] } = useQuery({
+    queryKey: ['env', job.id, roomId],
+    queryFn: () => base44.entities.EnvironmentalReading.filter({ job_id: job.id, ...(roomId ? { room_id: roomId } : {}), is_deleted: false }, '-recorded_at'),
+  });
+
+  const deleteMoisture = useMutation({
+    mutationFn: (id) => base44.entities.MoistureReading.update(id, { is_deleted: true }),
+    onSuccess: () => qc.invalidateQueries(['moisture', job.id]),
+  });
+  const deleteEnv = useMutation({
+    mutationFn: (id) => base44.entities.EnvironmentalReading.update(id, { is_deleted: true }),
+    onSuccess: () => qc.invalidateQueries(['env', job.id]),
+  });
+
+  const isTechnician = user?.role === 'technician';
+
+  const moistureRows = moisture.map((m) => ({
+    id: m.id,
+    primary: `${m.reading_value} ${m.unit || '%WME'}`,
+    badge: m.material,
+    secondary: m.location_description,
+    recorded_by: m.recorded_by,
+    ts: m.recorded_at,
+  }));
+
+  const envRows = envReadings.map((e) => ({
+    id: e.id,
+    primary: `${e.temperature_f != null ? e.temperature_f + '°F' : ''} ${e.relative_humidity != null ? e.relative_humidity + '% RH' : ''}`.trim(),
+    secondary: e.instrument,
+    badge: e.gpp ? `${e.gpp} GPP` : null,
+    recorded_by: e.recorded_by,
+    ts: e.recorded_at,
+  }));
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold">Readings</h3>
+        <div className="flex gap-2">
+          <button onClick={() => setAddingType(addingType === 'moisture' ? null : 'moisture')} className="inline-flex items-center gap-1.5 px-3 h-8 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition">
+            <Droplets size={13} /> Moisture
+          </button>
+          <button onClick={() => setAddingType(addingType === 'env' ? null : 'env')} className="inline-flex items-center gap-1.5 px-3 h-8 rounded-lg border border-border text-xs font-semibold hover:bg-muted transition">
+            <Wind size={13} /> Environmental
+          </button>
+        </div>
+      </div>
+
+      <RoomPicker rooms={rooms} selectedId={roomId} onSelect={(id) => setRoomId(id === roomId ? null : id)} />
+
+      {addingType === 'moisture' && roomId && (
+        <MoistureForm job={job} roomId={roomId} user={user} onClose={() => setAddingType(null)} />
+      )}
+      {addingType === 'env' && roomId && (
+        <EnvForm job={job} roomId={roomId} user={user} onClose={() => setAddingType(null)} />
+      )}
+      {addingType && !roomId && (
+        <p className="text-xs text-destructive font-medium px-1">Select a room above first.</p>
+      )}
+
+      <div className="space-y-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Moisture Readings</p>
+          <EntryList rows={moistureRows} canDelete={!isTechnician} onDelete={(id) => deleteMoisture.mutate(id)} emptyMsg="No moisture readings yet." />
+        </div>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Environmental Readings</p>
+          <EntryList rows={envRows} canDelete={!isTechnician} onDelete={(id) => deleteEnv.mutate(id)} emptyMsg="No environmental readings yet." />
+        </div>
+      </div>
+    </div>
+  );
 }

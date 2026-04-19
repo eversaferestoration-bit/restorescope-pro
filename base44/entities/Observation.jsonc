@@ -1,0 +1,41 @@
+{
+  "name": "Observation",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string"
+    },
+    "job_id": {
+      "type": "string"
+    },
+    "room_id": {
+      "type": "string"
+    },
+    "observation_type": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "severity": {
+      "type": "string"
+    },
+    "recorded_by": {
+      "type": "string"
+    },
+    "recorded_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "is_deleted": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "company_id",
+    "job_id",
+    "room_id",
+    "description"
+  ]
+}

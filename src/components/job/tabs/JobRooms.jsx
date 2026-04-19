@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { Plus, Trash2, Save, ChevronDown, ChevronUp } from 'lucide-react';
+import { useAuth } from '@/lib/AuthContext';
+import { logAction } from '@/lib/auditLog';
+import { Plus, Trash2, Save, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
 
 const ROOM_TYPES = ['Living Room', 'Bedroom', 'Bathroom', 'Kitchen', 'Hallway', 'Basement', 'Attic', 'Garage', 'Office', 'Other'];
 const FLOOR_LEVELS = ['Basement', '1st Floor', '2nd Floor', '3rd Floor', 'Attic'];
@@ -10,8 +12,9 @@ const STATUS_OPTIONS = ['dry', 'wet', 'drying', 'cleared'];
 const inputCls = 'w-full h-9 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring';
 const selectCls = 'w-full h-9 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring';
 
-function RoomCard({ room, onDelete }) {
+function RoomCard({ room, obsCount, onDelete }) {
   const [open, setOpen] = useState(false);
+  const hasObs = obsCount > 0;
 
   return (
     <div className="bg-card rounded-xl border border-border overflow-hidden">
@@ -19,12 +22,20 @@ function RoomCard({ room, onDelete }) {
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between px-4 py-3.5 hover:bg-muted/40 transition"
       >
-        <div className="flex items-center gap-3">
-          <span className="font-medium text-sm">{room.name}</span>
-          {room.room_type && <span className="text-xs text-muted-foreground">{room.room_type}</span>}
-          {room.floor_level && <span className="text-xs bg-muted px-2 py-0.5 rounded-full">{room.floor_level}</span>}
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="font-medium text-sm truncate">{room.name}</span>
+          {room.room_type && <span className="text-xs text-muted-foreground hidden sm:inline">{room.room_type}</span>}
+          {room.floor_level && <span className="text-xs bg-muted px-2 py-0.5 rounded-full hidden sm:inline">{room.floor_level}</span>}
+          {!hasObs && (
+            <span className="inline-flex items-center gap-1 text-xs text-amber-600 font-medium">
+              <AlertTriangle size={11} /> No obs
+            </span>
+          )}
+          {hasObs && (
+            <span className="text-xs bg-accent text-accent-foreground px-2 py-0.5 rounded-full">{obsCount} obs</span>
+          )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={(e) => { e.stopPropagation(); onDelete(room.id); }}
             className="w-7 h-7 flex items-center justify-center rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition"
@@ -58,6 +69,11 @@ function RoomCard({ room, onDelete }) {
             </div>
           )}
           {room.notes && <div className="col-span-2 md:col-span-3"><p className="text-xs text-muted-foreground">Notes</p><p className="text-sm">{room.notes}</p></div>}
+          {!hasObs && (
+            <div className="col-span-2 md:col-span-3 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              <p className="text-xs text-amber-700 font-medium">⚠ At least one observation is required before this room can be scoped.</p>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -65,6 +81,7 @@ function RoomCard({ room, onDelete }) {
 }
 
 export default function JobRooms({ job }) {
+  const { user } = useAuth();
   const qc = useQueryClient();
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState({ name: '', room_type: '', floor_level: '', size_sqft: '', ceiling_height_ft: '', status: '', notes: '' });
@@ -74,9 +91,22 @@ export default function JobRooms({ job }) {
     queryFn: () => base44.entities.Room.filter({ job_id: job.id, is_deleted: false }, 'sort_order'),
   });
 
+  // Observation counts per room
+  const { data: observations = [] } = useQuery({
+    queryKey: ['observations', job.id, null],
+    queryFn: () => base44.entities.Observation.filter({ job_id: job.id, is_deleted: false }, '-recorded_at'),
+    enabled: rooms.length > 0,
+  });
+  const obsByRoom = observations.reduce((acc, o) => { acc[o.room_id] = (acc[o.room_id] || 0) + 1; return acc; }, {});
+
   const addMutation = useMutation({
     mutationFn: (data) => base44.entities.Room.create(data),
-    onSuccess: () => { qc.invalidateQueries(['rooms', job.id]); setAdding(false); setForm({ name: '', room_type: '', floor_level: '', size_sqft: '', ceiling_height_ft: '', status: '', notes: '' }); },
+    onSuccess: async (room) => {
+      await logAction(user, 'Room', room.id, 'created', `Room "${room.name}" added to job ${job.job_number}`, { job_id: job.id });
+      qc.invalidateQueries(['rooms', job.id]);
+      setAdding(false);
+      setForm({ name: '', room_type: '', floor_level: '', size_sqft: '', ceiling_height_ft: '', status: '', notes: '' });
+    },
   });
 
   const deleteMutation = useMutation({
@@ -125,7 +155,9 @@ export default function JobRooms({ job }) {
         </div>
       ) : (
         <div className="space-y-2">
-          {rooms.map((r) => <RoomCard key={r.id} room={r} onDelete={(id) => deleteMutation.mutate(id)} />)}
+          {rooms.map((r) => (
+            <RoomCard key={r.id} room={r} obsCount={obsByRoom[r.id] || 0} onDelete={(id) => deleteMutation.mutate(id)} />
+          ))}
         </div>
       )}
     </div>

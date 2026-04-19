@@ -14,6 +14,7 @@ import JobPhotos from '@/components/job/tabs/JobPhotos';
 import JobObservations from '@/components/job/tabs/JobObservations';
 import JobReadings from '@/components/job/tabs/JobReadings';
 import JobEquipment from '@/components/job/tabs/JobEquipment';
+import JobContainment from '@/components/job/tabs/JobContainment';
 import JobScope from '@/components/job/tabs/JobScope';
 import JobEstimates from '@/components/job/tabs/JobEstimates';
 import JobJustification from '@/components/job/tabs/JobJustification';
@@ -29,6 +30,7 @@ const TABS = [
   { key: 'observations', label: 'Observations', component: JobObservations },
   { key: 'readings', label: 'Readings', component: JobReadings },
   { key: 'equipment', label: 'Equipment', component: JobEquipment },
+  { key: 'containment', label: 'Containment', component: JobContainment },
   { key: 'scope', label: 'Scope', component: JobScope },
   { key: 'estimates', label: 'Estimates', component: JobEstimates },
   { key: 'justification', label: 'Justification', component: JobJustification },

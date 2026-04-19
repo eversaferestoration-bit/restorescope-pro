@@ -1,0 +1,47 @@
+{
+  "name": "MoistureReading",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string"
+    },
+    "job_id": {
+      "type": "string"
+    },
+    "room_id": {
+      "type": "string"
+    },
+    "location_description": {
+      "type": "string"
+    },
+    "material": {
+      "type": "string"
+    },
+    "reading_value": {
+      "type": "number"
+    },
+    "unit": {
+      "type": "string"
+    },
+    "instrument": {
+      "type": "string"
+    },
+    "recorded_by": {
+      "type": "string"
+    },
+    "recorded_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "is_deleted": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "company_id",
+    "job_id",
+    "room_id",
+    "reading_value"
+  ]
+}
