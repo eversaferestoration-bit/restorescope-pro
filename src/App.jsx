@@ -25,6 +25,7 @@ import Users from '@/pages/Users';
 import Templates from '@/pages/Templates';
 import PricingProfiles from '@/pages/PricingProfiles';
 import AuditLog from '@/pages/AuditLog';
+import Analytics from '@/pages/Analytics';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -83,6 +84,7 @@ const AuthenticatedApp = () => {
         <Route path="/templates" element={<Templates />} />
         <Route path="/pricing-profiles" element={<PricingProfiles />} />
         <Route path="/audit-log" element={<AuditLog />} />
+        <Route path="/analytics" element={<Analytics />} />
       </Route>
 
       <Route path="*" element={<PageNotFound />} />

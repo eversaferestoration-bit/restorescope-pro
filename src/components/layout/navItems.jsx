@@ -8,6 +8,7 @@ import {
   FileText,
   Tag,
   ClipboardList,
+  BarChart3,
 } from 'lucide-react';
 
 export const primaryNavItems = [
@@ -17,6 +18,7 @@ export const primaryNavItems = [
 
 export const secondaryNavItems = [
   { label: 'Templates', path: '/templates', icon: FileText, adminOnly: false },
+  { label: 'Analytics', path: '/analytics', icon: BarChart3, adminOnly: false },
   { label: 'Pricing', path: '/pricing-profiles', icon: Tag, adminOnly: true },
   { label: 'Team', path: '/users', icon: Users, adminOnly: true },
   { label: 'Audit Log', path: '/audit-log', icon: ClipboardList, adminOnly: true },
