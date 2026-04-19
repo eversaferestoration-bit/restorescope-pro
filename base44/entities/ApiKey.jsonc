@@ -1,0 +1,60 @@
+{
+  "name": "ApiKey",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string",
+      "description": "Friendly name for this API key"
+    },
+    "key": {
+      "type": "string",
+      "description": "The actual API key (auto-generated)"
+    },
+    "description": {
+      "type": "string"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Optional expiration date"
+    },
+    "allowed_ips": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "IP whitelist (optional)"
+    },
+    "role_permissions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Allowed roles for this key (e.g., ['admin', 'manager'])"
+    },
+    "rate_limit_override": {
+      "type": "integer",
+      "description": "Custom rate limit (default: 100/hour)"
+    },
+    "last_used_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "is_deleted": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "company_id",
+    "name",
+    "key"
+  ]
+}
