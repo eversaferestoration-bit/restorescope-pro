@@ -1,52 +1,87 @@
 /**
- * Offline photo queue using localStorage.
- * Each queued item: { localId, jobId, roomId, companyId, dataUrl, fileName, mimeType, fileSize, takenBy, takenAt, status, retries }
- * status: 'local_only' | 'queued' | 'uploading' | 'uploaded' | 'failed'
+ * Offline photo queue.
+ * - Metadata (status, ids, etc.) stored in localStorage (small, fast)
+ * - Image binary data stored in IndexedDB (no quota issues)
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 
-const QUEUE_KEY = 'photo_offline_queue';
+const QUEUE_META_KEY = 'photo_offline_queue_meta';
+const DB_NAME = 'RestoreScopePhotos';
+const DB_STORE = 'photo_blobs';
 const MAX_RETRIES = 3;
 
-function loadQueue() {
-  try { return JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]'); } catch { return []; }
-}
+// ── IndexedDB helpers ──────────────────────────────────────────────────────────
 
-function saveQueue(q) {
-  localStorage.setItem(QUEUE_KEY, JSON.stringify(q));
-}
-
-function fileToDataUrl(file) {
+function openDB() {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = (e) => e.target.result.createObjectStore(DB_STORE);
+    req.onsuccess = (e) => resolve(e.target.result);
+    req.onerror = (e) => reject(e.target.error);
   });
 }
 
-async function dataUrlToFile(dataUrl, fileName, mimeType) {
-  const res = await fetch(dataUrl);
-  const blob = await res.blob();
-  return new File([blob], fileName, { type: mimeType });
+async function saveBlob(localId, blob) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(DB_STORE, 'readwrite');
+    tx.objectStore(DB_STORE).put(blob, localId);
+    tx.oncomplete = resolve;
+    tx.onerror = (e) => reject(e.target.error);
+  });
 }
 
+async function loadBlob(localId) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const req = db.transaction(DB_STORE, 'readonly').objectStore(DB_STORE).get(localId);
+    req.onsuccess = (e) => resolve(e.target.result || null);
+    req.onerror = (e) => reject(e.target.error);
+  });
+}
+
+async function deleteBlob(localId) {
+  const db = await openDB();
+  return new Promise((resolve) => {
+    const tx = db.transaction(DB_STORE, 'readwrite');
+    tx.objectStore(DB_STORE).delete(localId);
+    tx.oncomplete = resolve;
+    tx.onerror = resolve; // ignore errors on delete
+  });
+}
+
+// ── Metadata helpers (localStorage — no blobs) ────────────────────────────────
+
+function loadMeta() {
+  try { return JSON.parse(localStorage.getItem(QUEUE_META_KEY) || '[]'); } catch { return []; }
+}
+
+function saveMeta(meta) {
+  try {
+    localStorage.setItem(QUEUE_META_KEY, JSON.stringify(meta));
+  } catch {
+    // If even metadata exceeds quota, trim old uploaded entries
+    const trimmed = meta.filter((i) => i.status !== 'uploaded');
+    try { localStorage.setItem(QUEUE_META_KEY, JSON.stringify(trimmed)); } catch { /* give up */ }
+  }
+}
+
+// ── Hook ──────────────────────────────────────────────────────────────────────
+
 export function useOfflinePhotoQueue() {
-  const [queue, setQueue] = useState(loadQueue);
+  const [queue, setQueue] = useState(loadMeta);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const syncingRef = useRef(false);
 
-  // Keep queue in sync with localStorage
   const updateQueue = useCallback((updater) => {
     setQueue((prev) => {
       const next = typeof updater === 'function' ? updater(prev) : updater;
-      saveQueue(next);
+      saveMeta(next);
       return next;
     });
   }, []);
 
-  // Online/offline detection
   useEffect(() => {
     const on = () => setIsOnline(true);
     const off = () => setIsOnline(false);
@@ -55,24 +90,27 @@ export function useOfflinePhotoQueue() {
     return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off); };
   }, []);
 
-  // Sync when coming online
   useEffect(() => {
-    if (isOnline) syncPending();
+    if (isOnline) syncPending(); // eslint-disable-line
   }, [isOnline]); // eslint-disable-line
 
   /**
-   * Add photos to the queue (works offline).
+   * Add files to the queue. Blobs go to IndexedDB; metadata to localStorage.
    */
   const enqueue = useCallback(async (files, { jobId, roomId, companyId, takenBy }) => {
-    const newItems = [];
     for (const file of Array.from(files)) {
-      const dataUrl = await fileToDataUrl(file);
-      newItems.push({
-        localId: `local_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+      const localId = `local_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+      // Store blob in IndexedDB
+      await saveBlob(localId, file);
+
+      // Generate a small local preview URL (lives only in memory — not persisted)
+      const previewUrl = URL.createObjectURL(file);
+
+      const meta = {
+        localId,
         jobId,
         roomId: roomId || null,
         companyId,
-        dataUrl,
         fileName: file.name,
         mimeType: file.type,
         fileSize: file.size,
@@ -81,33 +119,40 @@ export function useOfflinePhotoQueue() {
         status: navigator.onLine ? 'queued' : 'local_only',
         retries: 0,
         entityId: null,
-      });
+        previewUrl, // object URL — in-memory only, cleared on reload (that's fine)
+      };
+
+      updateQueue((prev) => [...prev, meta]);
     }
-    updateQueue((prev) => [...prev, ...newItems]);
-    if (navigator.onLine) setTimeout(() => syncPending(), 100);
+
+    if (navigator.onLine) setTimeout(() => syncPending(), 100); // eslint-disable-line
   }, [updateQueue]); // eslint-disable-line
 
   /**
-   * Attempt to upload all queued/failed items.
+   * Upload all pending items.
    */
   const syncPending = useCallback(async () => {
     if (syncingRef.current) return;
     syncingRef.current = true;
 
-    const currentQueue = loadQueue();
-    const toSync = currentQueue.filter((i) => ['queued', 'local_only', 'failed'].includes(i.status) && i.retries < MAX_RETRIES);
-    if (!toSync.length) { syncingRef.current = false; return; }
+    const currentMeta = loadMeta();
+    const toSync = currentMeta.filter(
+      (i) => ['queued', 'local_only', 'failed'].includes(i.status) && i.retries < MAX_RETRIES
+    );
 
     for (const item of toSync) {
-      // Mark as uploading
+      // Mark uploading
       setQueue((prev) => {
         const next = prev.map((i) => i.localId === item.localId ? { ...i, status: 'uploading' } : i);
-        saveQueue(next);
+        saveMeta(next);
         return next;
       });
 
       try {
-        const file = await dataUrlToFile(item.dataUrl, item.fileName, item.mimeType);
+        const blob = await loadBlob(item.localId);
+        if (!blob) throw new Error('Blob not found in IndexedDB');
+
+        const file = new File([blob], item.fileName, { type: item.mimeType });
         const { file_url } = await base44.integrations.Core.UploadFile({ file });
 
         const entity = await base44.entities.Photo.create({
@@ -125,22 +170,22 @@ export function useOfflinePhotoQueue() {
           is_deleted: false,
         });
 
-        // Mark as uploaded, keep a brief record then remove from queue
+        // Blob no longer needed
+        await deleteBlob(item.localId);
+
         setQueue((prev) => {
           const next = prev.map((i) =>
-            i.localId === item.localId
-              ? { ...i, status: 'uploaded', entityId: entity.id, dataUrl: null } // clear dataUrl to free memory
-              : i
+            i.localId === item.localId ? { ...i, status: 'uploaded', entityId: entity.id } : i
           );
-          saveQueue(next);
+          saveMeta(next);
           return next;
         });
 
-        // Remove uploaded after short delay
+        // Remove from queue after brief success flash
         setTimeout(() => {
           setQueue((prev) => {
             const next = prev.filter((i) => i.localId !== item.localId);
-            saveQueue(next);
+            saveMeta(next);
             return next;
           });
         }, 2000);
@@ -152,7 +197,7 @@ export function useOfflinePhotoQueue() {
               ? { ...i, status: i.retries + 1 >= MAX_RETRIES ? 'failed' : 'queued', retries: i.retries + 1 }
               : i
           );
-          saveQueue(next);
+          saveMeta(next);
           return next;
         });
       }
@@ -161,22 +206,16 @@ export function useOfflinePhotoQueue() {
     syncingRef.current = false;
   }, []);
 
-  /**
-   * Retry all failed items.
-   */
   const retryFailed = useCallback(() => {
     updateQueue((prev) => prev.map((i) => i.status === 'failed' ? { ...i, status: 'queued', retries: 0 } : i));
     setTimeout(syncPending, 100);
   }, [updateQueue, syncPending]);
 
-  /**
-   * Remove a specific item from queue.
-   */
-  const removeFromQueue = useCallback((localId) => {
+  const removeFromQueue = useCallback(async (localId) => {
+    await deleteBlob(localId);
     updateQueue((prev) => prev.filter((i) => i.localId !== localId));
   }, [updateQueue]);
 
-  // Items for this job
   const queueForJob = useCallback((jobId) => queue.filter((i) => i.jobId === jobId), [queue]);
 
   const pendingCount = queue.filter((i) => ['local_only', 'queued', 'uploading'].includes(i.status)).length;
