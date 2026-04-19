@@ -3,9 +3,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { useOfflinePhotoQueue } from '@/hooks/useOfflinePhotoQueue';
-import { Upload, X, ImageIcon, Loader2, Cloud, CloudOff, Clock, CheckCircle2 } from 'lucide-react';
+import { Upload, X, ImageIcon, Loader2, Cloud, CloudOff, Clock, CheckCircle2, Sparkles } from 'lucide-react';
 import RoomPicker from '@/components/job/RoomPicker';
 import SyncStatusBar from '@/components/job/SyncStatusBar';
+import PhotoAnalysisPanel from '@/components/job/PhotoAnalysisPanel';
 import { cn } from '@/lib/utils';
 
 const SYNC_STATUS_ICON = {
@@ -163,14 +164,22 @@ export default function JobPhotos({ job }) {
 
       {/* Lightbox */}
       {lightbox && (
-        <div
-          className="fixed inset-0 bg-black/90 z-50 flex flex-col items-center justify-center p-4"
-          onClick={() => setLightbox(null)}
-        >
-          <img src={lightbox.file_url} className="max-w-full max-h-[80vh] rounded-lg object-contain" />
-          <div className="mt-3 text-center">
-            {lightbox.caption && <p className="text-white text-sm">{lightbox.caption}</p>}
-            <p className="text-white/60 text-xs mt-1">{lightbox.taken_by} · {lightbox.sync_status}</p>
+        <div className="fixed inset-0 bg-black/90 z-50 flex flex-col items-center justify-center p-4 overflow-y-auto">
+          {/* Click backdrop to close */}
+          <div className="absolute inset-0" onClick={() => setLightbox(null)} />
+          <div className="relative z-10 w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => setLightbox(null)}
+              className="absolute -top-3 -right-3 w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition z-20"
+            >
+              <X size={14} className="text-white" />
+            </button>
+            <img src={lightbox.file_url} className="w-full rounded-xl object-contain max-h-[55vh]" />
+            <div className="mt-2">
+              {lightbox.caption && <p className="text-white text-sm text-center">{lightbox.caption}</p>}
+              <p className="text-white/50 text-xs text-center mt-0.5">{lightbox.taken_by}</p>
+              <PhotoAnalysisPanel photo={lightbox} jobId={job.id} />
+            </div>
           </div>
         </div>
       )}
