@@ -1,9 +1,11 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, AlertCircle } from 'lucide-react';
+import { ArrowLeft, AlertCircle, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import RiskIndicator from '@/components/job/RiskIndicator';
+import RiskPanel from '@/components/job/RiskPanel';
 
 // Tab pages
 import JobOverview from '@/components/job/tabs/JobOverview';
@@ -52,12 +54,27 @@ export default function JobDetail() {
   const { jobId } = useParams();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
+  const [riskData, setRiskData] = useState(null);
+  const [showRiskPanel, setShowRiskPanel] = useState(false);
 
   const { data: job, isLoading } = useQuery({
     queryKey: ['job', jobId],
     queryFn: () => base44.entities.Job.filter({ id: jobId, is_deleted: false }),
     select: (data) => data[0],
   });
+
+  // Analyze risk on job load
+  useEffect(() => {
+    if (job?.id) {
+      base44.functions.invoke('analyzeRisk', { job_id: job.id })
+        .then((res) => {
+          if (res.data && !res.data.error) {
+            setRiskData(res.data);
+          }
+        })
+        .catch(console.error);
+    }
+  }, [job?.id]);
 
   if (isLoading) {
     return (
@@ -106,6 +123,13 @@ export default function JobDetail() {
                   {job.status.replace(/_/g, ' ')}
                 </span>
               )}
+              {riskData && (
+                <RiskIndicator
+                  riskLevel={riskData.risk_level}
+                  flagCount={riskData.risk_flags?.length || 0}
+                  onClick={() => setShowRiskPanel(true)}
+                />
+              )}
             </div>
             <p className="text-sm text-muted-foreground mt-0.5">
               {[job.loss_type, job.service_type].filter(Boolean).join(' · ')}
@@ -138,6 +162,10 @@ export default function JobDetail() {
       <div className="flex-1 p-4 md:p-6 max-w-5xl mx-auto w-full">
         {ActiveComponent && <ActiveComponent job={job} />}
       </div>
+
+      {showRiskPanel && riskData && (
+        <RiskPanel riskData={riskData} onClose={() => setShowRiskPanel(false)} />
+      )}
     </div>
   );
 }
