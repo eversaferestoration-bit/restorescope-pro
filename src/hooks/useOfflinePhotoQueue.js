@@ -153,22 +153,17 @@ export function useOfflinePhotoQueue() {
         if (!blob) throw new Error('Blob not found in IndexedDB');
 
         const file = new File([blob], item.fileName, { type: item.mimeType });
-        const { file_url } = await base44.integrations.Core.UploadFile({ file });
 
-        const entity = await base44.entities.Photo.create({
-          company_id: item.companyId,
-          job_id: item.jobId,
-          room_id: item.roomId || undefined,
-          file_url,
-          mime_type: item.mimeType,
-          file_size: item.fileSize,
-          taken_by: item.takenBy,
-          taken_at: item.takenAt,
-          sync_status: 'uploaded',
-          offline_status: 'synced',
-          analysis_status: 'analysis_pending',
-          is_deleted: false,
-        });
+        // Use uploadPhoto backend function — enforces company/job membership check
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('job_id', item.jobId);
+        if (item.roomId) formData.append('room_id', item.roomId);
+        formData.append('taken_at', item.takenAt);
+
+        const res = await base44.functions.invoke('uploadPhoto', formData);
+        const entity = res.data?.photo;
+        if (!entity) throw new Error('Upload failed: no photo returned');
 
         // Blob no longer needed
         await deleteBlob(item.localId);

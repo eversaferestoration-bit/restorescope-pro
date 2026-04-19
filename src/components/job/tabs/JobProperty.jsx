@@ -13,9 +13,9 @@ function InfoRow({ label, value }) {
 export default function JobProperty({ job }) {
   const { data: property } = useQuery({
     queryKey: ['property', job.property_id],
-    queryFn: () => base44.entities.Property.filter({ id: job.property_id }),
+    queryFn: () => base44.entities.Property.filter({ id: job.property_id, company_id: job.company_id, is_deleted: false }),
     select: (d) => d[0],
-    enabled: !!job.property_id,
+    enabled: !!job.property_id && !!job.company_id,
   });
 
   if (!job.property_id) {

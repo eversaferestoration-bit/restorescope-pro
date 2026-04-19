@@ -26,7 +26,8 @@ export default function RejectModal({ onConfirm, onCancel }) {
           <button onClick={onCancel} className="px-3 h-8 rounded-lg border text-xs hover:bg-muted transition">Cancel</button>
           <button
             onClick={() => onConfirm(reason)}
-            className="px-3 h-8 rounded-lg bg-destructive text-destructive-foreground text-xs font-semibold hover:bg-destructive/90 transition"
+            disabled={!reason.trim()}
+            className="px-3 h-8 rounded-lg bg-destructive text-destructive-foreground text-xs font-semibold hover:bg-destructive/90 transition disabled:opacity-50"
           >
             Confirm Reject
           </button>

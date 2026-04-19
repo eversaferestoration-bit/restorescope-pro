@@ -19,7 +19,8 @@ export default function PropertySelector({ value, onChange }) {
 
   const { data: properties = [] } = useQuery({
     queryKey: ['properties'],
-    queryFn: () => base44.entities.Property.filter({ is_deleted: false }, 'address_line_1', 100),
+    queryFn: () => base44.entities.Property.filter({ company_id: user?.company_id || '', is_deleted: false }, 'address_line_1', 100),
+    enabled: !!user?.company_id,
   });
 
   const createMutation = useMutation({

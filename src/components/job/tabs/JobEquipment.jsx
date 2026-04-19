@@ -29,7 +29,7 @@ export default function JobEquipment({ job }) {
   });
 
   const addMutation = useMutation({
-    mutationFn: (data) => base44.entities.EquipmentLog.create(data),
+    mutationFn: (data) => base44.functions.invoke('saveEquipmentLog', data),
     onSuccess: () => {
       qc.invalidateQueries(['equipment', job.id]);
       setAdding(false);
@@ -53,25 +53,16 @@ export default function JobEquipment({ job }) {
     e.preventDefault();
     if (!roomId) return;
     addMutation.mutate({
-      ...form,
-      quantity: Number(form.quantity),
       job_id: job.id,
       room_id: roomId,
-      company_id: job.company_id,
-      placed_by: user?.email,
-      placed_at: new Date().toISOString(),
-      is_deleted: false,
+      equipment_type: form.equipment_type,
+      model: form.model || undefined,
+      serial_number: form.serial_number || undefined,
+      quantity: Number(form.quantity),
+      status: form.status,
+      notes: form.notes || undefined,
     });
   };
-
-  const rows = equipment.map((eq) => ({
-    id: eq.id,
-    primary: `${eq.quantity > 1 ? `${eq.quantity}× ` : ''}${eq.equipment_type}${eq.model ? ` — ${eq.model}` : ''}`,
-    badge: eq.status,
-    secondary: [eq.serial_number ? `S/N: ${eq.serial_number}` : null, eq.notes].filter(Boolean).join(' · '),
-    recorded_by: eq.placed_by,
-    ts: eq.placed_at,
-  }));
 
   return (
     <div className="space-y-4">

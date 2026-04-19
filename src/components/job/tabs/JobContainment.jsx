@@ -28,7 +28,7 @@ export default function JobContainment({ job }) {
   });
 
   const addMutation = useMutation({
-    mutationFn: (data) => base44.entities.Containment.create(data),
+    mutationFn: (data) => base44.functions.invoke('syncOfflineDraft', { job_id: job.id, draft_type: 'containment', payload: data }),
     onSuccess: () => {
       qc.invalidateQueries(['containments', job.id]);
       setAdding(false);
@@ -47,13 +47,10 @@ export default function JobContainment({ job }) {
     e.preventDefault();
     if (!roomId) return;
     addMutation.mutate({
-      ...form,
-      job_id: job.id,
       room_id: roomId,
-      company_id: job.company_id,
-      installed_by: user?.email,
-      installed_at: new Date().toISOString(),
-      is_deleted: false,
+      containment_type: form.containment_type,
+      description: form.description || undefined,
+      status: form.status,
     });
   };
 

@@ -29,7 +29,7 @@ export default function JobObservations({ job }) {
   });
 
   const addMutation = useMutation({
-    mutationFn: (data) => base44.entities.Observation.create(data),
+    mutationFn: (data) => base44.functions.invoke('saveObservation', data),
     onSuccess: () => {
       qc.invalidateQueries(['observations', job.id]);
       setAdding(false);
@@ -48,13 +48,11 @@ export default function JobObservations({ job }) {
     e.preventDefault();
     if (!roomId) return;
     addMutation.mutate({
-      ...form,
       job_id: job.id,
       room_id: roomId,
-      company_id: job.company_id,
-      recorded_by: user?.email,
-      recorded_at: new Date().toISOString(),
-      is_deleted: false,
+      description: form.description,
+      observation_type: form.observation_type || undefined,
+      severity: form.severity || undefined,
     });
   };
 

@@ -22,8 +22,8 @@ export default function EntryList({ rows, canDelete, onDelete, emptyMsg = 'No en
             </div>
             {row.secondary && <p className="text-xs text-muted-foreground mt-0.5 truncate">{row.secondary}</p>}
             <p className="text-xs text-muted-foreground mt-0.5">
-              {row.recorded_by && <span>{row.recorded_by} · </span>}
-              {row.ts && format(new Date(row.ts), 'MMM d, h:mm a')}
+              {row.recorded_by && <span>{row.recorded_by}{row.ts ? ' · ' : ''}</span>}
+              {row.ts && !isNaN(new Date(row.ts)) ? format(new Date(row.ts), 'MMM d, h:mm a') : null}
             </p>
           </div>
           {canDelete && (

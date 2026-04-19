@@ -13,7 +13,8 @@ export default function InsuredSelector({ value, onChange }) {
 
   const { data: insureds = [] } = useQuery({
     queryKey: ['insureds'],
-    queryFn: () => base44.entities.Insured.filter({ is_deleted: false }, 'full_name', 100),
+    queryFn: () => base44.entities.Insured.filter({ company_id: user?.company_id || '', is_deleted: false }, 'full_name', 100),
+    enabled: !!user?.company_id,
   });
 
   const createMutation = useMutation({

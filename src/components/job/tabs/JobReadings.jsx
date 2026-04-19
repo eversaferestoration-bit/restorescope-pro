@@ -14,21 +14,17 @@ function MoistureForm({ job, roomId, user, onClose }) {
   const [form, setForm] = useState({ location_description: '', material: '', reading_value: '', unit: '%WME', instrument: '' });
 
   const addMutation = useMutation({
-    mutationFn: (data) => base44.entities.MoistureReading.create(data),
+    mutationFn: (data) => base44.functions.invoke('saveReading', data),
     onSuccess: () => { qc.invalidateQueries(['moisture', job.id]); onClose(); },
   });
 
   const handleSubmit = (e) => {
     e.preventDefault();
     addMutation.mutate({
-      ...form,
-      reading_value: Number(form.reading_value),
       job_id: job.id,
       room_id: roomId,
-      company_id: job.company_id,
-      recorded_by: user?.email,
-      recorded_at: new Date().toISOString(),
-      is_deleted: false,
+      reading_type: 'moisture',
+      data: { ...form, reading_value: Number(form.reading_value) },
     });
   };
 
@@ -77,25 +73,17 @@ function EnvForm({ job, roomId, user, onClose }) {
   const [form, setForm] = useState({ temperature_f: '', relative_humidity: '', dew_point: '', gpp: '', instrument: '' });
 
   const addMutation = useMutation({
-    mutationFn: (data) => base44.entities.EnvironmentalReading.create(data),
+    mutationFn: (data) => base44.functions.invoke('saveReading', data),
     onSuccess: () => { qc.invalidateQueries(['env', job.id]); onClose(); },
   });
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const toNum = (v) => v !== '' ? Number(v) : undefined;
     addMutation.mutate({
-      temperature_f: toNum(form.temperature_f),
-      relative_humidity: toNum(form.relative_humidity),
-      dew_point: toNum(form.dew_point),
-      gpp: toNum(form.gpp),
-      instrument: form.instrument,
       job_id: job.id,
       room_id: roomId,
-      company_id: job.company_id,
-      recorded_by: user?.email,
-      recorded_at: new Date().toISOString(),
-      is_deleted: false,
+      reading_type: 'environmental',
+      data: { ...form },
     });
   };
 
