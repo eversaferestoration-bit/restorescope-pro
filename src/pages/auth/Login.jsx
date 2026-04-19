@@ -12,23 +12,21 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const getSafeErrorMessage = (error) => {
-    console.error('Login error:', error);
-    if (typeof error === 'object' && error !== null) {
-      return error.message || 'Something went wrong. Please try again.';
-    }
-    return error || 'Something went wrong. Please try again.';
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
-      await base44.auth.login(email, password);
+      const res = await base44.auth.login(email, password);
+      
+      if (!res?.user) {
+        throw new Error('Invalid email or password');
+      }
+
       navigate(from, { replace: true });
     } catch (err) {
-      setError(getSafeErrorMessage(err));
+      console.error('Login error:', err);
+      setError(err?.message || 'Unable to sign in. Please try again.');
     } finally {
       setLoading(false);
     }
