@@ -8,140 +8,188 @@ Deno.serve(async (req) => {
   const { estimate_version_id } = await req.json();
   if (!estimate_version_id) return Response.json({ error: 'estimate_version_id required' }, { status: 400 });
 
-  // Load the estimate draft
-  const drafts = await base44.asServiceRole.entities.EstimateDraft.filter({ id: estimate_version_id, is_deleted: false });
+  // Load estimate draft
+  let drafts;
+  try {
+    drafts = await base44.asServiceRole.entities.EstimateDraft.filter({ id: estimate_version_id, is_deleted: false });
+  } catch {
+    return Response.json({ error: 'Estimate not found' }, { status: 404 });
+  }
   if (!drafts.length) return Response.json({ error: 'Estimate not found' }, { status: 404 });
   const draft = drafts[0];
 
-  // Company membership check
+  // Auth: company membership
   if (user.role !== 'admin') {
     const profiles = await base44.asServiceRole.entities.UserProfile.filter({ user_id: user.id, company_id: draft.company_id, is_deleted: false });
     if (!profiles.length) return Response.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   // Load supporting data in parallel
-  const [job, scopeItems, photos, rooms, observations, moistureReadings] = await Promise.all([
-    base44.asServiceRole.entities.Job.filter({ id: draft.job_id, is_deleted: false }).then(r => r[0] || null),
+  const [jobs, scopeItems, photos, moistureReadings, envReadings, observations] = await Promise.all([
+    base44.asServiceRole.entities.Job.filter({ id: draft.job_id, is_deleted: false }),
     base44.asServiceRole.entities.ScopeItem.filter({ job_id: draft.job_id, is_deleted: false }),
     base44.asServiceRole.entities.Photo.filter({ job_id: draft.job_id, is_deleted: false }),
-    base44.asServiceRole.entities.Room.filter({ job_id: draft.job_id, is_deleted: false }),
-    base44.asServiceRole.entities.Observation.filter({ job_id: draft.job_id, is_deleted: false }),
     base44.asServiceRole.entities.MoistureReading.filter({ job_id: draft.job_id, is_deleted: false }),
+    base44.asServiceRole.entities.EnvironmentalReading.filter({ job_id: draft.job_id, is_deleted: false }),
+    base44.asServiceRole.entities.Observation.filter({ job_id: draft.job_id, is_deleted: false }),
   ]);
 
-  const lineItems = draft.line_items || [];
-  const confirmedScope = scopeItems.filter(s => s.status === 'confirmed');
-  const photosWithAnalysis = photos.filter(p => p.analysis_status === 'analyzed' || p.damage_tags?.length > 0);
+  if (!jobs.length) return Response.json({ error: 'Job not found' }, { status: 404 });
+  const job = jobs[0];
 
-  // Build context summary for LLM
-  const context = {
+  const confirmedScope = scopeItems.filter(s => s.status === 'confirmed');
+  const rejectedScope = scopeItems.filter(s => s.status === 'rejected');
+  const lineItems = draft.line_items || [];
+
+  // Build evidence summary for LLM
+  const evidenceSummary = {
     job: {
-      loss_type: job?.loss_type,
-      service_type: job?.service_type,
-      complexity_level: job?.complexity_level,
-      emergency_flag: job?.emergency_flag,
-      after_hours_flag: job?.after_hours_flag,
-      summary_notes: job?.summary_notes,
+      loss_type: job.loss_type,
+      service_type: job.service_type,
+      cause_of_loss: job.cause_of_loss,
+      emergency_flag: job.emergency_flag,
+      after_hours_flag: job.after_hours_flag,
+      complexity_level: job.complexity_level,
+      access_difficulty: job.access_difficulty,
+      summary_notes: job.summary_notes,
     },
     estimate: {
+      label: draft.label,
+      status: draft.status,
       total: draft.total,
       subtotal: draft.subtotal,
       modifier_total: draft.modifier_total,
-      line_item_count: lineItems.length,
-      status: draft.status,
-      notes: draft.notes,
-      line_items_summary: lineItems.map(i => ({
-        category: i.category,
-        description: i.description,
-        quantity: i.quantity,
-        unit: i.unit,
-        unit_cost: i.unit_cost,
-        line_total: i.line_total,
-        source: i.source,
-        room: i.room_name,
+      applied_modifiers: draft.applied_modifiers,
+      line_items_count: lineItems.length,
+      line_items: lineItems.map(li => ({
+        category: li.category,
+        description: li.description,
+        unit: li.unit,
+        quantity: li.quantity,
+        unit_cost: li.unit_cost,
+        line_total: li.line_total,
+        source: li.source,
+        room_name: li.room_name,
       })),
     },
     documentation: {
-      total_photos: photos.length,
-      analyzed_photos: photosWithAnalysis.length,
-      rooms_count: rooms.length,
-      confirmed_scope_items: confirmedScope.length,
-      total_scope_items: scopeItems.length,
-      observations_count: observations.length,
+      photos_count: photos.length,
+      analyzed_photos: photos.filter(p => p.analysis_status === 'analyzed').length,
+      damage_tags: [...new Set(photos.flatMap(p => p.damage_tags || []))],
+      material_tags: [...new Set(photos.flatMap(p => p.material_tags || []))],
       moisture_readings_count: moistureReadings.length,
-      has_summary_notes: !!job?.summary_notes,
+      env_readings_count: envReadings.length,
+      observations_count: observations.length,
     },
-    observations: observations.slice(0, 20).map(o => ({ type: o.observation_type, severity: o.severity, description: o.description })),
-    moisture_readings: moistureReadings.slice(0, 20).map(m => ({ material: m.material, value: m.reading_value, unit: m.unit, location: m.location_description })),
+    scope: {
+      confirmed_items_count: confirmedScope.length,
+      rejected_items_count: rejectedScope.length,
+      categories_covered: [...new Set(confirmedScope.map(s => s.category))],
+      ai_suggested_count: confirmedScope.filter(s => s.source === 'ai_suggested').length,
+      manual_count: confirmedScope.filter(s => s.source === 'manual').length,
+      rules_engine_count: confirmedScope.filter(s => s.source === 'rules_engine').length,
+    },
   };
 
-  const prompt = `You are an expert insurance claims defense analyst for property damage restoration. 
-Analyze the following restoration job estimate and supporting documentation to assess its defensibility against carrier pushback.
+  const prompt = `You are a claim defense expert for property damage restoration companies. Analyze the following restoration job estimate and its supporting evidence to produce a comprehensive claim defense assessment.
 
-JOB & ESTIMATE CONTEXT:
-${JSON.stringify(context, null, 2)}
+JOB AND ESTIMATE DATA:
+${JSON.stringify(evidenceSummary, null, 2)}
 
-Your task:
-1. Assign a defense_score (0-100) — 100 = fully bulletproof, 0 = carrier will deny
-2. Identify risk_flags — specific line items or areas that are weak or unsupported
-3. Identify missing_documentation — what evidence is absent that would strengthen the claim
-4. Provide recommended_actions — concrete, actionable steps to improve claim defensibility
-5. Assess carrier_pushback_risk overall: "low", "medium", or "high"
+Your task is to:
+1. Score the overall defensibility of this claim (0-100, where 100 = perfectly documented and defensible)
+2. Identify risk flags — specific line items or categories that are weak, unsupported, or likely to be challenged by insurance carriers
+3. Identify missing documentation that would strengthen the claim
+4. Provide concrete recommended actions to improve the claim's defensibility
+5. Assess the overall carrier pushback risk
 
-Scoring guidance:
-- Photos with damage analysis: +10 pts each area covered (max +30)
-- Moisture readings present: +15 pts
-- Observations documented: +10 pts
-- All scope items confirmed (not just suggested): +10 pts
-- Emergency/complexity modifiers properly documented: +10 pts
-- Summary notes present: +5 pts
-- Deduct 5 pts per line item with no scope backing
-- Deduct 10 pts if estimate total seems disproportionate to documented damage
-- Deduct 15 pts if key categories (drying, demolition) have no supporting readings/observations
+SCORING CRITERIA:
+- Photo documentation coverage (20 pts): Are all damaged areas photographed? AI analysis completed?
+- Moisture/environmental data (20 pts): Are readings present and supporting the scope?
+- Scope alignment (20 pts): Do line items match the documented damage and readings?
+- Modifier justification (15 pts): Are emergency/after-hours/complexity modifiers well-supported?
+- Observation completeness (15 pts): Are observations detailed and specific?
+- Line item specificity (10 pts): Are quantities and descriptions precise and credible?
 
-Be specific and actionable. Focus on insurance carrier scrutiny patterns.`;
+Be specific and actionable. Reference actual data from the estimate when flagging risks.`;
 
-  const result = await base44.asServiceRole.integrations.Core.InvokeLLM({
-    prompt,
-    response_json_schema: {
-      type: 'object',
-      properties: {
-        defense_score: { type: 'number' },
-        carrier_pushback_risk: { type: 'string', enum: ['low', 'medium', 'high'] },
-        risk_flags: { type: 'array', items: { type: 'string' } },
-        missing_documentation: { type: 'array', items: { type: 'string' } },
-        recommended_actions: { type: 'array', items: { type: 'string' } },
+  const analysisSchema = {
+    type: 'object',
+    properties: {
+      defense_score: { type: 'number' },
+      analysis_summary: { type: 'string' },
+      risk_flags: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            category: { type: 'string' },
+            description: { type: 'string' },
+            severity: { type: 'string' },
+            line_item_ids: { type: 'array', items: { type: 'string' } }
+          }
+        }
       },
-      required: ['defense_score', 'carrier_pushback_risk', 'risk_flags', 'missing_documentation', 'recommended_actions'],
-    },
+      missing_documentation: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            area: { type: 'string' },
+            description: { type: 'string' },
+            impact: { type: 'string' }
+          }
+        }
+      },
+      recommended_actions: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            priority: { type: 'string' },
+            action: { type: 'string' },
+            rationale: { type: 'string' }
+          }
+        }
+      },
+      carrier_pushback_risk: { type: 'string' }
+    }
+  };
+
+  const analysis = await base44.asServiceRole.integrations.Core.InvokeLLM({
+    prompt,
+    response_json_schema: analysisSchema,
+    model: 'claude_sonnet_4_6',
   });
 
-  // Clamp score to 0-100
-  const defense_score = Math.max(0, Math.min(100, Math.round(result.defense_score || 0)));
+  // Clamp score
+  const defense_score = Math.min(100, Math.max(0, Math.round(analysis.defense_score || 0)));
 
-  // Save the analysis record
-  const record = await base44.asServiceRole.entities.ClaimDefense.create({
+  // Persist result
+  const defense = await base44.asServiceRole.entities.ClaimDefense.create({
     company_id: draft.company_id,
     job_id: draft.job_id,
     estimate_version_id,
     defense_score,
-    risk_flags: result.risk_flags || [],
-    missing_documentation: result.missing_documentation || [],
-    recommended_actions: result.recommended_actions || [],
-    carrier_pushback_risk: result.carrier_pushback_risk || 'medium',
+    risk_flags: analysis.risk_flags || [],
+    missing_documentation: analysis.missing_documentation || [],
+    recommended_actions: analysis.recommended_actions || [],
+    carrier_pushback_risk: analysis.carrier_pushback_risk || 'medium',
+    analysis_summary: analysis.analysis_summary || '',
     created_at: new Date().toISOString(),
+    is_deleted: false,
   });
 
   await base44.asServiceRole.entities.AuditLog.create({
     company_id: draft.company_id,
     entity_type: 'ClaimDefense',
-    entity_id: record.id,
+    entity_id: defense.id,
     action: 'analyzed',
     actor_email: user.email,
     actor_id: user.id,
-    description: `Claim defense analysis run for estimate v${draft.version_number} — score: ${defense_score}`,
-    metadata: { estimate_version_id, defense_score, carrier_pushback_risk: result.carrier_pushback_risk },
+    description: `Claim defense analyzed for estimate ${draft.label} — score: ${defense_score}`,
+    metadata: { job_id: draft.job_id, estimate_version_id, defense_score },
   });
 
-  return Response.json({ analysis: record });
+  return Response.json({ defense });
 });

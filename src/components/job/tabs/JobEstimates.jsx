@@ -151,9 +151,19 @@ export default function JobEstimates({ job }) {
       ) : (
         <div className="space-y-3">
           {drafts.map((draft) => (
-            <EstimateDraftCard key={draft.id} draft={draft} jobId={job.id} readOnly={isTechnician} />
+            <div key={draft.id}>
+              <EstimateDraftCard draft={draft} jobId={job.id} readOnly={isTechnician} />
+              <button
+                onClick={() => handleOpenDefense(draft.id)}
+                className="mt-1.5 ml-1 inline-flex items-center gap-1 text-xs text-primary hover:underline font-medium"
+              >
+                <Shield size={11} /> Analyze defense
+              </button>
+            </div>
           ))}
         </div>
+      )}
+        </>
       )}
     </div>
   );

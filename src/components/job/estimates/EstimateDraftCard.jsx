@@ -130,7 +130,8 @@ export default function EstimateDraftCard({ draft, jobId, readOnly }) {
 
           {activeTab === 'defense' && <ClaimDefensePanel draft={draft} />}
 
-          {activeTab === 'details' && <>
+          {activeTab === 'details' && (
+          <div>
           {/* Lock notice */}
           {isLocked && (
             <div className="px-4 py-2.5 bg-slate-50 border-b border-border flex items-center gap-2 text-xs text-slate-600">
@@ -239,7 +240,8 @@ export default function EstimateDraftCard({ draft, jobId, readOnly }) {
               )}
             </div>
           )}
-          </>}
+          </div>
+          )}
         </div>
       )}
 
