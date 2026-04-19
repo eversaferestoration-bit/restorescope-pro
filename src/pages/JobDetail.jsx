@@ -40,7 +40,7 @@ const TABS = [
   { key: 'supplements', label: 'Supplements', component: JobSupplements },
   { key: 'justification', label: 'Justification', component: JobJustification },
   { key: 'approvals', label: 'Approvals', component: JobApprovals },
-  { key: 'outcome', label: 'Outcome', component: () => <OutcomePanel jobId={job?.id} /> },
+  { key: 'outcome', label: 'Outcome', component: null },
   { key: 'exports', label: 'Exports', component: JobExports },
 ];
 
@@ -167,7 +167,7 @@ export default function JobDetail() {
       {/* Tab content */}
       <div className="flex-1 p-4 md:p-6 max-w-5xl mx-auto w-full">
         {isOutcomeTab ? (
-          <ActiveComponent />
+          <OutcomePanel jobId={job?.id} />
         ) : (
           ActiveComponent && <ActiveComponent job={job} />
         )}
