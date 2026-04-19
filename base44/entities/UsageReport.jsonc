@@ -1,0 +1,98 @@
+{
+  "name": "UsageReport",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string"
+    },
+    "location_id": {
+      "type": "string"
+    },
+    "report_period": {
+      "type": "string",
+      "enum": [
+        "daily",
+        "weekly",
+        "monthly"
+      ]
+    },
+    "period_start": {
+      "type": "string",
+      "format": "date"
+    },
+    "period_end": {
+      "type": "string",
+      "format": "date"
+    },
+    "total_jobs": {
+      "type": "integer",
+      "default": 0
+    },
+    "total_estimates": {
+      "type": "integer",
+      "default": 0
+    },
+    "total_users": {
+      "type": "integer",
+      "default": 0
+    },
+    "total_photos": {
+      "type": "integer",
+      "default": 0
+    },
+    "ai_analyses_count": {
+      "type": "integer",
+      "default": 0
+    },
+    "storage_used_mb": {
+      "type": "number",
+      "default": 0
+    },
+    "api_calls_count": {
+      "type": "integer",
+      "default": 0
+    },
+    "total_estimate_value": {
+      "type": "number",
+      "default": 0
+    },
+    "avg_estimate_value": {
+      "type": "number",
+      "default": 0
+    },
+    "top_users": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "user_name": {
+            "type": "string"
+          },
+          "jobs_count": {
+            "type": "integer"
+          },
+          "estimates_count": {
+            "type": "integer"
+          }
+        }
+      }
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "is_deleted": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "company_id",
+    "report_period",
+    "period_start",
+    "period_end"
+  ]
+}

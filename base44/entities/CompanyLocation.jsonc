@@ -1,0 +1,62 @@
+{
+  "name": "CompanyLocation",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string",
+      "description": "Parent company ID"
+    },
+    "name": {
+      "type": "string",
+      "description": "Location/branch name"
+    },
+    "code": {
+      "type": "string",
+      "description": "Unique location code (e.g., 'HQ', 'WEST-01')"
+    },
+    "address": {
+      "type": "string"
+    },
+    "city": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string"
+    },
+    "zip": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "manager_id": {
+      "type": "string",
+      "description": "Location manager user ID"
+    },
+    "is_headquarters": {
+      "type": "boolean",
+      "default": false
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "pricing_profile_id": {
+      "type": "string",
+      "description": "Location-specific pricing profile"
+    },
+    "settings": {
+      "type": "object",
+      "description": "Location-specific settings"
+    },
+    "is_deleted": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "company_id",
+    "name",
+    "code"
+  ]
+}

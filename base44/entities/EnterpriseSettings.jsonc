@@ -1,0 +1,70 @@
+{
+  "name": "EnterpriseSettings",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string"
+    },
+    "enable_multi_location": {
+      "type": "boolean",
+      "default": false
+    },
+    "enable_branch_pricing": {
+      "type": "boolean",
+      "default": false
+    },
+    "enable_usage_reporting": {
+      "type": "boolean",
+      "default": true
+    },
+    "enable_admin_hierarchy": {
+      "type": "boolean",
+      "default": false
+    },
+    "corporate_admin_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Corporate-level admins"
+    },
+    "regional_admin_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Regional admins with location restrictions"
+    },
+    "default_pricing_profile_id": {
+      "type": "string"
+    },
+    "usage_report_email": {
+      "type": "string",
+      "format": "email"
+    },
+    "usage_report_frequency": {
+      "type": "string",
+      "enum": [
+        "daily",
+        "weekly",
+        "monthly"
+      ],
+      "default": "weekly"
+    },
+    "cost_center_enabled": {
+      "type": "boolean",
+      "default": false
+    },
+    "approval_workflow_enabled": {
+      "type": "boolean",
+      "default": false
+    },
+    "is_deleted": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "company_id"
+  ]
+}

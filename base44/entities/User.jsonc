@@ -1,0 +1,38 @@
+{
+  "name": "User",
+  "type": "object",
+  "properties": {
+    "location_id": {
+      "type": "string",
+      "description": "User's primary location/branch"
+    },
+    "region": {
+      "type": "string",
+      "description": "Geographic region (e.g., 'West', 'East', 'Central')"
+    },
+    "reports_to_id": {
+      "type": "string",
+      "description": "Manager/supervisor user ID"
+    },
+    "title": {
+      "type": "string",
+      "description": "Job title"
+    },
+    "department": {
+      "type": "string",
+      "description": "Department (e.g., 'Operations', 'Sales', 'Admin')"
+    },
+    "can_view_all_locations": {
+      "type": "boolean",
+      "default": false,
+      "description": "Admin permission to access all locations"
+    },
+    "allowed_locations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of location IDs user can access"
+    }
+  }
+}
