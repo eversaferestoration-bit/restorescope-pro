@@ -16,19 +16,7 @@ export default function EnterpriseSettings() {
   const [showLocationForm, setShowLocationForm] = useState(false);
   const [editingLocation, setEditingLocation] = useState(null);
 
-  // Check admin access
-  if (user?.role !== 'admin') {
-    return (
-      <div className="p-6 max-w-5xl mx-auto">
-        <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
-          <Shield size={48} className="mx-auto text-red-600 mb-2" />
-          <h2 className="text-lg font-semibold text-red-800">Admin Access Required</h2>
-          <p className="text-sm text-red-600 mt-1">Enterprise settings are only available to administrators.</p>
-        </div>
-      </div>
-    );
-  }
-
+  // Load data first (before early return)
   const { data: locations = [], isLoading } = useQuery({
     queryKey: ['company-locations'],
     queryFn: () => base44.entities.CompanyLocation.filter({ is_deleted: false }),
@@ -57,6 +45,19 @@ export default function EnterpriseSettings() {
     mutationFn: (id) => base44.entities.CompanyLocation.update(id, { is_deleted: true }),
     onSuccess: () => qc.invalidateQueries(['company-locations']),
   });
+
+  // Check admin access (after hooks)
+  if (user?.role !== 'admin') {
+    return (
+      <div className="p-6 max-w-5xl mx-auto">
+        <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+          <Shield size={48} className="mx-auto text-red-600 mb-2" />
+          <h2 className="text-lg font-semibold text-red-800">Admin Access Required</h2>
+          <p className="text-sm text-red-600 mt-1">Enterprise settings are only available to administrators.</p>
+        </div>
+      </div>
+    );
+  }
 
   const headquarters = locations.find(l => l.is_headquarters);
   const branches = locations.filter(l => !l.is_headquarters);
