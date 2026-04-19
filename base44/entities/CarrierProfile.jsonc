@@ -1,0 +1,73 @@
+{
+  "name": "CarrierProfile",
+  "type": "object",
+  "properties": {
+    "carrier_name": {
+      "type": "string",
+      "description": "Name of the insurance carrier"
+    },
+    "avg_approval_rate": {
+      "type": "number",
+      "description": "Average approval rate across all jobs (0-100)",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "avg_reduction_percent": {
+      "type": "number",
+      "description": "Average reduction percentage negotiated (0-100)",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "common_disputes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Common dispute categories for this carrier"
+    },
+    "preferred_documentation": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Documentation types this carrier prefers"
+    },
+    "response_behavior": {
+      "type": "string",
+      "enum": [
+        "fast",
+        "moderate",
+        "slow",
+        "variable"
+      ],
+      "description": "Typical response time behavior"
+    },
+    "last_updated": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last time this profile was updated"
+    },
+    "total_interactions": {
+      "type": "integer",
+      "default": 0,
+      "description": "Total number of jobs/interactions"
+    },
+    "avg_response_time_days": {
+      "type": "number",
+      "description": "Average response time in days"
+    },
+    "dispute_rate": {
+      "type": "number",
+      "description": "Percentage of jobs with disputes (0-100)",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "is_deleted": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "carrier_name"
+  ]
+}

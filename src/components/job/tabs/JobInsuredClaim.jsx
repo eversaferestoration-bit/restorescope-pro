@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
 import AdjusterInsightsPanel from '@/components/job/AdjusterInsightsPanel';
+import CarrierProfilePanel from '@/components/job/CarrierProfilePanel';
 
 function InfoRow({ label, value }) {
   return (
@@ -97,10 +98,16 @@ export default function JobInsuredClaim({ job }) {
       {/* Carrier */}
       <Card title="Carrier">
         {carrier ? (
-          <div className="grid grid-cols-2 gap-4">
-            <InfoRow label="Name" value={carrier.name} />
-            <InfoRow label="Phone" value={carrier.phone} />
-            <InfoRow label="Email" value={carrier.email} />
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-4">
+              <InfoRow label="Name" value={carrier.name} />
+              <InfoRow label="Phone" value={carrier.phone} />
+              <InfoRow label="Email" value={carrier.email} />
+            </div>
+            {/* Carrier Intelligence Panel */}
+            <div className="pt-3 border-t border-border">
+              <CarrierProfilePanel carrierId={carrier.id} carrierName={carrier.name} />
+            </div>
           </div>
         ) : (
           <p className="text-sm text-muted-foreground italic">No carrier linked.</p>
