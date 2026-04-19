@@ -43,15 +43,22 @@ export default function JobPhotos({ job }) {
     queryFn: () => base44.entities.Room.filter({ job_id: job.id, is_deleted: false }, 'sort_order'),
   });
 
-  const { data: photos = [], isLoading } = useQuery({
-    queryKey: ['photos', job.id, roomId],
-    queryFn: () => base44.entities.Photo.filter({
-      job_id: job.id,
-      is_deleted: false,
-      ...(roomId ? { room_id: roomId } : {}),
-    }, '-created_date'),
+  const [photoPage, setPhotoPage] = useState(0);
+  const PHOTO_PAGE_SIZE = 24;
+
+  const { data: photos = [], isLoading, isFetching } = useQuery({
+    queryKey: ['photos', job.id, roomId, photoPage],
+    queryFn: async () => {
+      const allPhotos = await base44.entities.Photo.filter({
+        job_id: job.id,
+        is_deleted: false,
+        ...(roomId ? { room_id: roomId } : {}),
+      }, '-created_date', 200);
+      return allPhotos.slice(photoPage * PHOTO_PAGE_SIZE, (photoPage + 1) * PHOTO_PAGE_SIZE);
+    },
     refetchInterval: pendingCount > 0 ? 3000 : false,
-    staleTime: 2 * 60 * 1000,
+    staleTime: 3 * 60 * 1000,
+    gcTime: 5 * 60 * 1000,
     retry: 2,
   });
 
@@ -130,7 +137,7 @@ export default function JobPhotos({ job }) {
       {/* Uploaded photos */}
       {isLoading ? (
         <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
-          {[1,2,3,4,5,6].map((i) => <div key={i} className="aspect-square rounded-lg bg-muted animate-pulse" />)}
+          {[1,2,3,4,5,6,7,8,9,10,11,12].map((i) => <div key={i} className="aspect-square rounded-lg bg-muted animate-pulse" />)}
         </div>
       ) : photos.length === 0 && localQueue.length === 0 ? (
         <div className="text-center py-6">
@@ -151,6 +158,7 @@ export default function JobPhotos({ job }) {
                   className="w-full h-full object-cover cursor-pointer"
                   onClick={() => setLightbox(p)}
                   loading="lazy"
+                  decoding="async"
                 />
                 <PhotoStatusBadge status={p.analysis_status === 'analysis_complete' ? 'uploaded' : (p.sync_status || 'uploaded')} />
                 <button
@@ -162,6 +170,18 @@ export default function JobPhotos({ job }) {
               </div>
             ))}
           </div>
+          
+          {/* Load more photos */}
+          {!isFetching && photos.length === PHOTO_PAGE_SIZE && (
+            <div className="flex justify-center mt-4">
+              <button
+                onClick={() => setPhotoPage(p => p + 1)}
+                className="px-4 h-9 rounded-lg border border-border text-sm font-medium hover:bg-muted transition"
+              >
+                Load More
+              </button>
+            </div>
+          )}
         </div>
       )}
 

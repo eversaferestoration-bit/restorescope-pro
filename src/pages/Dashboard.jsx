@@ -25,17 +25,23 @@ export default function Dashboard() {
 
   const { data: jobs = [], isLoading } = useQuery({
     queryKey: ['jobs-dashboard'],
-    queryFn: () => base44.entities.Job.filter({ is_deleted: false }, '-created_date', 50),
+    queryFn: () => base44.entities.Job.filter({ is_deleted: false }, '-created_date', 30),
+    staleTime: 3 * 60 * 1000,
+    gcTime: 5 * 60 * 1000,
   });
 
   const { data: pendingApprovals = [] } = useQuery({
     queryKey: ['dashboard-pending-approvals-count'],
     queryFn: () => base44.entities.EstimateDraft.filter({ status: 'submitted', is_deleted: false }),
+    staleTime: 2 * 60 * 1000,
+    gcTime: 5 * 60 * 1000,
   });
 
   const { data: syncErrors = [] } = useQuery({
     queryKey: ['dashboard-sync-errors-count'],
     queryFn: () => base44.entities.Photo.filter({ sync_status: 'failed', is_deleted: false }),
+    staleTime: 2 * 60 * 1000,
+    gcTime: 5 * 60 * 1000,
   });
 
   const activeJobs = jobs.filter(j => ['new', 'in_progress'].includes(j.status));

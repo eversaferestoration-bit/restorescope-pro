@@ -15,18 +15,49 @@ const STATUS_COLORS = {
 
 export default function Jobs() {
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 30;
 
-  const { data: jobs = [], isLoading } = useQuery({
-    queryKey: ['jobs'],
-    queryFn: () => base44.entities.Job.filter({ is_deleted: false }, '-created_date', 50),
+  const { data: jobs = [], isLoading, isFetching } = useQuery({
+    queryKey: ['jobs', page, search],
+    queryFn: async () => {
+      // Fetch with pagination
+      const allJobs = await base44.entities.Job.filter({ is_deleted: false }, '-created_date', 200);
+      // Client-side filtering and pagination
+      let filtered = allJobs;
+      if (search) {
+        const searchLower = search.toLowerCase();
+        filtered = allJobs.filter((j) =>
+          j.job_number?.toLowerCase().includes(searchLower) ||
+          j.loss_type?.toLowerCase().includes(searchLower) ||
+          j.status?.toLowerCase().includes(searchLower)
+        );
+      }
+      return filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+    },
+    staleTime: 2 * 60 * 1000,
+    gcTime: 5 * 60 * 1000,
   });
 
-  const filtered = jobs.filter((j) =>
-    !search ||
-    j.job_number?.toLowerCase().includes(search.toLowerCase()) ||
-    j.loss_type?.toLowerCase().includes(search.toLowerCase()) ||
-    j.status?.toLowerCase().includes(search.toLowerCase())
-  );
+  // Get total count for pagination
+  const { data: totalCount = 0 } = useQuery({
+    queryKey: ['jobs-count', search],
+    queryFn: async () => {
+      const allJobs = await base44.entities.Job.filter({ is_deleted: false }, '-created_date', 1000);
+      if (!search) return allJobs.length;
+      const searchLower = search.toLowerCase();
+      return allJobs.filter((j) =>
+        j.job_number?.toLowerCase().includes(searchLower) ||
+        j.loss_type?.toLowerCase().includes(searchLower) ||
+        j.status?.toLowerCase().includes(searchLower)
+      ).length;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+
+  const hasMore = page < totalPages - 1;
 
   return (
     <div className="p-4 md:p-6 max-w-5xl mx-auto">
@@ -63,7 +94,7 @@ export default function Jobs() {
             <div key={i} className="h-20 rounded-xl bg-muted animate-pulse" />
           ))}
         </div>
-      ) : filtered.length === 0 ? (
+      ) : jobs.length === 0 && page === 0 ? (
         <div className="bg-card rounded-xl border border-border p-10 flex flex-col items-center justify-center text-center gap-3">
           <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center">
             <FolderOpen size={22} className="text-muted-foreground" />
@@ -85,7 +116,7 @@ export default function Jobs() {
         </div>
       ) : (
         <div className="space-y-2">
-          {filtered.map((job) => (
+          {jobs.map((job) => (
             <Link
               key={job.id}
               to={`/jobs/${job.id}`}
@@ -121,6 +152,31 @@ export default function Jobs() {
               <ChevronRight size={16} className="text-muted-foreground shrink-0 group-hover:text-primary transition" />
             </Link>
           ))}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-6">
+          <p className="text-xs text-muted-foreground">
+            Showing {(page * PAGE_SIZE) + 1}–{Math.min((page + 1) * PAGE_SIZE, totalCount)} of {totalCount} jobs
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setPage(p => Math.max(0, p - 1))}
+              disabled={page === 0}
+              className="px-3 h-8 rounded-lg border text-xs font-medium hover:bg-muted transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+            <button
+              onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+              disabled={!hasMore}
+              className="px-3 h-8 rounded-lg border text-xs font-medium hover:bg-muted transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+          </div>
         </div>
       )}
     </div>
