@@ -31,20 +31,6 @@ export default function EnterpriseSettings() {
     timezone: 'America/Chicago',
   });
 
-  // Check if admin
-  if (user?.role !== 'admin') {
-    return (
-      <div className="p-6 max-w-4xl mx-auto">
-        <Card className="border-destructive/30 bg-destructive/10">
-          <CardContent className="p-6 text-center">
-            <p className="text-destructive font-semibold">Admin access required</p>
-            <p className="text-sm text-muted-foreground mt-1">Enterprise settings are only available to administrators.</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   // Load enterprise settings
   const { data: enterpriseSettings } = useQuery({
     queryKey: ['enterprise-settings'],
@@ -140,6 +126,19 @@ export default function EnterpriseSettings() {
       [key]: !enterpriseSettings?.[key],
     });
   };
+
+  if (user?.role !== 'admin') {
+    return (
+      <div className="p-6 max-w-4xl mx-auto">
+        <Card className="border-destructive/30 bg-destructive/10">
+          <CardContent className="p-6 text-center">
+            <p className="text-destructive font-semibold">Admin access required</p>
+            <p className="text-sm text-muted-foreground mt-1">Enterprise settings are only available to administrators.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-6">

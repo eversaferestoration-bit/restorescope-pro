@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import UpgradePrompt from '@/components/UpgradePrompt';
 import { base44 } from '@/api/base44Client';
 import { Sparkles, AlertTriangle, CheckCircle2, Loader2, RotateCcw, ChevronDown, ChevronUp, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';

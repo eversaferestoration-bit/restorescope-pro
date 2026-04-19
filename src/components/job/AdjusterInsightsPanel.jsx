@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import UpgradePrompt from '@/components/UpgradePrompt';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { 
@@ -91,6 +93,8 @@ function StatRow({ icon: Icon, label, value, subtext }) {
       </div>
     </div>
   );
+
+  {showUpgrade && <UpgradePrompt feature="adjuster_insights" onClose={() => setShowUpgrade(false)} />}
 }
 
 export default function AdjusterInsightsPanel({ adjusterId }) {
@@ -106,9 +110,16 @@ export default function AdjusterInsightsPanel({ adjusterId }) {
 
   if (!isManager) {
     return (
-      <div className="bg-muted/30 rounded-xl border border-border p-4 text-center">
-        <p className="text-sm text-muted-foreground">Adjuster insights are available for managers and admins only.</p>
-      </div>
+      <button 
+        onClick={() => setShowUpgrade(true)}
+        className="w-full text-left p-4 rounded-xl border border-border bg-muted/30 hover:bg-muted/50 transition"
+      >
+        <div className="flex items-center gap-2 mb-2">
+          <TrendingUp size={16} className="text-purple-600" />
+          <span className="text-sm font-semibold">Adjuster Intelligence</span>
+        </div>
+        <p className="text-xs text-muted-foreground">Upgrade to Business for adjuster insights and negotiation strategies</p>
+      </button>
     );
   }
 
@@ -121,15 +132,18 @@ export default function AdjusterInsightsPanel({ adjusterId }) {
     );
   }
 
-  if (error) {
+  if (error || !insights?.data) {
     return (
-      <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4">
-        <div className="flex items-center gap-2 text-destructive">
-          <AlertCircle size={16} />
-          <p className="text-sm font-medium">Failed to load adjuster insights</p>
+      <button 
+        onClick={() => setShowUpgrade(true)}
+        className="w-full text-left p-4 rounded-xl border border-border bg-muted/30 hover:bg-muted/50 transition"
+      >
+        <div className="flex items-center gap-2 mb-2">
+          <TrendingUp size={16} className="text-purple-600" />
+          <span className="text-sm font-semibold">Adjuster Intelligence</span>
         </div>
-        <p className="text-xs text-muted-foreground mt-1">{error.message}</p>
-      </div>
+        <p className="text-xs text-muted-foreground">Unlock adjuster insights and negotiation strategies</p>
+      </button>
     );
   }
 
