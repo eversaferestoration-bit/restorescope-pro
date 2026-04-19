@@ -61,7 +61,11 @@ export default function Signup() {
     setPasswordError('');
     setLoading(true);
     try {
+      // Step 1: Register auth user
       await base44.auth.register(form.email, form.password, form.full_name);
+      
+      // Step 2: Create company and user profile in onboarding
+      // For now, redirect to onboarding where company name will be collected
       navigate('/onboarding', { replace: true });
     } catch (err) {
       setError(getSafeErrorMessage(err));

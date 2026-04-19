@@ -8,15 +8,49 @@ const steps = [
   { id: 3, label: 'Plan', description: 'Choose how you want to get started' },
 ];
 
+import { base44 } from '@/api/base44Client';
+
 export default function Onboarding() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({ company_name: '', role: '', plan: '' });
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const set = (k) => (v) => setForm((f) => ({ ...f, [k]: v }));
 
-  const handleFinish = () => {
-    navigate('/dashboard', { replace: true });
+  const handleFinish = async () => {
+    if (!form.company_name.trim()) {
+      setError('Company name is required');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      // Complete the signup by creating company and user profile
+      const response = await base44.functions.invoke('completeSignup', {
+        company_name: form.company_name,
+      });
+
+      if (!response.data.success) {
+        setError(response.data.message || 'Setup failed. Please try again.');
+        return;
+      }
+
+      // Success - redirect to dashboard
+      navigate('/dashboard', { replace: true });
+    } catch (err) {
+      console.error('Signup completion error:', err);
+      setError(
+        typeof err === 'object' && err?.message
+          ? err.message
+          : 'Account setup failed. Please contact support.'
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -42,8 +76,14 @@ export default function Onboarding() {
           ))}
         </div>
 
+        {error && (
+          <div className="mb-4 px-4 py-3 rounded-lg bg-destructive/10 text-destructive text-sm border border-destructive/20">
+            {error}
+          </div>
+        )}
+
         <div className="bg-card rounded-2xl border border-border shadow-sm p-6">
-          {step === 1 && (
+           {step === 1 && (
             <>
               <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
                 <Building2 size={20} className="text-primary" />
@@ -112,9 +152,10 @@ export default function Onboarding() {
           <div className="flex justify-end mt-6">
             <button
               onClick={() => step < 3 ? setStep(step + 1) : handleFinish()}
-              className="inline-flex items-center gap-2 px-5 h-10 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition"
+              disabled={loading || (step === 1 && !form.company_name.trim())}
+              className="inline-flex items-center gap-2 px-5 h-10 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition disabled:opacity-60"
             >
-              {step === 3 ? 'Go to Dashboard' : 'Continue'}
+              {loading ? 'Setting up...' : step === 3 ? 'Go to Dashboard' : 'Continue'}
               <ArrowRight size={15} />
             </button>
           </div>
