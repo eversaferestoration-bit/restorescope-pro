@@ -12,6 +12,14 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const getSafeErrorMessage = (error) => {
+    console.error('Login error:', error);
+    if (typeof error === 'object' && error !== null) {
+      return error.message || 'Something went wrong. Please try again.';
+    }
+    return error || 'Something went wrong. Please try again.';
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -20,7 +28,7 @@ export default function Login() {
       await base44.auth.login(email, password);
       navigate(from, { replace: true });
     } catch (err) {
-      setError(err?.message || 'Invalid email or password.');
+      setError(getSafeErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -45,7 +53,7 @@ export default function Login() {
 
           {error && (
             <div className="mb-4 px-3 py-2.5 rounded-lg bg-destructive/10 text-destructive text-sm">
-              {error}
+              {typeof error === 'string' ? error : 'Something went wrong. Please try again.'}
             </div>
           )}
 

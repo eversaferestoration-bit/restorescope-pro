@@ -11,6 +11,14 @@ export default function Signup() {
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
+  const getSafeErrorMessage = (error) => {
+    console.error('Signup error:', error);
+    if (typeof error === 'object' && error !== null) {
+      return error.message || 'Something went wrong. Please try again.';
+    }
+    return error || 'Something went wrong. Please try again.';
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -23,7 +31,7 @@ export default function Signup() {
       await base44.auth.register(form.email, form.password, form.full_name);
       navigate('/onboarding', { replace: true });
     } catch (err) {
-      setError(err?.message || 'Could not create account. Please try again.');
+      setError(getSafeErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -47,7 +55,7 @@ export default function Signup() {
 
           {error && (
             <div className="mb-4 px-3 py-2.5 rounded-lg bg-destructive/10 text-destructive text-sm">
-              {error}
+              {typeof error === 'string' ? error : 'Something went wrong. Please try again.'}
             </div>
           )}
 
