@@ -63,14 +63,24 @@ export default function Signup() {
     setPasswordError('');
     setLoading(true);
     try {
-      // Step 1: Register auth user
-      await base44.auth.register(form.email, form.password, form.full_name);
+      const res = await base44.auth.register(form.email, form.password, form.full_name);
       
-      // Step 2: Create company and user profile in onboarding
-      // For now, redirect to onboarding where company name will be collected
+      if (!res) {
+        throw new Error('Signup failed');
+      }
+      
+      // Redirect to onboarding where company profile will be created
       navigate('/onboarding', { replace: true });
     } catch (err) {
-      setError(err);
+      console.error('Signup error:', err);
+      
+      if (err instanceof Error) {
+        setError(err.message);
+      } else if (typeof err === 'object') {
+        setError(err.message || 'Signup failed');
+      } else {
+        setError('Signup failed');
+      }
     } finally {
       setLoading(false);
     }
