@@ -7,7 +7,11 @@ Deno.serve(async (req) => {
 
     if (!job_id || !client_email || !token) {
       return Response.json(
-        { error: 'Missing parameters' },
+        {
+          success: false,
+          message: 'Missing required parameters',
+          code: 'MISSING_PARAMETERS',
+        },
         { status: 400 }
       );
     }
@@ -34,9 +38,13 @@ Deno.serve(async (req) => {
       documents: sanitized,
     });
   } catch (error) {
-    console.error(error);
+    console.error('[GET_DOCUMENTS_ERROR]', error);
     return Response.json(
-      { error: 'Failed to fetch documents' },
+      {
+        success: false,
+        message: 'Failed to fetch documents. Please try again.',
+        code: 'FETCH_ERROR',
+      },
       { status: 500 }
     );
   }

@@ -7,7 +7,11 @@ Deno.serve(async (req) => {
 
     if (!email || !password) {
       return Response.json(
-        { error: 'Email and password required' },
+        {
+          success: false,
+          message: 'Email and password are required',
+          code: 'MISSING_CREDENTIALS',
+        },
         { status: 400 }
       );
     }
@@ -22,7 +26,11 @@ Deno.serve(async (req) => {
 
     if (insuleds.length === 0) {
       return Response.json(
-        { error: 'Invalid email or password' },
+        {
+          success: false,
+          message: 'Invalid email or password',
+          code: 'INVALID_CREDENTIALS',
+        },
         { status: 401 }
       );
     }
@@ -40,9 +48,13 @@ Deno.serve(async (req) => {
       email: insured.email,
     });
   } catch (error) {
-    console.error(error);
+    console.error('[CLIENT_LOGIN_ERROR]', error);
     return Response.json(
-      { error: 'Login failed' },
+      {
+        success: false,
+        message: 'Login failed. Please try again.',
+        code: 'LOGIN_ERROR',
+      },
       { status: 500 }
     );
   }

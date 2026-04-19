@@ -7,7 +7,11 @@ Deno.serve(async (req) => {
 
     if (!job_id || !client_email || !file_url || !token) {
       return Response.json(
-        { error: 'Missing parameters' },
+        {
+          success: false,
+          message: 'Missing required parameters',
+          code: 'MISSING_PARAMETERS',
+        },
         { status: 400 }
       );
     }
@@ -22,7 +26,11 @@ Deno.serve(async (req) => {
 
     if (jobs.length === 0) {
       return Response.json(
-        { error: 'Job not found' },
+        {
+          success: false,
+          message: 'Job not found',
+          code: 'JOB_NOT_FOUND',
+        },
         { status: 404 }
       );
     }
@@ -38,7 +46,11 @@ Deno.serve(async (req) => {
 
     if (insuleds.length === 0) {
       return Response.json(
-        { error: 'Unauthorized' },
+        {
+          success: false,
+          message: 'Unauthorized to access this job',
+          code: 'UNAUTHORIZED',
+        },
         { status: 403 }
       );
     }
@@ -62,9 +74,13 @@ Deno.serve(async (req) => {
       document,
     });
   } catch (error) {
-    console.error(error);
+    console.error('[CREATE_DOCUMENT_ERROR]', error);
     return Response.json(
-      { error: 'Failed to create document' },
+      {
+        success: false,
+        message: 'Failed to upload document. Please try again.',
+        code: 'DOCUMENT_CREATE_ERROR',
+      },
       { status: 500 }
     );
   }

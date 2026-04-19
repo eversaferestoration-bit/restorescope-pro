@@ -7,7 +7,11 @@ Deno.serve(async (req) => {
 
     if (!client_email || !token) {
       return Response.json(
-        { error: 'Missing email or token' },
+        {
+          success: false,
+          message: 'Email and token are required',
+          code: 'MISSING_CREDENTIALS',
+        },
         { status: 400 }
       );
     }
@@ -22,7 +26,11 @@ Deno.serve(async (req) => {
 
     if (insuleds.length === 0) {
       return Response.json(
-        { error: 'Insured not found' },
+        {
+          success: false,
+          message: 'User not found',
+          code: 'USER_NOT_FOUND',
+        },
         { status: 404 }
       );
     }
@@ -54,9 +62,13 @@ Deno.serve(async (req) => {
       jobs: sanitized,
     });
   } catch (error) {
-    console.error(error);
+    console.error('[GET_JOBS_ERROR]', error);
     return Response.json(
-      { error: 'Failed to fetch jobs' },
+      {
+        success: false,
+        message: 'Failed to fetch jobs. Please try again.',
+        code: 'FETCH_ERROR',
+      },
       { status: 500 }
     );
   }

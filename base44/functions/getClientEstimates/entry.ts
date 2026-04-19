@@ -7,7 +7,11 @@ Deno.serve(async (req) => {
 
     if (!job_ids || job_ids.length === 0 || !token) {
       return Response.json(
-        { error: 'Missing job IDs or token' },
+        {
+          success: false,
+          message: 'Job IDs and token are required',
+          code: 'MISSING_PARAMETERS',
+        },
         { status: 400 }
       );
     }
@@ -52,9 +56,13 @@ Deno.serve(async (req) => {
       estimates,
     });
   } catch (error) {
-    console.error(error);
+    console.error('[GET_ESTIMATES_ERROR]', error);
     return Response.json(
-      { error: 'Failed to fetch estimates' },
+      {
+        success: false,
+        message: 'Failed to fetch estimates. Please try again.',
+        code: 'FETCH_ERROR',
+      },
       { status: 500 }
     );
   }
