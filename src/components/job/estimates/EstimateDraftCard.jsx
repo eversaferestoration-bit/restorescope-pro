@@ -13,6 +13,7 @@ import CarrierResponseGenerator from './CarrierResponseGenerator';
 import OptimizationPanel from './OptimizationPanel';
 import MarketComparisonPanel from './MarketComparisonPanel';
 import NegotiationPanel from './NegotiationPanel';
+import SmartPricingPanel from './SmartPricingPanel';
 
 const STATUS_COLORS = {
   draft:     'bg-blue-100 text-blue-700',
@@ -171,6 +172,12 @@ export default function EstimateDraftCard({ draft, jobId, readOnly }) {
             >
               <Handshake size={11} /> Negotiation
             </button>
+            <button
+              onClick={() => setActiveTab('smart_pricing')}
+              className={cn('inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold transition', activeTab === 'smart_pricing' ? 'border-b-2 border-primary text-primary' : 'text-muted-foreground hover:text-foreground')}
+            >
+              <BarChart3 size={11} /> Smart Pricing
+            </button>
           </div>
 
           {activeTab === 'defense' && <ClaimDefensePanel draft={draft} />}
@@ -216,6 +223,12 @@ export default function EstimateDraftCard({ draft, jobId, readOnly }) {
           {activeTab === 'negotiation' && (
             <div className="p-4">
               <NegotiationPanel estimateId={draft.id} adjusterId={null} />
+            </div>
+          )}
+
+          {activeTab === 'smart_pricing' && (
+            <div className="p-4">
+              <SmartPricingPanel estimateId={draft.id} />
             </div>
           )}
 
