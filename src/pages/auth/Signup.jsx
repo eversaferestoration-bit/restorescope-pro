@@ -34,12 +34,14 @@ export default function Signup() {
     }
   };
 
-  const getSafeErrorMessage = (error) => {
-    console.error('Signup error:', error);
-    if (typeof error === 'object' && error !== null) {
-      return error.message || 'Something went wrong. Please try again.';
+  const getErrorMessage = (err) => {
+    console.log('Signup error:', err);
+    if (!err) return null;
+    if (typeof err === 'string') return err;
+    if (typeof err === 'object') {
+      return err.message || err.error || 'Something went wrong. Please try again.';
     }
-    return error || 'Something went wrong. Please try again.';
+    return 'Something went wrong. Please try again.';
   };
 
   const handleSubmit = async (e) => {
@@ -68,7 +70,7 @@ export default function Signup() {
       // For now, redirect to onboarding where company name will be collected
       navigate('/onboarding', { replace: true });
     } catch (err) {
-      setError(getSafeErrorMessage(err));
+      setError(err);
     } finally {
       setLoading(false);
     }
@@ -91,8 +93,8 @@ export default function Signup() {
           <p className="text-sm text-muted-foreground mb-6">Start your free trial today</p>
 
           {error && (
-            <div className="mb-4 px-3 py-2.5 rounded-lg bg-destructive/10 text-destructive text-sm">
-              {typeof error === 'string' ? error : 'Something went wrong. Please try again.'}
+            <div className="mb-4 px-3 py-2.5 rounded-lg bg-destructive/10 text-destructive text-sm border border-destructive/20">
+              {getErrorMessage(error)}
             </div>
           )}
 
