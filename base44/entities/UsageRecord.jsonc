@@ -1,0 +1,76 @@
+{
+  "name": "UsageRecord",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string"
+    },
+    "subscription_id": {
+      "type": "string"
+    },
+    "period_start": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "period_end": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "jobs_used": {
+      "type": "integer",
+      "default": 0
+    },
+    "jobs_limit": {
+      "type": "integer"
+    },
+    "ai_analyses_used": {
+      "type": "integer",
+      "default": 0
+    },
+    "ai_analyses_limit": {
+      "type": "integer"
+    },
+    "storage_used_mb": {
+      "type": "number",
+      "default": 0
+    },
+    "storage_limit_mb": {
+      "type": "number"
+    },
+    "overage_jobs": {
+      "type": "integer",
+      "default": 0
+    },
+    "overage_ai": {
+      "type": "integer",
+      "default": 0
+    },
+    "overage_charges": {
+      "type": "number",
+      "default": 0
+    },
+    "total_charges": {
+      "type": "number",
+      "default": 0
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "finalized",
+        "billed"
+      ],
+      "default": "active"
+    },
+    "billed_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "company_id",
+    "subscription_id",
+    "period_start",
+    "period_end"
+  ]
+}

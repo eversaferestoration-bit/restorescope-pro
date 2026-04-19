@@ -3,16 +3,15 @@
   "type": "object",
   "properties": {
     "company_id": {
-      "type": "string",
-      "description": "Parent company ID"
+      "type": "string"
     },
     "name": {
       "type": "string",
-      "description": "Location/branch name"
+      "description": "Location name"
     },
     "code": {
       "type": "string",
-      "description": "Unique location code (e.g., 'HQ', 'WEST-01')"
+      "description": "Unique code for this location"
     },
     "address": {
       "type": "string"
@@ -45,9 +44,9 @@
       "type": "string",
       "description": "Location-specific pricing profile"
     },
-    "settings": {
-      "type": "object",
-      "description": "Location-specific settings"
+    "timezone": {
+      "type": "string",
+      "default": "America/Chicago"
     },
     "is_deleted": {
       "type": "boolean",

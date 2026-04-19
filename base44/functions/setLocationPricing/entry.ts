@@ -48,13 +48,13 @@ Deno.serve(async (req) => {
   }
 
   // Verify pricing profile exists
-  const profiles = await base44.asServiceRole.entities.PricingProfile.filter({
+  const pricingProfiles = await base44.asServiceRole.entities.PricingProfile.filter({
     id: pricing_profile_id,
     company_id,
     is_deleted: false,
   });
 
-  if (!profiles.length) {
+  if (!pricingProfiles.length) {
     return Response.json({ error: 'Pricing profile not found' }, { status: 404 });
   }
 

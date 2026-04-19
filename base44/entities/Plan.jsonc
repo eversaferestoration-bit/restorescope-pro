@@ -8,6 +8,15 @@
     "code": {
       "type": "string"
     },
+    "tier": {
+      "type": "string",
+      "enum": [
+        "starter",
+        "professional",
+        "business",
+        "enterprise"
+      ]
+    },
     "monthly_price": {
       "type": "number"
     },
@@ -32,6 +41,26 @@
         "type": "string"
       }
     },
+    "overage_job_price": {
+      "type": "number",
+      "description": "Price per additional job beyond limit"
+    },
+    "overage_ai_price": {
+      "type": "number",
+      "description": "Price per additional AI analysis beyond limit"
+    },
+    "premium_analytics": {
+      "type": "boolean",
+      "default": false
+    },
+    "enterprise_features": {
+      "type": "boolean",
+      "default": false
+    },
+    "custom_pricing": {
+      "type": "boolean",
+      "default": false
+    },
     "is_active": {
       "type": "boolean",
       "default": true
@@ -39,6 +68,7 @@
   },
   "required": [
     "name",
-    "code"
+    "code",
+    "tier"
   ]
 }
