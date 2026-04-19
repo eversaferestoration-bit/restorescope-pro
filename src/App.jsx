@@ -15,7 +15,7 @@ import ForgotPassword from '@/pages/auth/ForgotPassword';
 
 // App pages
 import Onboarding from '@/pages/Onboarding';
-import Dashboard from '@/pages/Dashboard.jsx';
+import Dashboard from '@/pages/Dashboard';
 import Jobs from '@/pages/Jobs';
 import NewJob from '@/pages/NewJob';
 import JobDetail from '@/pages/JobDetail';
