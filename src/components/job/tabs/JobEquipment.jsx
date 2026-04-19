@@ -26,6 +26,8 @@ export default function JobEquipment({ job }) {
   const { data: equipment = [], isLoading } = useQuery({
     queryKey: ['equipment', job.id, roomId],
     queryFn: () => base44.entities.EquipmentLog.filter({ job_id: job.id, ...(roomId ? { room_id: roomId } : {}), is_deleted: false }, '-placed_at'),
+    staleTime: 3 * 60 * 1000,
+    retry: 2,
   });
 
   const addMutation = useMutation({

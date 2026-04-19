@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import RoomPicker from '@/components/job/RoomPicker';
 import ScopeItemRow from '@/components/job/scope/ScopeItemRow';
 import ScopeSummaryBar from '@/components/job/scope/ScopeSummaryBar';
+import LoadingSkeleton from '@/components/ui/LoadingSkeleton';
 
 const CATEGORIES = ['containment', 'demolition', 'drying', 'cleaning', 'deodorization', 'hepa', 'contents', 'documentation'];
 const UNITS = ['SF', 'LF', 'SY', 'EA', 'HR', 'DAY', 'EA/DAY', 'LS'];
@@ -107,6 +108,8 @@ export default function JobScope({ job }) {
       ...(roomId ? { room_id: roomId } : {}),
     }, 'category'),
     enabled: !!job.id,
+    staleTime: 3 * 60 * 1000,
+    retry: 2,
   });
 
   const updateMutation = useMutation({
@@ -355,7 +358,14 @@ export default function JobScope({ job }) {
 
       {/* Items grouped by category */}
       {isLoading ? (
-        <div className="space-y-2">{[1,2,3].map((i) => <div key={i} className="h-14 rounded-xl bg-muted animate-pulse" />)}</div>
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="rounded-xl border border-border p-3 space-y-2">
+              <LoadingSkeleton className="h-4 w-24" />
+              <LoadingSkeleton className="h-8 w-full" />
+            </div>
+          ))}
+        </div>
       ) : Object.keys(grouped).length === 0 ? (
         <div className="bg-card rounded-xl border border-border p-10 text-center">
           <Zap size={28} className="mx-auto text-muted-foreground mb-2" />

@@ -61,6 +61,8 @@ export default function JobDetail() {
     queryKey: ['job', jobId],
     queryFn: () => base44.entities.Job.filter({ id: jobId, is_deleted: false }),
     select: (data) => data[0],
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: 2,
   });
 
   // Analyze risk on job load

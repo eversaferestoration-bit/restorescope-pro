@@ -25,6 +25,8 @@ export default function JobContainment({ job }) {
   const { data: containments = [], isLoading } = useQuery({
     queryKey: ['containments', job.id, roomId],
     queryFn: () => base44.entities.Containment.filter({ job_id: job.id, ...(roomId ? { room_id: roomId } : {}), is_deleted: false }, '-installed_at'),
+    staleTime: 3 * 60 * 1000,
+    retry: 2,
   });
 
   const addMutation = useMutation({

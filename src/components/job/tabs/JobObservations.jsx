@@ -26,6 +26,8 @@ export default function JobObservations({ job }) {
     queryKey: ['observations', job.id, roomId],
     queryFn: () => base44.entities.Observation.filter({ job_id: job.id, ...(roomId ? { room_id: roomId } : {}), is_deleted: false }, '-recorded_at'),
     enabled: !!job.id,
+    staleTime: 3 * 60 * 1000,
+    retry: 2,
   });
 
   const addMutation = useMutation({

@@ -28,6 +28,8 @@ export default function JobInsuredClaim({ job }) {
     queryFn: () => base44.entities.Insured.filter({ id: job.insured_id, company_id: job.company_id, is_deleted: false }),
     select: (d) => d[0],
     enabled: !!job.insured_id && !!job.company_id,
+    staleTime: 10 * 60 * 1000,
+    retry: 2,
   });
 
   const { data: claim } = useQuery({
@@ -35,6 +37,8 @@ export default function JobInsuredClaim({ job }) {
     queryFn: () => base44.entities.Claim.filter({ id: job.claim_id, company_id: job.company_id, is_deleted: false }),
     select: (d) => d[0],
     enabled: !!job.claim_id && !!job.company_id,
+    staleTime: 10 * 60 * 1000,
+    retry: 2,
   });
 
   const { data: carrier } = useQuery({
@@ -42,6 +46,8 @@ export default function JobInsuredClaim({ job }) {
     queryFn: () => base44.entities.Carrier.filter({ id: claim.carrier_id, company_id: job.company_id, is_deleted: false }),
     select: (d) => d[0],
     enabled: !!claim?.carrier_id && !!job.company_id,
+    staleTime: 10 * 60 * 1000,
+    retry: 2,
   });
 
   const { data: adjuster } = useQuery({
@@ -49,6 +55,8 @@ export default function JobInsuredClaim({ job }) {
     queryFn: () => base44.entities.Adjuster.filter({ id: claim.adjuster_id, company_id: job.company_id, is_deleted: false }),
     select: (d) => d[0],
     enabled: !!claim?.adjuster_id && !!job.company_id,
+    staleTime: 10 * 60 * 1000,
+    retry: 2,
   });
 
   return (

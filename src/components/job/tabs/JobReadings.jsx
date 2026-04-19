@@ -121,11 +121,15 @@ export default function JobReadings({ job }) {
   const { data: moisture = [] } = useQuery({
     queryKey: ['moisture', job.id, roomId],
     queryFn: () => base44.entities.MoistureReading.filter({ job_id: job.id, ...(roomId ? { room_id: roomId } : {}), is_deleted: false }, '-recorded_at'),
+    staleTime: 3 * 60 * 1000,
+    retry: 2,
   });
 
   const { data: envReadings = [] } = useQuery({
     queryKey: ['env', job.id, roomId],
     queryFn: () => base44.entities.EnvironmentalReading.filter({ job_id: job.id, ...(roomId ? { room_id: roomId } : {}), is_deleted: false }, '-recorded_at'),
+    staleTime: 3 * 60 * 1000,
+    retry: 2,
   });
 
   const deleteMoisture = useMutation({

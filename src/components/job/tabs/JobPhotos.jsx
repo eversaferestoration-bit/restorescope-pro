@@ -50,7 +50,9 @@ export default function JobPhotos({ job }) {
       is_deleted: false,
       ...(roomId ? { room_id: roomId } : {}),
     }, '-created_date'),
-    refetchInterval: pendingCount > 0 ? 3000 : false, // auto-refresh while syncing
+    refetchInterval: pendingCount > 0 ? 3000 : false,
+    staleTime: 2 * 60 * 1000,
+    retry: 2,
   });
 
   const deleteMutation = useMutation({
@@ -144,10 +146,11 @@ export default function JobPhotos({ job }) {
             {photos.map((p) => (
               <div key={p.id} className="relative group aspect-square rounded-lg overflow-hidden bg-muted">
                 <img
-                  src={p.file_url}
+                  src={p.thumbnail_url || p.file_url}
                   alt={p.caption || 'photo'}
                   className="w-full h-full object-cover cursor-pointer"
                   onClick={() => setLightbox(p)}
+                  loading="lazy"
                 />
                 <PhotoStatusBadge status={p.analysis_status === 'analysis_complete' ? 'uploaded' : (p.sync_status || 'uploaded')} />
                 <button
@@ -174,7 +177,7 @@ export default function JobPhotos({ job }) {
             >
               <X size={14} className="text-white" />
             </button>
-            <img src={lightbox.file_url} className="w-full rounded-xl object-contain max-h-[55vh]" />
+            <img src={lightbox.file_url} className="w-full rounded-xl object-contain max-h-[55vh]" loading="lazy" />
             <div className="mt-2">
               {lightbox.caption && <p className="text-white text-sm text-center">{lightbox.caption}</p>}
               <p className="text-white/50 text-xs text-center mt-0.5">{lightbox.taken_by}</p>

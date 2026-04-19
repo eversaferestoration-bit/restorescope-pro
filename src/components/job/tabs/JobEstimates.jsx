@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import EstimateDraftCard from '@/components/job/estimates/EstimateDraftCard';
 import JobDefense from '@/components/job/tabs/JobDefense';
 import JobSupplements from '@/components/job/tabs/JobSupplements';
+import LoadingSkeleton from '@/components/ui/LoadingSkeleton';
 
 export default function JobEstimates({ job }) {
   const { user } = useAuth();
@@ -21,6 +22,8 @@ export default function JobEstimates({ job }) {
   const { data: drafts = [], isLoading } = useQuery({
     queryKey: ['estimates', job.id],
     queryFn: () => base44.entities.EstimateDraft.filter({ job_id: job.id, is_deleted: false }, '-version_number'),
+    staleTime: 5 * 60 * 1000,
+    retry: 2,
   });
 
   const { data: profiles = [] } = useQuery({
@@ -45,8 +48,9 @@ export default function JobEstimates({ job }) {
     } catch (err) {
       const data = err?.response?.data;
       setError(data?.message ? data : { message: data?.detail || data?.message || 'Failed to generate estimate. Please try again.' });
+    } finally {
+      setGenerating(false);
     }
-    setGenerating(false);
   };
 
   const handleOpenDefense = (draftId) => {
@@ -154,7 +158,20 @@ export default function JobEstimates({ job }) {
 
       {/* Draft list */}
       {isLoading ? (
-        <div className="space-y-2">{[1, 2].map((i) => <div key={i} className="h-20 rounded-xl bg-muted animate-pulse" />)}</div>
+        <div className="space-y-3">
+          {[1, 2].map((i) => (
+            <div key={i} className="rounded-xl border border-border p-4 space-y-2">
+              <div className="flex justify-between">
+                <LoadingSkeleton className="h-5 w-32" />
+                <LoadingSkeleton className="h-6 w-20" />
+              </div>
+              <div className="flex gap-2">
+                <LoadingSkeleton className="h-4 w-16" />
+                <LoadingSkeleton className="h-4 w-16" />
+              </div>
+            </div>
+          ))}
+        </div>
       ) : drafts.length === 0 ? (
         <div className="bg-card rounded-xl border border-border p-10 text-center">
           <FilePlus size={28} className="mx-auto text-muted-foreground mb-2" />

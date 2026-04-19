@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { Plus, Trash2, Save, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
+import LoadingSkeleton from '@/components/ui/LoadingSkeleton';
 
 const ROOM_TYPES = ['Living Room', 'Bedroom', 'Bathroom', 'Kitchen', 'Hallway', 'Basement', 'Attic', 'Garage', 'Office', 'Other'];
 const FLOOR_LEVELS = ['Basement', '1st Floor', '2nd Floor', '3rd Floor', 'Attic'];
@@ -88,6 +89,8 @@ export default function JobRooms({ job }) {
   const { data: rooms = [], isLoading } = useQuery({
     queryKey: ['rooms', job.id],
     queryFn: () => base44.entities.Room.filter({ job_id: job.id, is_deleted: false }, 'sort_order'),
+    staleTime: 5 * 60 * 1000,
+    retry: 2,
   });
 
   // Observation counts per room
@@ -146,7 +149,17 @@ export default function JobRooms({ job }) {
       )}
 
       {isLoading ? (
-        <div className="space-y-2">{[1, 2].map((i) => <div key={i} className="h-14 rounded-xl bg-muted animate-pulse" />)}</div>
+        <div className="space-y-3">
+          {[1, 2].map((i) => (
+            <div key={i} className="rounded-xl border border-border p-4 space-y-2">
+              <LoadingSkeleton className="h-5 w-32" />
+              <div className="flex gap-2">
+                <LoadingSkeleton className="h-4 w-16" />
+                <LoadingSkeleton className="h-4 w-16" />
+              </div>
+            </div>
+          ))}
+        </div>
       ) : rooms.length === 0 ? (
         <div className="bg-card rounded-xl border border-border p-8 text-center">
           <p className="text-sm text-muted-foreground">No rooms added yet.</p>
