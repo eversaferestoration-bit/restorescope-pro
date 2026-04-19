@@ -13,6 +13,10 @@ import Login from '@/pages/auth/Login';
 import Signup from '@/pages/auth/Signup';
 import ForgotPassword from '@/pages/auth/ForgotPassword';
 
+// Client pages
+import ClientLogin from '@/pages/client/ClientLogin';
+import ClientPortal from '@/pages/client/ClientPortal';
+
 // App pages
 import Onboarding from '@/pages/Onboarding';
 import Dashboard from '@/pages/Dashboard';
@@ -56,6 +60,10 @@ const AuthenticatedApp = () => {
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
+      
+      {/* Client portal routes */}
+      <Route path="/client-login" element={<ClientLogin />} />
+      <Route path="/client-portal" element={<ClientPortal />} />
 
       {/* Onboarding — protected but outside app shell */}
       <Route

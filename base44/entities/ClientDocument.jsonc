@@ -1,0 +1,45 @@
+{
+  "name": "ClientDocument",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string"
+    },
+    "job_id": {
+      "type": "string"
+    },
+    "file_url": {
+      "type": "string",
+      "format": "uri"
+    },
+    "file_name": {
+      "type": "string"
+    },
+    "file_size": {
+      "type": "integer",
+      "description": "File size in bytes"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "received",
+        "reviewed"
+      ],
+      "default": "received"
+    },
+    "created_by": {
+      "type": "string",
+      "description": "Client email who uploaded"
+    },
+    "is_deleted": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "company_id",
+    "job_id",
+    "file_url",
+    "file_name"
+  ]
+}
