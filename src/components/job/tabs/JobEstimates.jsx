@@ -27,15 +27,20 @@ export default function JobEstimates({ job }) {
   const handleGenerate = async () => {
     setGenerating(true);
     setError(null);
-    const res = await base44.functions.invoke('generateEstimateDraft', {
-      job_id: job.id,
-      pricing_profile_id: profileId || undefined,
-    });
-    const data = res.data;
-    if (data.error) {
-      setError(data);
-    } else {
-      qc.invalidateQueries(['estimates', job.id]);
+    try {
+      const res = await base44.functions.invoke('generateEstimateDraft', {
+        job_id: job.id,
+        pricing_profile_id: profileId || undefined,
+      });
+      const data = res.data;
+      if (data.error) {
+        setError(data);
+      } else {
+        qc.invalidateQueries(['estimates', job.id]);
+      }
+    } catch (err) {
+      const data = err?.response?.data;
+      setError(data?.message ? data : { message: data?.detail || data?.message || 'Failed to generate estimate. Please try again.' });
     }
     setGenerating(false);
   };
