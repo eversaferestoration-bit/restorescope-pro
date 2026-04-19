@@ -72,6 +72,8 @@ export default function Signup() {
       // Redirect to onboarding where company profile will be created
       navigate('/onboarding', { replace: true });
     } catch (err) {
+      console.log('RAW ERROR:', err);
+      console.log('STRINGIFIED:', JSON.stringify(err));
       console.error('Signup error:', err);
       
       if (err instanceof Error) {
