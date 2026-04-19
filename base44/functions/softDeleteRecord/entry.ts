@@ -1,6 +1,6 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
-const DELETABLE_ENTITIES = ['Job', 'Room', 'Photo', 'Observation', 'MoistureReading', 'EnvironmentalReading', 'EquipmentLog', 'Containment', 'Claim'];
+const DELETABLE_ENTITIES = ['Job', 'Room', 'Photo', 'Observation', 'MoistureReading', 'EnvironmentalReading', 'EquipmentLog', 'Containment', 'Claim', 'ScopeItem', 'EstimateDraft'];
 const ADMIN_ONLY_ENTITIES = ['Job', 'Claim'];
 
 Deno.serve(async (req) => {

@@ -39,7 +39,7 @@ function TimelineEntry({ draft, isLast }) {
               </span>
             </div>
             <div className="flex items-center gap-3 mt-1 flex-wrap text-xs text-muted-foreground">
-              {draft.created_date && <span>Created {format(new Date(draft.created_date), 'MMM d, yyyy h:mm a')}</span>}
+              {draft.created_date && !isNaN(new Date(draft.created_date)) && <span>Created {format(new Date(draft.created_date), 'MMM d, yyyy h:mm a')}</span>}
               {draft.created_by && <span>by {draft.created_by}</span>}
             </div>
           </div>
@@ -54,7 +54,7 @@ function TimelineEntry({ draft, isLast }) {
             <CheckCircle2 size={13} className="text-green-600" />
             <p className="text-xs text-green-700">
               Approved by <span className="font-semibold">{draft.approved_by}</span>
-              {draft.approved_at && <> on {format(new Date(draft.approved_at), 'MMM d, yyyy h:mm a')}</>}
+              {draft.approved_at && !isNaN(new Date(draft.approved_at)) && <> on {format(new Date(draft.approved_at), 'MMM d, yyyy h:mm a')}</>}
             </p>
           </div>
         )}

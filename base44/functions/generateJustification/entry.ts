@@ -22,6 +22,12 @@ Deno.serve(async (req) => {
   if (!jobs.length) return Response.json({ error: 'Job not found' }, { status: 404 });
   const job = jobs[0];
 
+  // Verify company membership
+  if (user.role !== 'admin') {
+    const profiles = await base44.asServiceRole.entities.UserProfile.filter({ user_id: user.id, company_id: job.company_id, is_deleted: false });
+    if (!profiles.length) return Response.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
   // Get unique confirmed categories
   const categories = [...new Set(scopeItems.map((i) => i.category))];
 

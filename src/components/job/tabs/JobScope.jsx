@@ -107,18 +107,13 @@ export default function JobScope({ job }) {
     enabled: !!job.id,
   });
 
-  const saveMutation = useMutation({
-    mutationFn: (data) => base44.entities.ScopeItem.create(data),
-    onSuccess: () => qc.invalidateQueries(['scope', job.id]),
-  });
-
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.ScopeItem.update(id, data),
+    mutationFn: ({ id, data }) => base44.functions.invoke('saveScopeItem', { action: 'update', item_id: id, data }),
     onSuccess: () => qc.invalidateQueries(['scope', job.id]),
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.ScopeItem.update(id, { is_deleted: true }),
+    mutationFn: (id) => base44.functions.invoke('saveScopeItem', { action: 'delete', item_id: id, data: {} }),
     onSuccess: () => qc.invalidateQueries(['scope', job.id]),
   });
 
@@ -135,20 +130,21 @@ export default function JobScope({ job }) {
       const newItems = suggestions.filter((s) => !existingDescs.includes(s.description + s.category));
 
       for (const item of newItems) {
-        await base44.entities.ScopeItem.create({
-          company_id: job.company_id,
+        await base44.functions.invoke('saveScopeItem', {
+          action: 'create',
           job_id: job.id,
-          room_id: roomId,
-          category: item.category,
-          description: item.description,
-          unit: item.unit,
-          quantity: item.quantity,
-          source: item.source,
-          confidence: item.confidence,
-          rule_id: item.rule_id || null,
-          status: 'suggested',
-          notes: item.notes || null,
-          is_deleted: false,
+          data: {
+            room_id: roomId,
+            category: item.category,
+            description: item.description,
+            unit: item.unit,
+            quantity: item.quantity,
+            source: item.source,
+            confidence: item.confidence,
+            rule_id: item.rule_id || null,
+            status: 'suggested',
+            notes: item.notes || null,
+          },
         });
       }
 
@@ -161,12 +157,10 @@ export default function JobScope({ job }) {
 
   const handleAddManual = async (formData) => {
     try {
-      await base44.entities.ScopeItem.create({
-        company_id: job.company_id,
+      await base44.functions.invoke('saveScopeItem', {
+        action: 'create',
         job_id: job.id,
-        room_id: roomId || undefined,
-        ...formData,
-        is_deleted: false,
+        data: { room_id: roomId || null, ...formData },
       });
       qc.invalidateQueries(['scope', job.id]);
     } catch {

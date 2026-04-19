@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
-import { logAction } from '@/lib/auditLog';
 import { Plus, Trash2, Save, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
 
 const ROOM_TYPES = ['Living Room', 'Bedroom', 'Bathroom', 'Kitchen', 'Hallway', 'Basement', 'Attic', 'Garage', 'Office', 'Other'];
@@ -100,9 +99,8 @@ export default function JobRooms({ job }) {
   const obsByRoom = observations.reduce((acc, o) => { acc[o.room_id] = (acc[o.room_id] || 0) + 1; return acc; }, {});
 
   const addMutation = useMutation({
-    mutationFn: (data) => base44.entities.Room.create(data),
-    onSuccess: async (room) => {
-      await logAction(user, 'Room', room.id, 'created', `Room "${room.name}" added to job ${job.job_number}`, { job_id: job.id });
+    mutationFn: (data) => base44.functions.invoke('createRoom', data),
+    onSuccess: () => {
       qc.invalidateQueries(['rooms', job.id]);
       setAdding(false);
       setForm({ name: '', room_type: '', floor_level: '', size_sqft: '', ceiling_height_ft: '', status: '', notes: '' });
@@ -110,7 +108,7 @@ export default function JobRooms({ job }) {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => base44.entities.Room.update(id, { is_deleted: true }),
+    mutationFn: (id) => base44.functions.invoke('softDeleteRecord', { entity_type: 'Room', entity_id: id }),
     onSuccess: () => qc.invalidateQueries(['rooms', job.id]),
   });
 
@@ -130,7 +128,7 @@ export default function JobRooms({ job }) {
 
       {adding && (
         <form
-          onSubmit={(e) => { e.preventDefault(); addMutation.mutate({ ...form, company_id: job.company_id, job_id: job.id, is_deleted: false, size_sqft: form.size_sqft ? Number(form.size_sqft) : undefined, ceiling_height_ft: form.ceiling_height_ft ? Number(form.ceiling_height_ft) : undefined }); }}
+          onSubmit={(e) => { e.preventDefault(); addMutation.mutate({ job_id: job.id, name: form.name, room_type: form.room_type || undefined, floor_level: form.floor_level || undefined, size_sqft: form.size_sqft ? Number(form.size_sqft) : undefined, ceiling_height_ft: form.ceiling_height_ft ? Number(form.ceiling_height_ft) : undefined, status: form.status || undefined, notes: form.notes || undefined }); }}
           className="bg-card rounded-xl border border-primary/40 p-4 grid grid-cols-2 gap-3"
         >
           <div className="col-span-2"><label className="text-xs font-medium">Room Name *</label><input required className={inputCls} value={form.name} onChange={set('name')} placeholder="e.g. Master Bedroom" /></div>

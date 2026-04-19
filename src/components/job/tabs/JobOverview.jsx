@@ -36,7 +36,7 @@ export default function JobOverview({ job }) {
   const [form, setForm] = useState({ ...job });
 
   const mutation = useMutation({
-    mutationFn: (data) => base44.entities.Job.update(job.id, data),
+    mutationFn: (data) => base44.functions.invoke('updateJob', { job_id: job.id, updates: data }),
     onSuccess: () => {
       qc.invalidateQueries(['job', job.id]);
       setEditing(false);
