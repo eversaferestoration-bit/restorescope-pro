@@ -42,6 +42,7 @@ function SeverityBar({ score }) {
 }
 
 export default function PhotoAnalysisPanel({ photo, jobId }) {
+  const [showUpgrade, setShowUpgrade] = useState(false);
   const [analysis, setAnalysis] = useState(
     // Pre-populate from entity fields if already analyzed
     photo.analysis_status === 'analysis_complete' && photo.damage_tags?.length
@@ -64,12 +65,26 @@ export default function PhotoAnalysisPanel({ photo, jobId }) {
   const analyze = async () => {
     setLoading(true);
     setExpanded(true);
-    const res = await base44.functions.invoke('analyzePhoto', {
-      photo_id: photo.id,
-      file_url: photo.file_url,
-      job_id: jobId,
-    });
-    setAnalysis(res.data.analysis);
+    try {
+      const res = await base44.functions.invoke('analyzePhoto', {
+        photo_id: photo.id,
+        file_url: photo.file_url,
+        job_id: jobId,
+      });
+      
+      // Check if analysis failed due to limits
+      if (res.data.error === 'limit_reached' || res.data.limit_reached) {
+        setShowUpgrade(true);
+        setLoading(false);
+        return;
+      }
+      
+      setAnalysis(res.data.analysis);
+    } catch (error) {
+      if (error?.response?.data?.error === 'limit_reached') {
+        setShowUpgrade(true);
+      }
+    }
     setLoading(false);
   };
 
@@ -195,4 +210,6 @@ export default function PhotoAnalysisPanel({ photo, jobId }) {
       )}
     </div>
   );
+
+  {showUpgrade && <UpgradePrompt feature="ai_overage" onClose={() => setShowUpgrade(false)} />}
 }

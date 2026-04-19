@@ -1,6 +1,9 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
+import { useAuth } from '@/lib/AuthContext';
+import UpgradePrompt from '@/components/UpgradePrompt';
 import { useAuth } from '@/lib/AuthContext';
 import { FolderOpen, Send, Camera, CloudOff, Plus, ChevronRight, AlertCircle, Clock } from 'lucide-react';
 import { format } from 'date-fns';
@@ -11,6 +14,7 @@ import MissingPhotosWidget from '@/components/dashboard/MissingPhotosWidget';
 import SyncErrorsWidget from '@/components/dashboard/SyncErrorsWidget';
 import UsageStatsWidget from '@/components/dashboard/UsageStatsWidget';
 import RecentActivityWidget from '@/components/dashboard/RecentActivityWidget';
+import UpgradePrompt from '@/components/UpgradePrompt';
 
 const STATUS_COLORS = {
   new:              'bg-blue-100 text-blue-700',
@@ -22,6 +26,7 @@ const STATUS_COLORS = {
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const [showUpgrade, setShowUpgrade] = useState(false);
 
   const { data: jobs = [], isLoading } = useQuery({
     queryKey: ['jobs-dashboard'],
@@ -180,4 +185,6 @@ export default function Dashboard() {
       </div>
     </div>
   );
+
+  {showUpgrade && <UpgradePrompt feature="premium_analytics" onClose={() => setShowUpgrade(false)} />}
 }
