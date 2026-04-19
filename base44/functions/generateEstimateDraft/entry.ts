@@ -74,6 +74,12 @@ Deno.serve(async (req) => {
   if (!jobs.length) return Response.json({ error: 'Job not found' }, { status: 404 });
   const job = jobs[0];
 
+  // Verify caller belongs to this company
+  if (user.role !== 'admin') {
+    const profiles = await base44.asServiceRole.entities.UserProfile.filter({ user_id: user.id, company_id: job.company_id, is_deleted: false });
+    if (!profiles.length) return Response.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
   // Check subscription (only if company_id is a valid non-empty value)
   if (job.company_id && job.company_id !== 'default') {
     try {

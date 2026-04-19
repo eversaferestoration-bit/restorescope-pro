@@ -14,7 +14,7 @@ Deno.serve(async (req) => {
   if (!drafts.length) return Response.json({ error: 'Draft not found' }, { status: 404 });
   const draft = drafts[0];
 
-  if (!['draft', 'pending_review'].includes(draft.status)) {
+  if (draft.status !== 'draft') {
     return Response.json({ error: 'Cannot recalculate an approved or superseded estimate.' }, { status: 400 });
   }
 

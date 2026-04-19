@@ -1,7 +1,8 @@
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
 
-export default function StatCard({ label, value, icon: Icon, color = 'text-primary', bg = 'bg-primary/10', to, loading, sublabel, urgent }) {
+export default function StatCard({ label, value, icon: IconComponent, color = 'text-primary', bg = 'bg-primary/10', to, loading, sublabel, urgent }) {
+  const Icon = IconComponent;
   const inner = (
     <div className={cn(
       'bg-card rounded-xl border p-4 flex items-start gap-3 transition-all',

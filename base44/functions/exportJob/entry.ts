@@ -478,11 +478,19 @@ Deno.serve(async (req) => {
   if (!job_id || !export_type) return Response.json({ error: 'job_id and export_type required' }, { status: 400 });
 
   // Load all required data in parallel
-  const [jobs, rooms, insureds, properties, drafts, photos, observations, moisture, env] = await Promise.all([
-    base44.asServiceRole.entities.Job.filter({ id: job_id, is_deleted: false }),
+  // Load job first so we can scope all subsequent queries by company_id
+  const jobs = await base44.asServiceRole.entities.Job.filter({ id: job_id, is_deleted: false });
+  if (!jobs.length) return Response.json({ error: 'Job not found' }, { status: 404 });
+  const job = jobs[0];
+
+  // Verify caller belongs to this company (non-admins must have a UserProfile in this company)
+  if (user.role !== 'admin') {
+    const profiles = await base44.asServiceRole.entities.UserProfile.filter({ user_id: user.id, company_id: job.company_id, is_deleted: false });
+    if (!profiles.length) return Response.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  const [rooms, drafts, photos, observations, moisture, env] = await Promise.all([
     base44.asServiceRole.entities.Room.filter({ job_id, is_deleted: false }),
-    base44.asServiceRole.entities.Insured.filter({}),
-    base44.asServiceRole.entities.Property.filter({}),
     base44.asServiceRole.entities.EstimateDraft.filter({ job_id, is_deleted: false }, '-version_number'),
     base44.asServiceRole.entities.Photo.filter({ job_id, is_deleted: false }),
     base44.asServiceRole.entities.Observation.filter({ job_id, is_deleted: false }),
@@ -490,17 +498,19 @@ Deno.serve(async (req) => {
     base44.asServiceRole.entities.EnvironmentalReading.filter({ job_id, is_deleted: false }),
   ]);
 
-  if (!jobs.length) return Response.json({ error: 'Job not found' }, { status: 404 });
-  const job = jobs[0];
-
   // Only approved/locked estimates are exportable
   const approved = drafts.find((d) => d.status === 'approved' || d.status === 'locked');
   if (!approved && export_type !== 'photos') {
     return Response.json({ error: 'no_approved_estimate', message: 'No approved estimate found. An estimate must be approved or locked before exporting.' }, { status: 422 });
   }
 
-  const insured = insureds.find((i) => i.id === job.insured_id) || null;
-  const property = properties.find((p) => p.id === job.property_id) || null;
+  // Fetch insured and property scoped to this company to prevent cross-company reads
+  const [insureds, properties] = await Promise.all([
+    job.insured_id ? base44.asServiceRole.entities.Insured.filter({ id: job.insured_id, company_id: job.company_id, is_deleted: false }) : Promise.resolve([]),
+    job.property_id ? base44.asServiceRole.entities.Property.filter({ id: job.property_id, company_id: job.company_id, is_deleted: false }) : Promise.resolve([]),
+  ]);
+  const insured = insureds[0] || null;
+  const property = properties[0] || null;
 
   let pdfBytes;
   let filename;

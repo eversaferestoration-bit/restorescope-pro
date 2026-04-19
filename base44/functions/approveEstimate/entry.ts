@@ -22,14 +22,39 @@ Deno.serve(async (req) => {
   if (!drafts.length) return Response.json({ error: 'Draft not found' }, { status: 404 });
   const draft = drafts[0];
 
+  // Verify caller belongs to this company
+  if (user.role !== 'admin') {
+    const profiles = await base44.asServiceRole.entities.UserProfile.filter({ user_id: user.id, company_id: draft.company_id, is_deleted: false });
+    if (!profiles.length) return Response.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
   // Derive target status
   const ACTION_MAP = {
     submit:      { from: 'draft',      to: 'submitted' },
     approve:     { from: 'submitted',  to: 'approved' },
     reject:      { from: 'submitted',  to: 'rejected' },
-    reopen:      { from: 'rejected',   to: 'draft' },
+    reopen:      null, // handled specially below — works from both 'rejected' and 'submitted'
     lock:        { from: 'approved',   to: 'locked' },
   };
+
+  // Special case: reopen works from both 'submitted' and 'rejected' → back to 'draft'
+  if (action === 'reopen') {
+    if (!['submitted', 'rejected'].includes(draft.status)) {
+      return Response.json({ error: `Cannot reopen an estimate with status "${draft.status}".` }, { status: 422 });
+    }
+    await base44.asServiceRole.entities.EstimateDraft.update(draft_id, { status: 'draft' });
+    await base44.asServiceRole.entities.AuditLog.create({
+      company_id: draft.company_id,
+      entity_type: 'EstimateDraft',
+      entity_id: draft_id,
+      action: 'reopen',
+      actor_email: user.email,
+      actor_id: user.id,
+      description: `Estimate v${draft.version_number} reopened as draft`,
+      metadata: { job_id: draft.job_id, from: draft.status, to: 'draft' },
+    });
+    return Response.json({ success: true, status: 'draft' });
+  }
 
   // new_version: clone approved/locked draft as new draft
   if (action === 'new_version') {

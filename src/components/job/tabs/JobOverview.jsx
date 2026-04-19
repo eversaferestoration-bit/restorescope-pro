@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Save } from 'lucide-react';
 
-const LOSS_TYPES = ['Water', 'Fire', 'Mold', 'Storm', 'Wind', 'Smoke', 'Biohazard', 'Other'];
+const LOSS_TYPES = ['water', 'fire', 'mold', 'storm', 'wind', 'smoke', 'biohazard', 'other'];
 const SERVICE_TYPES = ['Mitigation', 'Restoration', 'Contents', 'Reconstruction', 'Inspection Only'];
 const STATUS_OPTIONS = ['new', 'in_progress', 'pending_approval', 'approved', 'closed'];
 const COMPLEXITY = ['Low', 'Medium', 'High', 'Complex'];
@@ -46,7 +46,7 @@ export default function JobOverview({ job }) {
         <div className="bg-card rounded-xl border border-border p-5 grid grid-cols-2 md:grid-cols-3 gap-4">
           <InfoRow label="Job Number" value={job.job_number} />
           <InfoRow label="Status" value={job.status?.replace(/_/g, ' ')} />
-          <InfoRow label="Loss Type" value={job.loss_type} />
+          <InfoRow label="Loss Type" value={job.loss_type ? job.loss_type.charAt(0).toUpperCase() + job.loss_type.slice(1) : null} />
           <InfoRow label="Service Type" value={job.service_type} />
           <InfoRow label="Cause of Loss" value={job.cause_of_loss} />
           <InfoRow label="Complexity" value={job.complexity_level} />
@@ -79,7 +79,7 @@ export default function JobOverview({ job }) {
         <div><label className="block text-xs font-medium mb-1">Loss Type</label>
           <select className={selectCls} value={form.loss_type || ''} onChange={set('loss_type')}>
             <option value="">Select…</option>
-            {LOSS_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+            {LOSS_TYPES.map((t) => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
           </select>
         </div>
         <div><label className="block text-xs font-medium mb-1">Service Type</label>

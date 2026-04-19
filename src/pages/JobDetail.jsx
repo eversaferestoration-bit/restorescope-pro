@@ -53,7 +53,7 @@ export default function JobDetail() {
 
   const { data: job, isLoading } = useQuery({
     queryKey: ['job', jobId],
-    queryFn: () => base44.entities.Job.filter({ id: jobId }),
+    queryFn: () => base44.entities.Job.filter({ id: jobId, is_deleted: false }),
     select: (data) => data[0],
   });
 
