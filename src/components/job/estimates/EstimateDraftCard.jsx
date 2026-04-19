@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
-import { ChevronDown, ChevronUp, RefreshCw, Loader2, Lock, GitBranch, Shield, MessageSquare } from 'lucide-react';
+import { ChevronDown, ChevronUp, RefreshCw, Loader2, Lock, GitBranch, Shield, MessageSquare, TrendingUp, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import EstimateLineItemRow from './EstimateLineItemRow';
@@ -10,6 +10,7 @@ import EstimateModifiersBadge from './EstimateModifiersBadge';
 import RejectModal from './RejectModal';
 import ClaimDefensePanel from './ClaimDefensePanel';
 import CarrierResponseGenerator from './CarrierResponseGenerator';
+import OptimizationPanel from './OptimizationPanel';
 
 const STATUS_COLORS = {
   draft:     'bg-blue-100 text-blue-700',
@@ -29,7 +30,9 @@ export default function EstimateDraftCard({ draft, jobId, readOnly }) {
   const [actionLoading, setActionLoading] = useState(null);
   const [err, setErr] = useState('');
   const [showRejectModal, setShowRejectModal] = useState(false);
-  const [activeTab, setActiveTab] = useState('details'); // 'details' | 'defense' | 'carrier_response'
+  const [activeTab, setActiveTab] = useState('details'); // 'details' | 'defense' | 'carrier_response' | 'optimize'
+  const [optimizing, setOptimizing] = useState(false);
+  const [optimization, setOptimization] = useState(null);
 
   const isManager = user?.role === 'admin' || user?.role === 'manager';
   const isLocked = draft.status === 'locked';
@@ -67,6 +70,20 @@ export default function EstimateDraftCard({ draft, jobId, readOnly }) {
       setErr('Recalculate failed.');
     }
     setSaving(false);
+  };
+
+  const handleOptimize = async () => {
+    setOptimizing(true);
+    setOptimization(null);
+    setErr('');
+    try {
+      const res = await base44.functions.invoke('optimizeEstimate', { estimate_version_id: draft.id });
+      setOptimization(res.data);
+      setActiveTab('optimize');
+    } catch (e) {
+      setErr(e?.response?.data?.message || 'Optimization failed.');
+    }
+    setOptimizing(false);
   };
 
   // Group line items by room
@@ -133,11 +150,47 @@ export default function EstimateDraftCard({ draft, jobId, readOnly }) {
             >
               <MessageSquare size={11} /> Carrier Response
             </button>
+            <button
+              onClick={() => setActiveTab('optimize')}
+              className={cn('inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold transition', activeTab === 'optimize' ? 'border-b-2 border-primary text-primary' : 'text-muted-foreground hover:text-foreground')}
+            >
+              <TrendingUp size={11} /> Optimize
+            </button>
           </div>
 
           {activeTab === 'defense' && <ClaimDefensePanel draft={draft} />}
 
           {activeTab === 'carrier_response' && <CarrierResponseGenerator estimateVersionId={draft.id} />}
+
+          {activeTab === 'optimize' && (
+            <div className="p-4 space-y-4">
+              {!optimization && !optimizing && (
+                <div className="text-center py-8">
+                  <TrendingUp size={32} className="mx-auto text-muted-foreground mb-2" />
+                  <p className="text-sm font-medium">Click "Run Optimization" to analyze this estimate</p>
+                  <p className="text-xs text-muted-foreground mt-1">Finds pricing improvements, missing modifiers, and margin opportunities</p>
+                  <button
+                    onClick={handleOptimize}
+                    className="mt-3 inline-flex items-center gap-2 px-4 h-9 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition"
+                  >
+                    <TrendingUp size={14} /> Run Optimization
+                  </button>
+                </div>
+              )}
+
+              {optimizing && (
+                <div className="text-center py-8">
+                  <Loader2 size={32} className="mx-auto text-primary animate-spin mb-2" />
+                  <p className="text-sm font-medium">Analyzing estimate for optimization opportunities…</p>
+                  <p className="text-xs text-muted-foreground mt-1">This may take 10–15 seconds</p>
+                </div>
+              )}
+
+              {optimization && (
+                <OptimizationPanel optimization={optimization} estimate={draft} />
+              )}
+            </div>
+          )}
 
           {activeTab === 'details' && (
           <div>
