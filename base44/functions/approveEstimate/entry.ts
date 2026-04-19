@@ -11,21 +11,35 @@ const TRANSITIONS = {
 
 Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
+  
+  // Strict authentication
   const user = await base44.auth.me();
-  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!user) {
+    return Response.json({ error: 'Unauthorized', type: 'auth_required' }, { status: 401 });
+  }
 
   const { draft_id, action, rejection_reason } = await req.json();
   // action: 'submit' | 'approve' | 'reject' | 'reopen' | 'lock' | 'new_version'
-  if (!draft_id || !action) return Response.json({ error: 'draft_id and action required' }, { status: 400 });
+  if (!draft_id || !action) {
+    return Response.json({ error: 'draft_id and action required' }, { status: 400 });
+  }
 
   const drafts = await base44.asServiceRole.entities.EstimateDraft.filter({ id: draft_id, is_deleted: false });
-  if (!drafts.length) return Response.json({ error: 'Draft not found' }, { status: 404 });
+  if (!drafts.length) {
+    return Response.json({ error: 'Draft not found' }, { status: 404 });
+  }
   const draft = drafts[0];
 
-  // Verify caller belongs to this company
+  // Company isolation - verify access
   if (user.role !== 'admin') {
-    const profiles = await base44.asServiceRole.entities.UserProfile.filter({ user_id: user.id, company_id: draft.company_id, is_deleted: false });
-    if (!profiles.length) return Response.json({ error: 'Forbidden' }, { status: 403 });
+    const profiles = await base44.asServiceRole.entities.UserProfile.filter({ 
+      user_id: user.id, 
+      company_id: draft.company_id, 
+      is_deleted: false 
+    });
+    if (!profiles.length) {
+      return Response.json({ error: 'Forbidden', message: 'Access denied: You are not a member of this company.' }, { status: 403 });
+    }
   }
 
   // Derive target status
@@ -106,10 +120,20 @@ Deno.serve(async (req) => {
 
   // Manager-only: approve and lock
   if (['approve', 'lock'].includes(action)) {
-    const isManager = user.role === 'admin' || user.role === 'manager';
-    if (!isManager) {
-      return Response.json({ error: 'Manager approval required. Only admins or managers can approve estimates.' }, { status: 403 });
+    if (user.role !== 'admin' && user.role !== 'manager') {
+      return Response.json({ 
+        error: 'Forbidden', 
+        message: 'Manager approval required. Only admins or managers can approve estimates.' 
+      }, { status: 403 });
     }
+  }
+
+  // Prevent technicians from submitting or approving
+  if (user.role === 'technician' && ['submit', 'approve', 'lock', 'reject'].includes(action)) {
+    return Response.json({ 
+      error: 'Forbidden', 
+      message: 'Technicians cannot perform estimate approval actions.' 
+    }, { status: 403 });
   }
 
   const updateData = { status: transition.to };

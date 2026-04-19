@@ -2,8 +2,12 @@ import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import MobileNav from './MobileNav';
 import TopBar from './TopBar';
+import { useSecurity } from '@/hooks/useSecurity';
 
 export default function AppLayout() {
+  // Enable session timeout, role integrity checks, and auto-logout
+  useSecurity();
+
   return (
     <div className="flex h-screen bg-background overflow-hidden">
       {/* Desktop Sidebar */}

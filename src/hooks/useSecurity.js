@@ -1,0 +1,109 @@
+import { useEffect, useRef } from 'react';
+import { base44 } from '@/api/base44Client';
+import { useAuth } from '@/lib/AuthContext';
+import { toast } from 'sonner';
+
+const SESSION_CONFIG = {
+  MAX_AGE_MS: 8 * 60 * 60 * 1000, // 8 hours
+  WARNING_BEFORE_EXPIRY_MS: 15 * 60 * 1000, // 15 minutes warning
+  CHECK_INTERVAL_MS: 5 * 60 * 1000, // Check every 5 minutes
+};
+
+/**
+ * Hook to manage session timeout and auto-logout
+ * Warns user before session expires and forces logout on expiry
+ */
+export function useSessionTimeout() {
+  const { user, logout, checkUserAuth } = useAuth();
+  const warningShown = useRef(false);
+  const sessionTimer = useRef(null);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const checkSession = async () => {
+      try {
+        const sessionStart = new Date(user.created_date);
+        const now = new Date();
+        const sessionAge = now - sessionStart;
+        const timeRemaining = SESSION_CONFIG.MAX_AGE_MS - sessionAge;
+
+        // Session expired - force logout
+        if (sessionAge > SESSION_CONFIG.MAX_AGE_MS) {
+          toast.error('Your session has expired. Please log in again.');
+          logout(true);
+          return;
+        }
+
+        // Show warning if session is about to expire
+        if (timeRemaining < SESSION_CONFIG.WARNING_BEFORE_EXPIRY_MS && !warningShown.current) {
+          warningShown.current = true;
+          toast.warning('Your session will expire in 15 minutes. Please save your work.', {
+            duration: 30000,
+          });
+        }
+
+        // Reset warning flag if session refreshed
+        if (timeRemaining > SESSION_CONFIG.WARNING_BEFORE_EXPIRY_MS) {
+          warningShown.current = false;
+        }
+      } catch (error) {
+        console.error('Session check failed:', error);
+      }
+    };
+
+    // Check immediately
+    checkSession();
+
+    // Set up periodic checks
+    sessionTimer.current = setInterval(checkSession, SESSION_CONFIG.CHECK_INTERVAL_MS);
+
+    return () => {
+      if (sessionTimer.current) {
+        clearInterval(sessionTimer.current);
+      }
+    };
+  }, [user, logout]);
+}
+
+/**
+ * Hook to detect role changes and force logout
+ */
+export function useRoleIntegrity() {
+  const { user, logout } = useAuth();
+  const originalRole = useRef(user?.role);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const checkRoleIntegrity = async () => {
+      try {
+        const freshUser = await base44.auth.me();
+        if (!freshUser) {
+          logout(true);
+          return;
+        }
+
+        // Role changed - force logout for security
+        if (freshUser.role !== originalRole.current) {
+          toast.warning('Your access permissions have changed. Please log in again.');
+          logout(true);
+        }
+      } catch (error) {
+        console.error('Role integrity check failed:', error);
+      }
+    };
+
+    // Check every 2 minutes
+    const interval = setInterval(checkRoleIntegrity, 2 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [user, logout]);
+}
+
+/**
+ * Combined security hook - use this in AppLayout or main components
+ */
+export function useSecurity() {
+  useSessionTimeout();
+  useRoleIntegrity();
+}

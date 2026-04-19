@@ -254,20 +254,43 @@ Return empty array if nothing meaningful to add. No markdown.`,
 // ── Handler ───────────────────────────────────────────────────────────────────
 Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
+  
+  // Strict authentication
   const user = await base44.auth.me();
-  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!user) {
+    return Response.json({ error: 'Unauthorized', type: 'auth_required' }, { status: 401 });
+  }
 
   const body = await req.json();
   const { job_id, room_id, use_ai = false } = body;
 
-  if (!job_id || !room_id) return Response.json({ error: 'job_id and room_id required' }, { status: 400 });
+  // Input validation
+  if (!job_id || !room_id) {
+    return Response.json({ error: 'job_id and room_id required' }, { status: 400 });
+  }
 
   const jobs = await base44.asServiceRole.entities.Job.filter({ id: job_id, is_deleted: false });
-  if (!jobs.length) return Response.json({ error: 'Job not found' }, { status: 404 });
+  if (!jobs.length) {
+    return Response.json({ error: 'Job not found' }, { status: 404 });
+  }
   const job = jobs[0];
 
-  const profiles = await base44.asServiceRole.entities.UserProfile.filter({ user_id: user.id, company_id: job.company_id, is_deleted: false });
-  if (!profiles.length && user.role !== 'admin') return Response.json({ error: 'Forbidden' }, { status: 403 });
+  // Company isolation - verify access
+  if (user.role !== 'admin') {
+    const profiles = await base44.asServiceRole.entities.UserProfile.filter({ 
+      user_id: user.id, 
+      company_id: job.company_id, 
+      is_deleted: false 
+    });
+    if (!profiles.length) {
+      return Response.json({ error: 'Forbidden', message: 'Access denied: not a member of this company.' }, { status: 403 });
+    }
+  }
+
+  // Role validation - technicians cannot generate scope
+  if (user.role === 'technician') {
+    return Response.json({ error: 'Forbidden', message: 'Technicians cannot generate scope items.' }, { status: 403 });
+  }
 
   const rooms = await base44.asServiceRole.entities.Room.filter({ id: room_id, job_id, is_deleted: false });
   if (!rooms.length) return Response.json({ error: 'Room not found' }, { status: 404 });

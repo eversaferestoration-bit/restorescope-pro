@@ -61,23 +61,46 @@ function computeModifiers(job, profile) {
 
 Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
+  
+  // Strict authentication
   const user = await base44.auth.me();
-  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!user) {
+    return Response.json({ error: 'Unauthorized', type: 'auth_required' }, { status: 401 });
+  }
 
   const body = await req.json();
   const { job_id, pricing_profile_id } = body;
 
-  if (!job_id) return Response.json({ error: 'job_id required' }, { status: 400 });
+  if (!job_id) {
+    return Response.json({ error: 'job_id required' }, { status: 400 });
+  }
 
   // Load job
   const jobs = await base44.asServiceRole.entities.Job.filter({ id: job_id, is_deleted: false });
-  if (!jobs.length) return Response.json({ error: 'Job not found' }, { status: 404 });
+  if (!jobs.length) {
+    return Response.json({ error: 'Job not found' }, { status: 404 });
+  }
   const job = jobs[0];
 
-  // Verify caller belongs to this company
+  // Company isolation - verify access
   if (user.role !== 'admin') {
-    const profiles = await base44.asServiceRole.entities.UserProfile.filter({ user_id: user.id, company_id: job.company_id, is_deleted: false });
-    if (!profiles.length) return Response.json({ error: 'Forbidden' }, { status: 403 });
+    const profiles = await base44.asServiceRole.entities.UserProfile.filter({ 
+      user_id: user.id, 
+      company_id: job.company_id, 
+      is_deleted: false 
+    });
+    if (!profiles.length) {
+      return Response.json({ error: 'Forbidden', message: 'Access denied: You are not a member of this company.' }, { status: 403 });
+    }
+  }
+
+  // Role validation - only certain roles can generate estimates
+  const ALLOWED_ROLES = ['admin', 'manager', 'estimator'];
+  if (!ALLOWED_ROLES.includes(user.role)) {
+    return Response.json({ 
+      error: 'Forbidden', 
+      message: `Role '${user.role}' cannot generate estimates.` 
+    }, { status: 403 });
   }
 
   // Check subscription (only if company_id is a valid non-empty value)

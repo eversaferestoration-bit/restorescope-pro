@@ -8,23 +8,42 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
+  
+  // Strict authentication - admin/manager only
   const user = await base44.auth.me();
-  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!user) {
+    return Response.json({ error: 'Unauthorized', type: 'auth_required' }, { status: 401 });
+  }
+
+  // Role validation - only admins and managers can view risk analysis
+  if (user.role !== 'admin' && user.role !== 'manager') {
+    return Response.json({ error: 'Forbidden', message: 'Manager or admin access required for risk analysis.' }, { status: 403 });
+  }
 
   const body = await req.json();
   const { job_id } = body;
 
-  if (!job_id) return Response.json({ error: 'job_id required' }, { status: 400 });
+  if (!job_id) {
+    return Response.json({ error: 'job_id required' }, { status: 400 });
+  }
 
   // Load job
   const jobs = await base44.asServiceRole.entities.Job.filter({ id: job_id, is_deleted: false });
-  if (!jobs.length) return Response.json({ error: 'Job not found' }, { status: 404 });
+  if (!jobs.length) {
+    return Response.json({ error: 'Job not found' }, { status: 404 });
+  }
   const job = jobs[0];
 
-  // Verify user belongs to company
+  // Company isolation - verify access
   if (user.role !== 'admin') {
-    const profiles = await base44.asServiceRole.entities.UserProfile.filter({ user_id: user.id, company_id: job.company_id, is_deleted: false });
-    if (!profiles.length) return Response.json({ error: 'Forbidden' }, { status: 403 });
+    const profiles = await base44.asServiceRole.entities.UserProfile.filter({ 
+      user_id: user.id, 
+      company_id: job.company_id, 
+      is_deleted: false 
+    });
+    if (!profiles.length) {
+      return Response.json({ error: 'Forbidden', message: 'Access denied: not a member of this company.' }, { status: 403 });
+    }
   }
 
   const riskFlags = [];

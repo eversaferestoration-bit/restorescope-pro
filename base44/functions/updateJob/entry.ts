@@ -1,31 +1,53 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
-const TECHNICIAN_READONLY_FIELDS = ['status', 'assigned_manager_id', 'assigned_estimator_id', 'complexity_level'];
+const TECHNICIAN_READONLY_FIELDS = ['status', 'assigned_manager_id', 'assigned_estimator_id', 'complexity_level', 'access_difficulty'];
+const MANAGER_ONLY_FIELDS = ['status', 'assigned_manager_id', 'assigned_estimator_id', 'complexity_level', 'access_difficulty', 'emergency_flag', 'after_hours_flag'];
 
 Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
+  
+  // Strict authentication
   const user = await base44.auth.me();
-  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!user) {
+    return Response.json({ error: 'Unauthorized', type: 'auth_required' }, { status: 401 });
+  }
 
   const body = await req.json();
   const { job_id, updates } = body;
-  if (!job_id || !updates) return Response.json({ error: 'job_id and updates required' }, { status: 400 });
-
-  const jobs = await base44.asServiceRole.entities.Job.filter({ id: job_id, is_deleted: false });
-  if (!jobs.length) return Response.json({ error: 'Job not found' }, { status: 404 });
-  const job = jobs[0];
-
-  // Verify company membership
-  const profiles = await base44.asServiceRole.entities.UserProfile.filter({ user_id: user.id, company_id: job.company_id, is_deleted: false });
-  if (!profiles.length && user.role !== 'admin') {
-    return Response.json({ error: 'Forbidden: not a member of this company' }, { status: 403 });
+  if (!job_id || !updates) {
+    return Response.json({ error: 'job_id and updates required' }, { status: 400 });
   }
 
-  // Technicians cannot change restricted fields
+  const jobs = await base44.asServiceRole.entities.Job.filter({ id: job_id, is_deleted: false });
+  if (!jobs.length) {
+    return Response.json({ error: 'Job not found' }, { status: 404 });
+  }
+  const job = jobs[0];
+
+  // Company isolation - verify access
+  if (user.role !== 'admin') {
+    const profiles = await base44.asServiceRole.entities.UserProfile.filter({ 
+      user_id: user.id, 
+      company_id: job.company_id, 
+      is_deleted: false 
+    });
+    if (!profiles.length) {
+      return Response.json({ error: 'Forbidden', message: 'Access denied: not a member of this company.' }, { status: 403 });
+    }
+  }
+
+  // Role-based field restrictions
   if (user.role === 'technician') {
     for (const field of TECHNICIAN_READONLY_FIELDS) {
       if (field in updates) {
-        return Response.json({ error: `Forbidden: technicians cannot update ${field}` }, { status: 403 });
+        return Response.json({ error: 'Forbidden', message: `Technicians cannot update ${field}` }, { status: 403 });
+      }
+    }
+  } else if (user.role === 'estimator') {
+    // Estimators cannot change manager-only fields
+    for (const field of MANAGER_ONLY_FIELDS) {
+      if (field in updates) {
+        return Response.json({ error: 'Forbidden', message: `Only managers can update ${field}` }, { status: 403 });
       }
     }
   }
