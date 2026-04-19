@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
-import { ChevronDown, ChevronUp, RefreshCw, Loader2, Lock, GitBranch, Shield, MessageSquare, TrendingUp, AlertCircle, BarChart3 } from 'lucide-react';
+import { ChevronDown, ChevronUp, RefreshCw, Loader2, Lock, GitBranch, Shield, MessageSquare, TrendingUp, AlertCircle, BarChart3, Handshake } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import EstimateLineItemRow from './EstimateLineItemRow';
@@ -12,6 +12,7 @@ import ClaimDefensePanel from './ClaimDefensePanel';
 import CarrierResponseGenerator from './CarrierResponseGenerator';
 import OptimizationPanel from './OptimizationPanel';
 import MarketComparisonPanel from './MarketComparisonPanel';
+import NegotiationPanel from './NegotiationPanel';
 
 const STATUS_COLORS = {
   draft:     'bg-blue-100 text-blue-700',
@@ -31,9 +32,10 @@ export default function EstimateDraftCard({ draft, jobId, readOnly }) {
   const [actionLoading, setActionLoading] = useState(null);
   const [err, setErr] = useState('');
   const [showRejectModal, setShowRejectModal] = useState(false);
-  const [activeTab, setActiveTab] = useState('details'); // 'details' | 'defense' | 'carrier_response' | 'optimize'
+  const [activeTab, setActiveTab] = useState('details'); // 'details' | 'defense' | 'carrier_response' | 'optimize' | 'negotiation'
   const [optimizing, setOptimizing] = useState(false);
   const [optimization, setOptimization] = useState(null);
+  const [negotiationMode, setNegotiationMode] = useState(false);
 
   const isManager = user?.role === 'admin' || user?.role === 'manager';
   const isLocked = draft.status === 'locked';
@@ -163,6 +165,12 @@ export default function EstimateDraftCard({ draft, jobId, readOnly }) {
             >
               <BarChart3 size={11} /> Market
             </button>
+            <button
+              onClick={() => { setActiveTab('negotiation'); setNegotiationMode(true); }}
+              className={cn('inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold transition', activeTab === 'negotiation' ? 'border-b-2 border-primary text-primary' : 'text-muted-foreground hover:text-foreground')}
+            >
+              <Handshake size={11} /> Negotiation
+            </button>
           </div>
 
           {activeTab === 'defense' && <ClaimDefensePanel draft={draft} />}
@@ -202,6 +210,12 @@ export default function EstimateDraftCard({ draft, jobId, readOnly }) {
           {activeTab === 'market' && (
             <div className="p-4">
               <MarketComparisonPanel estimateId={draft.id} />
+            </div>
+          )}
+
+          {activeTab === 'negotiation' && (
+            <div className="p-4">
+              <NegotiationPanel estimateId={draft.id} adjusterId={null} />
             </div>
           )}
 
