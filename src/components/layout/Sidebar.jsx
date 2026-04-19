@@ -2,6 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { primaryNavItems, secondaryNavItems, settingsNavItems } from './navItems';
 import { Droplets } from 'lucide-react';
+import { useAuth } from '@/lib/AuthContext';
 
 function NavItem({ item, collapsed }) {
   const location = useLocation();
@@ -41,6 +42,12 @@ function NavSection({ title, items }) {
 }
 
 export default function Sidebar() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
+
+  const filteredSecondary = secondaryNavItems.filter((i) => !i.adminOnly || isAdmin);
+  const filteredSettings = settingsNavItems.filter((i) => !i.adminOnly || isAdmin);
+
   return (
     <aside className="hidden lg:flex flex-col w-60 shrink-0 h-screen overflow-y-auto"
       style={{ background: 'hsl(220, 22%, 13%)' }}>
@@ -59,8 +66,8 @@ export default function Sidebar() {
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 space-y-0.5">
         <NavSection items={primaryNavItems} />
-        <NavSection title="Manage" items={secondaryNavItems} />
-        <NavSection title="Account" items={settingsNavItems} />
+        <NavSection title="Manage" items={filteredSecondary} />
+        <NavSection title="Account" items={filteredSettings} />
       </nav>
 
       {/* Footer */}

@@ -18,6 +18,7 @@ import Onboarding from '@/pages/Onboarding';
 import Dashboard from '@/pages/Dashboard';
 import Jobs from '@/pages/Jobs';
 import NewJob from '@/pages/NewJob';
+import JobDetail from '@/pages/JobDetail';
 import Settings from '@/pages/Settings';
 import Billing from '@/pages/Billing';
 import Users from '@/pages/Users';
@@ -75,6 +76,7 @@ const AuthenticatedApp = () => {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/jobs" element={<Jobs />} />
         <Route path="/jobs/new" element={<NewJob />} />
+        <Route path="/jobs/:jobId" element={<JobDetail />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/billing" element={<Billing />} />
         <Route path="/users" element={<Users />} />

@@ -13,19 +13,18 @@ import {
 export const primaryNavItems = [
   { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
   { label: 'Jobs', path: '/jobs', icon: FolderOpen },
-  { label: 'New Job', path: '/jobs/new', icon: Plus },
 ];
 
 export const secondaryNavItems = [
-  { label: 'Templates', path: '/templates', icon: FileText },
-  { label: 'Pricing Profiles', path: '/pricing-profiles', icon: Tag },
-  { label: 'Team', path: '/users', icon: Users },
-  { label: 'Audit Log', path: '/audit-log', icon: ClipboardList },
+  { label: 'Templates', path: '/templates', icon: FileText, adminOnly: false },
+  { label: 'Pricing', path: '/pricing-profiles', icon: Tag, adminOnly: true },
+  { label: 'Team', path: '/users', icon: Users, adminOnly: true },
+  { label: 'Audit Log', path: '/audit-log', icon: ClipboardList, adminOnly: true },
 ];
 
 export const settingsNavItems = [
   { label: 'Settings', path: '/settings', icon: Settings },
-  { label: 'Billing', path: '/billing', icon: CreditCard },
+  { label: 'Billing', path: '/billing', icon: CreditCard, adminOnly: true },
 ];
 
 export const mobileNavItems = [

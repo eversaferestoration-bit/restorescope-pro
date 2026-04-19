@@ -1,38 +1,128 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { FolderOpen, Plus } from 'lucide-react';
+import { base44 } from '@/api/base44Client';
+import { useQuery } from '@tanstack/react-query';
+import { Plus, FolderOpen, Search, ChevronRight, AlertCircle, Clock } from 'lucide-react';
+import { format } from 'date-fns';
+
+const STATUS_COLORS = {
+  new: 'bg-blue-100 text-blue-700',
+  in_progress: 'bg-yellow-100 text-yellow-700',
+  pending_approval: 'bg-orange-100 text-orange-700',
+  approved: 'bg-green-100 text-green-700',
+  closed: 'bg-muted text-muted-foreground',
+};
 
 export default function Jobs() {
+  const [search, setSearch] = useState('');
+
+  const { data: jobs = [], isLoading } = useQuery({
+    queryKey: ['jobs'],
+    queryFn: () => base44.entities.Job.filter({ is_deleted: false }, '-created_date', 50),
+  });
+
+  const filtered = jobs.filter((j) =>
+    !search ||
+    j.job_number?.toLowerCase().includes(search.toLowerCase()) ||
+    j.loss_type?.toLowerCase().includes(search.toLowerCase()) ||
+    j.status?.toLowerCase().includes(search.toLowerCase())
+  );
+
   return (
     <div className="p-4 md:p-6 max-w-5xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-2xl font-bold font-display">Jobs</h1>
-          <p className="text-sm text-muted-foreground mt-1">All restoration jobs</p>
+          <p className="text-sm text-muted-foreground mt-0.5">All restoration jobs</p>
         </div>
         <Link
           to="/jobs/new"
           className="inline-flex items-center gap-2 px-4 h-9 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition"
         >
-          <Plus size={15} />
-          New Job
+          <Plus size={15} /> New Job
         </Link>
       </div>
 
-      <div className="bg-card rounded-xl border border-border p-8 flex flex-col items-center justify-center text-center gap-3 min-h-[300px]">
-        <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center">
-          <FolderOpen size={24} className="text-muted-foreground" />
-        </div>
-        <div>
-          <p className="font-semibold font-display">No jobs yet</p>
-          <p className="text-sm text-muted-foreground mt-1">Create your first job to get started.</p>
-        </div>
-        <Link
-          to="/jobs/new"
-          className="mt-2 inline-flex items-center gap-2 px-4 h-9 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition"
-        >
-          <Plus size={14} /> Create Job
-        </Link>
+      {/* Search */}
+      <div className="relative mb-4">
+        <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search jobs…"
+          className="w-full h-10 pl-9 pr-4 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+        />
       </div>
+
+      {/* List */}
+      {isLoading ? (
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-20 rounded-xl bg-muted animate-pulse" />
+          ))}
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="bg-card rounded-xl border border-border p-10 flex flex-col items-center justify-center text-center gap-3">
+          <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center">
+            <FolderOpen size={22} className="text-muted-foreground" />
+          </div>
+          <div>
+            <p className="font-semibold font-display">No jobs found</p>
+            <p className="text-sm text-muted-foreground mt-1">
+              {search ? 'Try a different search term.' : 'Create your first job to get started.'}
+            </p>
+          </div>
+          {!search && (
+            <Link
+              to="/jobs/new"
+              className="mt-1 inline-flex items-center gap-2 px-4 h-9 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition"
+            >
+              <Plus size={14} /> Create Job
+            </Link>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {filtered.map((job) => (
+            <Link
+              key={job.id}
+              to={`/jobs/${job.id}`}
+              className="flex items-center gap-4 bg-card rounded-xl border border-border px-4 py-3.5 hover:border-primary/40 hover:shadow-sm transition group"
+            >
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="font-semibold text-sm font-display truncate">
+                    {job.job_number || `Job #${job.id?.slice(-6)}`}
+                  </span>
+                  {job.emergency_flag && (
+                    <span className="inline-flex items-center gap-1 text-xs font-medium text-destructive">
+                      <AlertCircle size={11} /> Emergency
+                    </span>
+                  )}
+                </div>
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  {job.status && (
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[job.status] || 'bg-muted text-muted-foreground'}`}>
+                      {job.status.replace(/_/g, ' ')}
+                    </span>
+                  )}
+                  {job.loss_type && (
+                    <span className="text-xs text-muted-foreground">{job.loss_type}</span>
+                  )}
+                  {job.date_of_loss && (
+                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Clock size={11} /> {format(new Date(job.date_of_loss), 'MMM d, yyyy')}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <ChevronRight size={16} className="text-muted-foreground shrink-0 group-hover:text-primary transition" />
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
