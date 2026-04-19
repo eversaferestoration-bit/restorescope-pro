@@ -2,12 +2,13 @@ import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
-import { ChevronDown, ChevronUp, RefreshCw, Loader2, Lock, GitBranch } from 'lucide-react';
+import { ChevronDown, ChevronUp, RefreshCw, Loader2, Lock, GitBranch, Shield } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import EstimateLineItemRow from './EstimateLineItemRow';
 import EstimateModifiersBadge from './EstimateModifiersBadge';
 import RejectModal from './RejectModal';
+import ClaimDefensePanel from './ClaimDefensePanel';
 
 const STATUS_COLORS = {
   draft:     'bg-blue-100 text-blue-700',
@@ -27,6 +28,7 @@ export default function EstimateDraftCard({ draft, jobId, readOnly }) {
   const [actionLoading, setActionLoading] = useState(null);
   const [err, setErr] = useState('');
   const [showRejectModal, setShowRejectModal] = useState(false);
+  const [activeTab, setActiveTab] = useState('details'); // 'details' | 'defense'
 
   const isManager = user?.role === 'admin' || user?.role === 'manager';
   const isLocked = draft.status === 'locked';
@@ -110,6 +112,25 @@ export default function EstimateDraftCard({ draft, jobId, readOnly }) {
 
       {open && (
         <div className="border-t border-border">
+          {/* Sub-tabs */}
+          <div className="flex border-b border-border bg-muted/20">
+            <button
+              onClick={() => setActiveTab('details')}
+              className={cn('px-4 py-2 text-xs font-semibold transition', activeTab === 'details' ? 'border-b-2 border-primary text-primary' : 'text-muted-foreground hover:text-foreground')}
+            >
+              Details
+            </button>
+            <button
+              onClick={() => setActiveTab('defense')}
+              className={cn('inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold transition', activeTab === 'defense' ? 'border-b-2 border-primary text-primary' : 'text-muted-foreground hover:text-foreground')}
+            >
+              <Shield size={11} /> Defense
+            </button>
+          </div>
+
+          {activeTab === 'defense' && <ClaimDefensePanel draft={draft} />}
+
+          {activeTab === 'details' && <>
           {/* Lock notice */}
           {isLocked && (
             <div className="px-4 py-2.5 bg-slate-50 border-b border-border flex items-center gap-2 text-xs text-slate-600">
@@ -218,6 +239,7 @@ export default function EstimateDraftCard({ draft, jobId, readOnly }) {
               )}
             </div>
           )}
+          </>}
         </div>
       )}
 

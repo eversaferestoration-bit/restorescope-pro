@@ -1,0 +1,55 @@
+{
+  "name": "ClaimDefense",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string"
+    },
+    "job_id": {
+      "type": "string"
+    },
+    "estimate_version_id": {
+      "type": "string"
+    },
+    "defense_score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "risk_flags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "missing_documentation": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "recommended_actions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "carrier_pushback_risk": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high"
+      ]
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "company_id",
+    "job_id",
+    "estimate_version_id"
+  ]
+}

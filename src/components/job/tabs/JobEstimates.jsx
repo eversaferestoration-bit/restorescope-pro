@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
-import { FilePlus, Loader2, AlertTriangle, Lock, ChevronDown } from 'lucide-react';
+import { FilePlus, Loader2, AlertTriangle, Lock, ChevronDown, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import EstimateDraftCard from '@/components/job/estimates/EstimateDraftCard';
+import JobDefense from '@/components/job/tabs/JobDefense';
 
 export default function JobEstimates({ job }) {
   const { user } = useAuth();
@@ -12,6 +13,8 @@ export default function JobEstimates({ job }) {
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState(null);
   const [profileId, setProfileId] = useState('');
+  const [activeTab, setActiveTab] = useState('estimates'); // 'estimates' | 'defense'
+  const [selectedDefenseEstimateId, setSelectedDefenseEstimateId] = useState(null);
   const isTechnician = user?.role === 'technician';
 
   const { data: drafts = [], isLoading } = useQuery({
@@ -45,8 +48,62 @@ export default function JobEstimates({ job }) {
     setGenerating(false);
   };
 
+  const handleOpenDefense = (draftId) => {
+    setSelectedDefenseEstimateId(draftId);
+    setActiveTab('defense');
+  };
+
   return (
     <div className="space-y-4">
+      {/* Sub-tab bar */}
+      <div className="flex gap-0 border-b border-border">
+        <button
+          onClick={() => setActiveTab('estimates')}
+          className={cn(
+            'px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px',
+            activeTab === 'estimates' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+          )}
+        >
+          Estimates
+        </button>
+        <button
+          onClick={() => setActiveTab('defense')}
+          className={cn(
+            'inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px',
+            activeTab === 'defense' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+          )}
+        >
+          <Shield size={13} /> Defense
+        </button>
+      </div>
+
+      {/* Defense sub-tab */}
+      {activeTab === 'defense' && (
+        <div className="space-y-3">
+          {drafts.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-muted-foreground">Analyze estimate:</span>
+              {drafts.map((d) => (
+                <button
+                  key={d.id}
+                  onClick={() => setSelectedDefenseEstimateId(d.id)}
+                  className={cn(
+                    'text-xs px-2.5 py-1 rounded-full border transition',
+                    selectedDefenseEstimateId === d.id ? 'bg-primary text-primary-foreground border-primary' : 'hover:bg-muted border-border'
+                  )}
+                >
+                  {d.label || `v${d.version_number}`}
+                </button>
+              ))}
+            </div>
+          )}
+          <JobDefense job={job} estimateId={selectedDefenseEstimateId || drafts[0]?.id} />
+        </div>
+      )}
+
+      {/* Estimates sub-tab */}
+      {activeTab === 'estimates' && (
+        <>
       {/* Generate bar */}
       {!isTechnician && (
         <div className="flex items-center gap-2 flex-wrap">
