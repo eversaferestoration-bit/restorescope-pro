@@ -69,6 +69,29 @@
     "created_by": {
       "type": "string"
     },
+    "is_beta_user": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether this company has been granted beta access"
+    },
+    "beta_start_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date beta access was granted"
+    },
+    "beta_end_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date beta access expires"
+    },
+    "beta_status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "expired"
+      ],
+      "description": "Current beta access status"
+    },
     "is_deleted": {
       "type": "boolean",
       "default": false
