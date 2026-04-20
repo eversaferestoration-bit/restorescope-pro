@@ -11,6 +11,12 @@ export default function BetaManagement() {
   const qc = useQueryClient();
   const [actingCompanyId, setActingCompanyId] = useState(null);
 
+  // Fetch all companies with beta status (must be before early return)
+  const { data: companies = [], isLoading } = useQuery({
+    queryKey: ['all-companies-beta'],
+    queryFn: () => base44.asServiceRole.entities.Company.filter({ is_deleted: false }, '-created_date'),
+  });
+
   // Only admins can access
   if (user?.role !== 'admin') {
     return (
@@ -21,12 +27,6 @@ export default function BetaManagement() {
       </div>
     );
   }
-
-  // Fetch all companies with beta status
-  const { data: companies = [], isLoading } = useQuery({
-    queryKey: ['all-companies-beta'],
-    queryFn: () => base44.asServiceRole.entities.Company.filter({ is_deleted: false }, '-created_date'),
-  });
 
   const betaCompanies = companies.filter((c) => c.is_beta_user);
 
