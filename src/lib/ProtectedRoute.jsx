@@ -1,10 +1,34 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 import { base44 } from '@/api/base44Client';
 
 export default function ProtectedRoute({ children }) {
-  const { isLoadingAuth, isLoadingPublicSettings, authError, isAuthenticated } = useAuth();
+  const { isLoadingAuth, isLoadingPublicSettings, authError, isAuthenticated, user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [companyChecked, setCompanyChecked] = useState(false);
 
+  // Once authenticated, check if user has a company. If not, redirect to onboarding.
+  useEffect(() => {
+    if (!isAuthenticated || !user || location.pathname === '/onboarding') {
+      setCompanyChecked(true);
+      return;
+    }
+
+    base44.entities.Company.filter({ is_deleted: false }, '-created_date', 1)
+      .then((companies) => {
+        if (companies.length === 0) {
+          navigate('/onboarding', { replace: true });
+        }
+      })
+      .catch(() => {
+        // If we can't check, just proceed — don't block the user
+      })
+      .finally(() => setCompanyChecked(true));
+  }, [isAuthenticated, user?.id, location.pathname]);
+
+  // Redirect unauthenticated users to hosted login
   useEffect(() => {
     if (!isLoadingAuth && !isLoadingPublicSettings) {
       if (authError?.type === 'auth_required' || (!isAuthenticated && !authError)) {
@@ -13,7 +37,7 @@ export default function ProtectedRoute({ children }) {
     }
   }, [isLoadingAuth, isLoadingPublicSettings, authError, isAuthenticated]);
 
-  if (isLoadingAuth || isLoadingPublicSettings) {
+  if (isLoadingAuth || isLoadingPublicSettings || (isAuthenticated && !companyChecked && location.pathname !== '/onboarding')) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3">
@@ -25,7 +49,7 @@ export default function ProtectedRoute({ children }) {
   }
 
   if (authError?.type === 'auth_required' || (!isAuthenticated && !authError)) {
-    return null; // redirectToLogin is firing above
+    return null;
   }
 
   return children;
