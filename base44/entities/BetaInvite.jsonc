@@ -1,0 +1,57 @@
+{
+  "name": "BetaInvite",
+  "type": "object",
+  "properties": {
+    "code": {
+      "type": "string",
+      "description": "Unique invite code (e.g. BETA-XXXX-XXXX)"
+    },
+    "label": {
+      "type": "string",
+      "description": "Admin-friendly label for this invite"
+    },
+    "trial_days": {
+      "type": "integer",
+      "default": 30,
+      "description": "Number of beta trial days granted on redemption"
+    },
+    "max_uses": {
+      "type": "integer",
+      "description": "Maximum number of times this code can be used (null = unlimited)"
+    },
+    "uses_count": {
+      "type": "integer",
+      "default": 0,
+      "description": "How many times this code has been redeemed"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this invite code can still be redeemed"
+    },
+    "expires_at": {
+      "type": "string",
+      "format": "date",
+      "description": "Optional date after which the code cannot be used"
+    },
+    "created_by": {
+      "type": "string",
+      "description": "Admin email who generated this code"
+    },
+    "redeemed_by": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of company IDs that redeemed this code"
+    },
+    "is_deleted": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "code",
+    "trial_days"
+  ]
+}

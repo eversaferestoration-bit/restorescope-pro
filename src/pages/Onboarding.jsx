@@ -38,6 +38,7 @@ export default function Onboarding() {
   const [initializing, setInitializing] = useState(true);
   const [error, setError] = useState('');
   const [savedToast, setSavedToast] = useState(false);
+  const [betaActivated, setBetaActivated] = useState(false);
 
   const [form, setForm] = useState({
     company_name: '',
@@ -154,6 +155,16 @@ export default function Onboarding() {
         });
         cId = company.id;
         setCompanyId(cId);
+
+        // Redeem beta invite if one was stored during signup
+        const inviteCode = sessionStorage.getItem('beta_invite_code');
+        if (inviteCode) {
+          try {
+            await base44.functions.invoke('redeemBetaInvite', { invite_code: inviteCode, company_id: cId });
+            sessionStorage.removeItem('beta_invite_code');
+            setBetaActivated(true);
+          } catch { /* non-blocking */ }
+        }
 
         const profile = await base44.entities.UserProfile.create({
           user_id: user.id,
@@ -292,6 +303,11 @@ export default function Onboarding() {
       {/* Autosave toast */}
       <div className={`fixed top-4 right-4 z-50 flex items-center gap-2 px-3 py-2 bg-card border border-border rounded-lg shadow-md text-xs font-medium text-green-700 transition-all duration-300 ${savedToast ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 pointer-events-none'}`}>
         <CheckCircle2 size={13} className="text-green-600" /> Progress saved
+      </div>
+
+      {/* Beta activated toast */}
+      <div className={`fixed top-16 right-4 z-50 flex items-center gap-2 px-3 py-2 bg-violet-50 border border-violet-300 rounded-lg shadow-md text-xs font-semibold text-violet-800 transition-all duration-500 ${betaActivated ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 pointer-events-none'}`}>
+        🧪 Beta access activated!
       </div>
 
       <div className="flex-1 flex flex-col items-center justify-center px-4 py-6 sm:py-8">
