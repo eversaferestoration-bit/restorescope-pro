@@ -13,8 +13,8 @@ import MissingPhotosWidget from '@/components/dashboard/MissingPhotosWidget';
 import SyncErrorsWidget from '@/components/dashboard/SyncErrorsWidget';
 import UsageStatsWidget from '@/components/dashboard/UsageStatsWidget';
 import RecentActivityWidget from '@/components/dashboard/RecentActivityWidget';
-import FinishSetupCard from '@/components/dashboard/FinishSetupCard';
 import ActivationChecklist from '@/components/dashboard/ActivationChecklist';
+import NextActionBanner from '@/components/dashboard/NextActionBanner';
 
 const STATUS_COLORS = {
   new:              'bg-blue-100 text-blue-700',
@@ -29,23 +29,17 @@ export default function Dashboard() {
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [onboardingStatus, setOnboardingStatus] = useState(null);
   const [companyId, setCompanyId] = useState(null);
-  const [showChecklist, setShowChecklist] = useState(false);
-
-  // Check onboarding completion for the finish setup card + checklist
+  // Check onboarding completion for next-action banner + checklist
   useEffect(() => {
     if (!user) return;
     base44.entities.UserProfile.filter({ user_id: user.id, is_deleted: false })
       .then((profiles) => {
         if (profiles.length > 0) {
           const profile = profiles[0];
-          const status = profile.onboarding_status;
           setCompanyId(profile.company_id || null);
+          const status = profile.onboarding_status;
           if (status && status !== 'onboarding_completed') {
             setOnboardingStatus(status);
-            setShowChecklist(true);
-          } else {
-            // Still show checklist if no estimate exists yet (checked inside component)
-            setShowChecklist(true);
           }
         }
       })
@@ -96,11 +90,17 @@ export default function Dashboard() {
         </Link>
       </div>
 
-      {/* Finish setup card — shown only when onboarding is incomplete */}
-      {onboardingStatus && <FinishSetupCard onboardingStatus={onboardingStatus} />}
+      {/* Smart next-action nudge — resolves automatically based on user state */}
+      {user && (
+        <NextActionBanner
+          userId={user.id}
+          companyId={companyId}
+          onboardingStatus={onboardingStatus}
+        />
+      )}
 
       {/* Activation checklist — shown to new users until fully activated */}
-      {showChecklist && user && (
+      {user && (
         <ActivationChecklist userId={user.id} companyId={companyId} />
       )}
 
