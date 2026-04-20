@@ -10,7 +10,7 @@ const ITEMS = [
   {
     key: 'company_setup',
     label: 'Complete company setup',
-    to: '/onboarding',
+    to: '/settings',
     actionLabel: 'Set up →',
   },
   {
@@ -122,14 +122,28 @@ export default function ActivationChecklist({ userId, companyId, defaultCollapse
   }, []);
 
   if (dismissed) return null;
-  if (checkedKeys === null) return null; // loading — silent
+
+  // Loading skeleton — show placeholder so layout doesn't shift
+  if (checkedKeys === null) {
+    return (
+      <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm">
+        <div className="flex items-center gap-3 px-4 py-3">
+          <div className="w-7 h-7 rounded-lg bg-muted animate-pulse shrink-0" />
+          <div className="flex-1 space-y-1.5">
+            <div className="h-3.5 w-40 bg-muted animate-pulse rounded" />
+            <div className="h-1 bg-muted rounded-full" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const completedCount = ITEMS.filter(i => checkedKeys.has(i.key)).length;
   const totalCount = ITEMS.length;
   const pct = Math.round((completedCount / totalCount) * 100);
   const allDone = completedCount === totalCount;
 
-  // Auto-hide once all done (after a brief moment)
+  // Auto-dismiss once fully complete
   if (allDone) return null;
 
   return (

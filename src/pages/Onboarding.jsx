@@ -102,7 +102,10 @@ export default function Onboarding() {
           setRole(profile.role || 'admin');
 
           if (profile.company_id) {
-            const companies = await base44.entities.Company.filter({ id: profile.company_id, is_deleted: false });
+            const [companies, pricingProfiles] = await Promise.all([
+              base44.entities.Company.filter({ id: profile.company_id, is_deleted: false }),
+              base44.entities.PricingProfile.filter({ company_id: profile.company_id, is_deleted: false }),
+            ]);
             if (companies.length > 0) {
               const co = companies[0];
               setForm({
@@ -113,6 +116,10 @@ export default function Onboarding() {
                 logo_url: co.logo_url || '',
               });
             }
+            // Pre-fill pricing choice if profile already exists (resume case)
+            if (pricingProfiles.length > 0) {
+              setPricingChoice('recommended');
+            }
           }
         }
       } catch (e) { /* start fresh */ }
@@ -122,9 +129,9 @@ export default function Onboarding() {
   }, [user?.id]);
 
   // Step 1 → 2
-  const handleStep1Continue = async () => {
+  const handleStep1Continue = () => {
     setStep(2);
-    if (userProfileId) await autosave(2, 'company_started');
+    // No profile exists yet at step 1 — autosave happens when company is created in step 2
   };
 
   // Step 2 → 3: create/update company
@@ -224,13 +231,14 @@ export default function Onboarding() {
     }
   };
 
-  // Step 5: create first job
+  // Step 5: create first job — mark onboarding complete so ProtectedRoute never loops back
   const handleCreateFirstJob = async () => {
     try {
       if (userProfileId) {
         await base44.entities.UserProfile.update(userProfileId, {
-          onboarding_status: 'first_job_started',
-          current_onboarding_step: 5,
+          onboarding_status: 'onboarding_completed',
+          onboarding_completed_at: new Date().toISOString(),
+          current_onboarding_step: 6,
         });
       }
     } catch (e) { /* silent */ }
@@ -286,7 +294,7 @@ export default function Onboarding() {
         <CheckCircle2 size={13} className="text-green-600" /> Progress saved
       </div>
 
-      <div className="flex-1 flex flex-col items-center justify-center px-4 py-8">
+      <div className="flex-1 flex flex-col items-center justify-center px-4 py-6 sm:py-8">
         <div className="w-full max-w-[420px]">
 
           {showProgress && (
@@ -299,7 +307,7 @@ export default function Onboarding() {
             </div>
           )}
 
-          <div className="bg-card rounded-2xl border border-border shadow-sm p-6">
+          <div className="bg-card rounded-2xl border border-border shadow-sm p-5 sm:p-6">
             {step === 1 && (
               <Step1Welcome userName={user?.full_name} onContinue={handleStep1Continue} />
             )}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 import { base44 } from '@/api/base44Client';
@@ -9,20 +9,31 @@ const INCOMPLETE_STATUSES = [
   'company_completed',
   'role_selected',
   'pricing_profile_set',
-  'first_job_started',
+  // NOTE: 'first_job_started' is intentionally excluded — once the user clicks
+  // "Create my first job" they should be able to use the app freely.
 ];
 
 export default function ProtectedRoute({ children }) {
   const { isLoadingAuth, isLoadingPublicSettings, authError, isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  // Once checked for a given user, don't re-check on every navigation
   const [checked, setChecked] = useState(false);
+  const checkedUserRef = useRef(null);
 
   useEffect(() => {
-    if (!isAuthenticated || !user || location.pathname === '/onboarding') {
+    if (!isAuthenticated || !user) {
       setChecked(true);
       return;
     }
+
+    if (location.pathname === '/onboarding') {
+      setChecked(true);
+      return;
+    }
+
+    // Already checked for this user — skip the fetch
+    if (checkedUserRef.current === user.id) return;
 
     // Check onboarding status — redirect back if incomplete
     base44.entities.UserProfile.filter({ user_id: user.id, is_deleted: false }, '-created_date', 1)
@@ -33,7 +44,8 @@ export default function ProtectedRoute({ children }) {
             navigate('/onboarding', { replace: true });
             return;
           }
-          // Profile exists and onboarding is done — proceed
+          // Profile exists and onboarding is done — mark checked
+          checkedUserRef.current = user.id;
           setChecked(true);
           return;
         }
@@ -44,11 +56,16 @@ export default function ProtectedRoute({ children }) {
             if (companies.length === 0) {
               navigate('/onboarding', { replace: true });
             } else {
+              checkedUserRef.current = user.id;
               setChecked(true);
             }
           });
       })
-      .catch(() => setChecked(true)); // network error — don't block
+      .catch(() => {
+        // Network error — don't block the user
+        checkedUserRef.current = user.id;
+        setChecked(true);
+      });
   }, [isAuthenticated, user?.id, location.pathname]);
 
   // Redirect unauthenticated users to login
