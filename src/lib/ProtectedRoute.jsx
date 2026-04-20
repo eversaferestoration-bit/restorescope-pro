@@ -1,9 +1,17 @@
+import { useEffect } from 'react';
 import { useAuth } from '@/lib/AuthContext';
-import { Navigate, useLocation } from 'react-router-dom';
+import { base44 } from '@/api/base44Client';
 
 export default function ProtectedRoute({ children }) {
-  const { isLoadingAuth, isLoadingPublicSettings, authError } = useAuth();
-  const location = useLocation();
+  const { isLoadingAuth, isLoadingPublicSettings, authError, isAuthenticated } = useAuth();
+
+  useEffect(() => {
+    if (!isLoadingAuth && !isLoadingPublicSettings) {
+      if (authError?.type === 'auth_required' || (!isAuthenticated && !authError)) {
+        base44.auth.redirectToLogin(window.location.pathname + window.location.search);
+      }
+    }
+  }, [isLoadingAuth, isLoadingPublicSettings, authError, isAuthenticated]);
 
   if (isLoadingAuth || isLoadingPublicSettings) {
     return (
@@ -16,8 +24,8 @@ export default function ProtectedRoute({ children }) {
     );
   }
 
-  if (authError?.type === 'auth_required') {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+  if (authError?.type === 'auth_required' || (!isAuthenticated && !authError)) {
+    return null; // redirectToLogin is firing above
   }
 
   return children;
