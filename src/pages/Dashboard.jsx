@@ -128,15 +128,14 @@ export default function Dashboard() {
       {/* Business metrics — this month */}
       <BusinessMetrics />
 
-      {/* Trial countdown card — in stat grid for seamless integration */}
-      {(isTrial || isExpired) && (
-        <div className="col-span-2 lg:col-span-1 lg:col-start-1 order-first lg:order-none">
-          <TrialCountdownCard isExpired={isExpired} daysLeft={daysLeft} />
-        </div>
-      )}
-
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {/* Trial countdown card */}
+        {(isTrial || isExpired) && (
+          <div className="col-span-2 lg:col-span-1">
+            <TrialCountdownCard isExpired={isExpired} daysLeft={daysLeft} />
+          </div>
+        )}
           label="Active Jobs"
           value={activeJobs.length}
           icon={FolderOpen}
