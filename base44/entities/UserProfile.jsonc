@@ -37,6 +37,33 @@
     "invited_by": {
       "type": "string"
     },
+    "onboarding_status": {
+      "type": "string",
+      "enum": [
+        "account_created",
+        "company_started",
+        "company_completed",
+        "role_selected",
+        "pricing_profile_set",
+        "first_job_started",
+        "onboarding_completed"
+      ],
+      "default": "account_created"
+    },
+    "current_onboarding_step": {
+      "type": "integer",
+      "default": 1
+    },
+    "completed_steps": {
+      "type": "array",
+      "items": {
+        "type": "integer"
+      }
+    },
+    "onboarding_completed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
     "is_deleted": {
       "type": "boolean",
       "default": false
