@@ -172,7 +172,16 @@ export default function Dashboard() {
                 <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center">
                   <FolderOpen size={18} className="text-muted-foreground" />
                 </div>
-                <p className="text-sm text-muted-foreground">No active jobs. <Link to="/jobs/new" className="text-primary underline">Create one</Link>.</p>
+                <div>
+                  <p className="text-sm font-semibold">No active jobs</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Create your first job to start tracking a restoration project.</p>
+                </div>
+                <Link
+                  to="/jobs/new"
+                  className="inline-flex items-center gap-1.5 px-4 h-9 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition"
+                >
+                  <Plus size={14} /> Create Job
+                </Link>
               </div>
             ) : (
               <div className="divide-y divide-border">

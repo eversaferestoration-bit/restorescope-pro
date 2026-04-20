@@ -140,9 +140,20 @@ export default function JobPhotos({ job }) {
           {[1,2,3,4,5,6,7,8,9,10,11,12].map((i) => <div key={i} className="aspect-square rounded-lg bg-muted animate-pulse" />)}
         </div>
       ) : photos.length === 0 && localQueue.length === 0 ? (
-        <div className="text-center py-6">
-          <ImageIcon size={32} className="mx-auto text-muted-foreground mb-2" />
-          <p className="text-sm text-muted-foreground">No photos yet.</p>
+        <div className="text-center py-8 flex flex-col items-center gap-3">
+          <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center">
+            <ImageIcon size={22} className="text-muted-foreground" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold">No photos yet</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Photos support your scope and help defend estimates with carriers.</p>
+          </div>
+          <button
+            onClick={() => fileRef.current?.click()}
+            className="inline-flex items-center gap-1.5 px-4 h-9 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition"
+          >
+            <Upload size={14} /> Upload Photos
+          </button>
         </div>
       ) : photos.length > 0 && (
         <div>

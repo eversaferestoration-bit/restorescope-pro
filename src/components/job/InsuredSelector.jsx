@@ -12,9 +12,9 @@ export default function InsuredSelector({ value, onChange }) {
   const [newForm, setNewForm] = useState({ full_name: '', email: '', phone: '' });
 
   const { data: insureds = [] } = useQuery({
-    queryKey: ['insureds'],
-    queryFn: () => base44.entities.Insured.filter({ company_id: user?.company_id || '', is_deleted: false }, 'full_name', 100),
-    enabled: !!user?.company_id,
+    queryKey: ['insureds', user?.company_id],
+    queryFn: () => base44.entities.Insured.filter({ is_deleted: false }, 'full_name', 100),
+    staleTime: 5 * 60 * 1000,
   });
 
   const createMutation = useMutation({
@@ -83,10 +83,16 @@ export default function InsuredSelector({ value, onChange }) {
             </div>
           )}
 
+          {insureds.length === 0 && !adding && (
+            <p className="text-xs text-muted-foreground">No insureds found. Add one below.</p>
+          )}
           <button
             type="button"
             onClick={() => setAdding(!adding)}
-            className="inline-flex items-center gap-1.5 text-xs text-primary font-medium hover:underline"
+            className={insureds.length === 0 && !adding
+              ? "inline-flex items-center gap-1.5 px-3 h-8 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition"
+              : "inline-flex items-center gap-1.5 text-xs text-primary font-medium hover:underline"
+            }
           >
             <Plus size={13} /> Add new insured
           </button>

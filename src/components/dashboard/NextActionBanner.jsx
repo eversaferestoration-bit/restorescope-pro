@@ -60,7 +60,11 @@ export default function NextActionBanner({ userId, companyId, onboardingStatus }
 
   useEffect(() => {
     if (!userId) return;
-    resolve(userId, companyId, onboardingStatus).then(setState);
+    // Wait briefly for companyId to load from the parent (it arrives via useEffect)
+    const timer = setTimeout(() => {
+      resolve(userId, companyId, onboardingStatus).then(setState);
+    }, 100);
+    return () => clearTimeout(timer);
   }, [userId, companyId, onboardingStatus]);
 
   if (dismissed || state === null || state === 'done') return null;

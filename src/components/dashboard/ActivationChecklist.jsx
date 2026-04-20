@@ -5,47 +5,52 @@ import { CheckCircle2, Circle, ChevronDown, ChevronUp, X, Rocket } from 'lucide-
 import { cn } from '@/lib/utils';
 
 // Each checklist item: label, how to check completion, where to go
+// `toFn` is optional — called with (firstJobId) to build a dynamic link
 const ITEMS = [
   {
     key: 'company_setup',
     label: 'Complete company setup',
     to: '/onboarding',
-    actionLabel: 'Set up company',
+    actionLabel: 'Set up →',
   },
   {
     key: 'pricing_profile',
     label: 'Set default pricing profile',
     to: '/pricing-profiles',
-    actionLabel: 'Add pricing',
+    actionLabel: 'Add pricing →',
   },
   {
     key: 'first_job',
-    label: 'Create first job',
+    label: 'Create your first job',
     to: '/jobs/new',
-    actionLabel: 'Create job',
+    actionLabel: 'Create job →',
   },
   {
     key: 'first_room',
-    label: 'Add first room to a job',
+    label: 'Add a room to your job',
+    toFn: (jobId) => `/jobs/${jobId}?tab=rooms`,
     to: '/jobs',
-    actionLabel: 'Open a job',
+    actionLabel: 'Add room →',
   },
   {
     key: 'first_photo',
-    label: 'Upload first photo',
+    label: 'Upload a photo',
+    toFn: (jobId) => `/jobs/${jobId}?tab=photos`,
     to: '/jobs',
-    actionLabel: 'Upload photos',
+    actionLabel: 'Upload photos →',
   },
   {
     key: 'first_estimate',
-    label: 'Generate first estimate draft',
+    label: 'Generate your first estimate',
+    toFn: (jobId) => `/jobs/${jobId}?tab=estimates`,
     to: '/jobs',
-    actionLabel: 'Generate estimate',
+    actionLabel: 'Generate estimate →',
   },
 ];
 
-async function computeCheckedKeys(userId, companyId) {
+async function computeProgress(userId, companyId) {
   const checked = new Set();
+  let firstJobId = null;
 
   // 1. Company setup — based on onboarding_status
   const profiles = await base44.entities.UserProfile.filter({ user_id: userId, is_deleted: false });
@@ -54,7 +59,7 @@ async function computeCheckedKeys(userId, companyId) {
     checked.add('company_setup');
   }
 
-  if (!companyId) return checked;
+  if (!companyId) return { checked, firstJobId };
 
   // 2. Pricing profile
   const pricing = await base44.entities.PricingProfile.filter({ company_id: companyId, is_deleted: false });
@@ -64,26 +69,27 @@ async function computeCheckedKeys(userId, companyId) {
   const jobs = await base44.entities.Job.filter({ is_deleted: false }, '-created_date', 1);
   if (jobs.length > 0) {
     checked.add('first_job');
+    firstJobId = jobs[0].id;
 
-    // 4. First room (requires a job)
-    const jobId = jobs[0].id;
-    const rooms = await base44.entities.Room.filter({ job_id: jobId, is_deleted: false });
+    // 4. First room
+    const rooms = await base44.entities.Room.filter({ job_id: firstJobId, is_deleted: false });
     if (rooms.length > 0) checked.add('first_room');
 
-    // 5. First photo (requires a job)
-    const photos = await base44.entities.Photo.filter({ job_id: jobId, is_deleted: false });
+    // 5. First photo
+    const photos = await base44.entities.Photo.filter({ job_id: firstJobId, is_deleted: false });
     if (photos.length > 0) checked.add('first_photo');
 
     // 6. First estimate draft
-    const estimates = await base44.entities.EstimateDraft.filter({ job_id: jobId, is_deleted: false });
+    const estimates = await base44.entities.EstimateDraft.filter({ job_id: firstJobId, is_deleted: false });
     if (estimates.length > 0) checked.add('first_estimate');
   }
 
-  return checked;
+  return { checked, firstJobId };
 }
 
 export default function ActivationChecklist({ userId, companyId, defaultCollapsed = false }) {
   const [checkedKeys, setCheckedKeys] = useState(null); // null = loading
+  const [firstJobId, setFirstJobId] = useState(null);
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
   const [dismissed, setDismissed] = useState(() => {
     return localStorage.getItem('activation_checklist_dismissed') === 'true';
@@ -91,8 +97,11 @@ export default function ActivationChecklist({ userId, companyId, defaultCollapse
 
   useEffect(() => {
     if (!userId) return;
-    computeCheckedKeys(userId, companyId)
-      .then(setCheckedKeys)
+    computeProgress(userId, companyId)
+      .then(({ checked, firstJobId }) => {
+        setCheckedKeys(checked);
+        setFirstJobId(firstJobId);
+      })
       .catch(() => setCheckedKeys(new Set()));
   }, [userId, companyId]);
 
@@ -166,6 +175,7 @@ export default function ActivationChecklist({ userId, companyId, defaultCollapse
         <div className="divide-y divide-border border-t border-border">
           {ITEMS.map((item) => {
             const done = checkedKeys.has(item.key);
+            const linkTo = (!done && item.toFn && firstJobId) ? item.toFn(firstJobId) : item.to;
             return (
               <div
                 key={item.key}
@@ -183,10 +193,10 @@ export default function ActivationChecklist({ userId, companyId, defaultCollapse
                 </span>
                 {!done && (
                   <Link
-                    to={item.to}
+                    to={linkTo}
                     className="text-xs font-semibold text-primary hover:underline shrink-0"
                   >
-                    {item.actionLabel} →
+                    {item.actionLabel}
                   </Link>
                 )}
               </div>

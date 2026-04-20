@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, AlertCircle, Shield } from 'lucide-react';
@@ -57,7 +57,9 @@ const STATUS_COLORS = {
 export default function JobDetail() {
   const { jobId } = useParams();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('overview');
+  const location = useLocation();
+  const tabFromUrl = new URLSearchParams(location.search).get('tab') || 'overview';
+  const [activeTab, setActiveTab] = useState(tabFromUrl);
   const [riskData, setRiskData] = useState(null);
   const [showRiskPanel, setShowRiskPanel] = useState(false);
 

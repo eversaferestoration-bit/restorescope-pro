@@ -173,10 +173,24 @@ export default function JobEstimates({ job }) {
           ))}
         </div>
       ) : drafts.length === 0 ? (
-        <div className="bg-card rounded-xl border border-border p-10 text-center">
-          <FilePlus size={28} className="mx-auto text-muted-foreground mb-2" />
-          <p className="text-sm font-semibold font-display">No estimates yet</p>
-          <p className="text-xs text-muted-foreground mt-1">Confirm scope items first, then generate an estimate.</p>
+        <div className="bg-card rounded-xl border border-border p-10 text-center flex flex-col items-center gap-3">
+          <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center">
+            <FilePlus size={22} className="text-muted-foreground" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold font-display">No estimates yet</p>
+            <p className="text-xs text-muted-foreground mt-1 max-w-xs mx-auto">Generate an AI-powered estimate from your rooms and scope items. Takes about 10 seconds.</p>
+          </div>
+          {!isTechnician && (
+            <button
+              onClick={handleGenerate}
+              disabled={generating}
+              className="inline-flex items-center gap-2 px-4 h-9 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition disabled:opacity-60"
+            >
+              {generating ? <Loader2 size={14} className="animate-spin" /> : <FilePlus size={14} />}
+              {generating ? 'Generating…' : 'Generate Estimate'}
+            </button>
+          )}
         </div>
       ) : (
         <div className="space-y-3">

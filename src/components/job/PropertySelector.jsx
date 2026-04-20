@@ -18,9 +18,9 @@ export default function PropertySelector({ value, onChange }) {
   const [newForm, setNewForm] = useState({ address_line_1: '', city: '', state: '', zip: '' });
 
   const { data: properties = [] } = useQuery({
-    queryKey: ['properties'],
-    queryFn: () => base44.entities.Property.filter({ company_id: user?.company_id || '', is_deleted: false }, 'address_line_1', 100),
-    enabled: !!user?.company_id,
+    queryKey: ['properties', user?.company_id],
+    queryFn: () => base44.entities.Property.filter({ is_deleted: false }, 'address_line_1', 100),
+    staleTime: 5 * 60 * 1000,
   });
 
   const createMutation = useMutation({
@@ -86,7 +86,17 @@ export default function PropertySelector({ value, onChange }) {
             </div>
           )}
 
-          <button type="button" onClick={() => setAdding(!adding)} className="inline-flex items-center gap-1.5 text-xs text-primary font-medium hover:underline">
+          {properties.length === 0 && !adding && (
+            <p className="text-xs text-muted-foreground">No properties found. Add one below.</p>
+          )}
+          <button
+            type="button"
+            onClick={() => setAdding(!adding)}
+            className={properties.length === 0 && !adding
+              ? "inline-flex items-center gap-1.5 px-3 h-8 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition"
+              : "inline-flex items-center gap-1.5 text-xs text-primary font-medium hover:underline"
+            }
+          >
             <Plus size={13} /> Add new property
           </button>
 

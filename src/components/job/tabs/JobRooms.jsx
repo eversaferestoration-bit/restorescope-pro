@@ -161,8 +161,20 @@ export default function JobRooms({ job }) {
           ))}
         </div>
       ) : rooms.length === 0 ? (
-        <div className="bg-card rounded-xl border border-border p-8 text-center">
-          <p className="text-sm text-muted-foreground">No rooms added yet.</p>
+        <div className="bg-card rounded-xl border border-border p-8 text-center flex flex-col items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center">
+            <Plus size={18} className="text-muted-foreground" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold">Add your first room</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Rooms are required before you can generate a scope or estimate.</p>
+          </div>
+          <button
+            onClick={() => setAdding(true)}
+            className="inline-flex items-center gap-1.5 px-4 h-9 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition"
+          >
+            <Plus size={14} /> Add Room
+          </button>
         </div>
       ) : (
         <div className="space-y-2">

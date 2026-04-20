@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { Sparkles, Zap, Plus, ChevronDown, ChevronUp, AlertTriangle, Search, AlertCircle } from 'lucide-react';
@@ -367,10 +368,33 @@ export default function JobScope({ job }) {
           ))}
         </div>
       ) : Object.keys(grouped).length === 0 ? (
-        <div className="bg-card rounded-xl border border-border p-10 text-center">
-          <Zap size={28} className="mx-auto text-muted-foreground mb-2" />
-          <p className="text-sm font-semibold font-display">No scope items yet</p>
-          <p className="text-xs text-muted-foreground mt-1">Select a room and click Generate Scope to get started.</p>
+        <div className="bg-card rounded-xl border border-border p-10 text-center flex flex-col items-center gap-3">
+          <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center">
+            <Zap size={22} className="text-muted-foreground" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold font-display">No scope items yet</p>
+            <p className="text-xs text-muted-foreground mt-1 max-w-xs mx-auto">
+              {rooms.length === 0
+                ? 'Add rooms to this job first, then generate a scope.'
+                : 'Select a room above and click Generate Scope to build your line items.'}
+            </p>
+          </div>
+          {rooms.length === 0 ? (
+            <Link
+              to={`/jobs/${job.id}?tab=rooms`}
+              className="inline-flex items-center gap-1.5 px-4 h-9 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition"
+            >
+              <Plus size={14} /> Add Rooms
+            </Link>
+          ) : (
+            <button
+              onClick={() => rooms[0] && setRoomId(rooms[0].id)}
+              className="inline-flex items-center gap-1.5 px-4 h-9 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition"
+            >
+              <Zap size={14} /> Generate Scope
+            </button>
+          )}
         </div>
       ) : (
         <div className="space-y-3">
