@@ -49,6 +49,7 @@ export default function Onboarding() {
   });
   const [role, setRole] = useState('admin');
   const [pricingChoice, setPricingChoice] = useState('');
+  const [grantBeta, setGrantBeta] = useState(false);
   const [companyId, setCompanyId] = useState(null);
   const [userProfileId, setUserProfileId] = useState(null);
 
@@ -143,7 +144,8 @@ export default function Onboarding() {
     try {
       let cId = companyId;
       if (!cId) {
-        const company = await base44.entities.Company.create({
+        // Create company with optional beta access
+        const companyData = {
           name: form.company_name.trim(),
           phone: form.phone || undefined,
           email: form.email || user?.email,
@@ -152,7 +154,20 @@ export default function Onboarding() {
           status: 'active',
           created_by: user?.email,
           is_deleted: false,
-        });
+        };
+
+        // Add beta fields if admin selected the toggle
+        if (grantBeta) {
+          const startDate = new Date();
+          const endDate = new Date(startDate);
+          endDate.setDate(endDate.getDate() + 14);
+          companyData.is_beta_user = true;
+          companyData.beta_start_date = startDate.toISOString().split('T')[0];
+          companyData.beta_end_date = endDate.toISOString().split('T')[0];
+          companyData.beta_status = 'active';
+        }
+
+        const company = await base44.entities.Company.create(companyData);
         cId = company.id;
         setCompanyId(cId);
 
@@ -334,6 +349,9 @@ export default function Onboarding() {
                 onBack={() => setStep(1)}
                 onContinue={handleStep2Continue}
                 loading={loading}
+                grantBeta={grantBeta}
+                setGrantBeta={setGrantBeta}
+                isAdmin={user?.role === 'admin'}
               />
             )}
             {step === 3 && (

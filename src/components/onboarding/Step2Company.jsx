@@ -3,7 +3,7 @@ import StepNav from './StepNav';
 import { base44 } from '@/api/base44Client';
 import { useState } from 'react';
 
-export default function Step2Company({ form, setForm, onBack, onContinue, loading }) {
+export default function Step2Company({ form, setForm, onBack, onContinue, loading, grantBeta, setGrantBeta, isAdmin }) {
   const [showMore, setShowMore] = useState(false);
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
@@ -98,9 +98,27 @@ export default function Step2Company({ form, setForm, onBack, onContinue, loadin
             </div>
           </div>
         )}
-      </div>
+        </div>
 
-      <StepNav
+        {/* Admin-only beta access toggle */}
+        {isAdmin && (
+         <div className="mt-6 pt-6 border-t border-border">
+           <label className="flex items-center gap-3 cursor-pointer">
+             <input
+               type="checkbox"
+               checked={grantBeta}
+               onChange={(e) => setGrantBeta(e.target.checked)}
+               className="w-4 h-4 accent-primary rounded"
+             />
+             <div className="flex-1">
+               <span className="text-sm font-medium">Grant Beta Access (14-day trial)</span>
+               <p className="text-xs text-muted-foreground mt-0.5">Company will have full trial access immediately</p>
+             </div>
+           </label>
+         </div>
+        )}
+
+        <StepNav
         onBack={onBack}
         onContinue={onContinue}
         disabled={!form.company_name.trim()}
