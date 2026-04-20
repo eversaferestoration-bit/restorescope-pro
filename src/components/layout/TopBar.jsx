@@ -38,7 +38,7 @@ export default function TopBar() {
     : 'RS';
 
   return (
-    <header className="h-14 border-b border-border bg-card/80 backdrop-blur-sm flex items-center px-4 gap-3 shrink-0">
+    <header className="h-14 border-b border-border bg-card/80 backdrop-blur-sm flex items-center px-4 gap-3 shrink-0 safe-top">
       {/* Mobile logo */}
       <div className="flex items-center gap-2 lg:hidden">
         <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center">

@@ -3,8 +3,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Search, Plus, Check, MapPin } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
+import SelectBottomSheet from '@/components/mobile/SelectBottomSheet';
 
 const US_STATES = ['AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY'];
+const STATE_OPTIONS = US_STATES.map(s => ({ value: s, label: s }));
 
 function formatAddress(p) {
   return [p.address_line_1, p.city, p.state, p.zip].filter(Boolean).join(', ');
@@ -106,10 +108,13 @@ export default function PropertySelector({ value, onChange }) {
               <input className="w-full h-9 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" placeholder="Address line 1 *" value={newForm.address_line_1} onChange={(e) => setNewForm((f) => ({ ...f, address_line_1: e.target.value }))} />
               <div className="grid grid-cols-3 gap-2">
                 <input className="col-span-2 h-9 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" placeholder="City" value={newForm.city} onChange={(e) => setNewForm((f) => ({ ...f, city: e.target.value }))} />
-                <select className="h-9 px-2 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" value={newForm.state} onChange={(e) => setNewForm((f) => ({ ...f, state: e.target.value }))}>
-                  <option value="">ST</option>
-                  {US_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
+                <SelectBottomSheet
+                  label=""
+                  value={newForm.state}
+                  onChange={(v) => setNewForm((f) => ({ ...f, state: v }))}
+                  options={STATE_OPTIONS}
+                  placeholder="ST"
+                />
               </div>
               <input className="w-full h-9 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" placeholder="ZIP" value={newForm.zip} onChange={(e) => setNewForm((f) => ({ ...f, zip: e.target.value }))} />
               <div className="flex gap-2 justify-end">
