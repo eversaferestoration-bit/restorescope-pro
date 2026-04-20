@@ -28,9 +28,12 @@ Deno.serve(async (req) => {
 
     const invite = invites[0];
 
-    // Check expiry date
-    if (invite.expires_at && new Date(invite.expires_at) < new Date()) {
-      return Response.json({ error: 'This invite code has expired' }, { status: 410 });
+    // Check expiry date (safe ISO parse)
+    if (invite.expires_at) {
+      const expiryDate = new Date(invite.expires_at);
+      if (expiryDate.getTime() < new Date().getTime()) {
+        return Response.json({ error: 'This invite code has expired' }, { status: 410 });
+      }
     }
 
     // Check max uses

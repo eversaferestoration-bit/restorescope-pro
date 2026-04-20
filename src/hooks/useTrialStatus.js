@@ -74,7 +74,12 @@ export function useTrialStatus() {
       }
     };
 
+    // Also re-check on focus to catch subscription updates
+    const handleFocus = () => load();
+    window.addEventListener('focus', handleFocus);
     load();
+    
+    return () => window.removeEventListener('focus', handleFocus);
   }, [user?.id]);
 
   const canUse = (feature) => {

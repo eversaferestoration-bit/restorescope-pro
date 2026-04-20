@@ -1,13 +1,18 @@
 import { Link } from 'react-router-dom';
 import { Clock, AlertTriangle, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useBetaAccess } from '@/hooks/useBetaAccess';
 
 /**
  * Compact trial status card for dashboard.
  * Shows countdown or expiry status in a small, non-intrusive format.
  */
 export default function TrialCountdownCard({ isExpired, daysLeft }) {
-  if (!isExpired && daysLeft === null) return null;
+  const { isBlockedByExpiredBeta } = useBetaAccess();
+
+  // Safety: if beta expired and no subscription, don't render here (should be caught at action level)
+  // This prevents double-blocking and keeps UI responsive
+  if (!isExpired && daysLeft === null && !isBlockedByExpiredBeta) return null;
 
   // Determine styling based on status
   const isUrgent = !isExpired && daysLeft !== null && daysLeft <= 3;

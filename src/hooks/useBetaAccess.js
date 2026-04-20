@@ -41,7 +41,8 @@ export function useBetaAccess() {
 
         const now = new Date();
         const endDate = company.beta_end_date ? parseISO(company.beta_end_date) : null;
-        const hasExpired = endDate && isAfter(now, endDate);
+        // Beta expires at end of the day specified — use >= to include expiry date itself
+        const hasExpired = endDate && now.getTime() > endDate.getTime();
 
         // Auto-expire if past end date and not yet marked expired
         if (hasExpired && company.beta_status !== 'expired') {
@@ -69,7 +70,12 @@ export function useBetaAccess() {
       }
     };
 
+    // Also re-check on focus to catch subscription updates
+    const handleFocus = () => load();
+    window.addEventListener('focus', handleFocus);
     load();
+    
+    return () => window.removeEventListener('focus', handleFocus);
   }, [user?.id]);
 
   return state;
