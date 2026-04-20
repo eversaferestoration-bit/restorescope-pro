@@ -18,15 +18,29 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
-      const res = await base44.auth.signInWithPassword({ email, password });
+      const a = base44?.auth;
+
+      if (!a) throw new Error('Auth not initialized');
+
+      let res;
+      if (typeof a.signIn === 'function') {
+        res = await a.signIn({ email, password });
+      } else if (typeof a.loginWithPassword === 'function') {
+        res = await a.loginWithPassword({ email, password });
+      } else if (typeof a.signInWithEmail === 'function') {
+        res = await a.signInWithEmail({ email, password });
+      } else {
+        throw new Error('No valid sign-in method found on auth client');
+      }
 
       if (!res?.user) {
-        throw new Error('Invalid email or password');
+        throw new Error(res?.message || 'Invalid email or password');
       }
 
       navigate(from, { replace: true });
     } catch (err) {
-      setError(err?.message || 'Login failed');
+      console.error('Login error:', err);
+      setError(err?.message || 'Unable to sign in. Please try again.');
     } finally {
       setLoading(false);
     }
