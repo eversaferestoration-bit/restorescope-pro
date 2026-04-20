@@ -3,6 +3,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { FilePlus, Loader2, AlertTriangle, Lock, ChevronDown, Shield, FileText } from 'lucide-react';
+import UpgradeGate from '@/components/trial/UpgradeGate';
+import { useTrialStatus } from '@/hooks/useTrialStatus';
 import { cn } from '@/lib/utils';
 import EstimateDraftCard from '@/components/job/estimates/EstimateDraftCard';
 import JobDefense from '@/components/job/tabs/JobDefense';
@@ -18,6 +20,7 @@ export default function JobEstimates({ job }) {
   const [activeTab, setActiveTab] = useState('estimates'); // 'estimates' | 'defense' | 'supplements'
   const [selectedDefenseEstimateId, setSelectedDefenseEstimateId] = useState(null);
   const isTechnician = user?.role === 'technician';
+  const { canUse, isTrial, isExpired, daysLeft } = useTrialStatus();
 
   const { data: drafts = [], isLoading } = useQuery({
     queryKey: ['estimates', job.id],
@@ -123,28 +126,37 @@ export default function JobEstimates({ job }) {
         <div>
       {/* Generate bar */}
       {!isTechnician && (
-        <div className="flex items-center gap-2 flex-wrap">
-          {profiles.length > 0 && (
-            <div className="relative">
-              <select
-                value={profileId}
-                onChange={(e) => setProfileId(e.target.value)}
-                className="h-9 pl-3 pr-8 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring appearance-none"
+        <div className="space-y-2">
+          {isExpired ? (
+            <UpgradeGate allowed={false} feature="estimate generation" reason="Your trial has ended. Upgrade to continue generating AI-powered estimates." />
+          ) : (
+            <div className="flex items-center gap-2 flex-wrap">
+              {profiles.length > 0 && (
+                <div className="relative">
+                  <select
+                    value={profileId}
+                    onChange={(e) => setProfileId(e.target.value)}
+                    className="h-9 pl-3 pr-8 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring appearance-none"
+                  >
+                    <option value="">Default pricing profile</option>
+                    {profiles.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </select>
+                  <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                </div>
+              )}
+              <button
+                onClick={handleGenerate}
+                disabled={generating}
+                className="inline-flex items-center gap-2 px-4 h-9 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition disabled:opacity-60"
               >
-                <option value="">Default pricing profile</option>
-                {profiles.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
-              <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                {generating ? <Loader2 size={14} className="animate-spin" /> : <FilePlus size={14} />}
+                {generating ? 'Generating…' : 'Generate Estimate'}
+              </button>
+              {isTrial && daysLeft !== null && daysLeft <= 5 && (
+                <span className="text-xs text-amber-600 font-medium">{daysLeft}d left in trial</span>
+              )}
             </div>
           )}
-          <button
-            onClick={handleGenerate}
-            disabled={generating}
-            className="inline-flex items-center gap-2 px-4 h-9 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition disabled:opacity-60"
-          >
-            {generating ? <Loader2 size={14} className="animate-spin" /> : <FilePlus size={14} />}
-            {generating ? 'Generating…' : 'Generate Estimate'}
-          </button>
         </div>
       )}
 

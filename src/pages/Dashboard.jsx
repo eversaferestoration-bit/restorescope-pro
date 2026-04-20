@@ -15,6 +15,8 @@ import UsageStatsWidget from '@/components/dashboard/UsageStatsWidget';
 import RecentActivityWidget from '@/components/dashboard/RecentActivityWidget';
 import ActivationChecklist from '@/components/dashboard/ActivationChecklist';
 import NextActionBanner from '@/components/dashboard/NextActionBanner';
+import TrialBanner from '@/components/trial/TrialBanner';
+import { useTrialStatus } from '@/hooks/useTrialStatus';
 
 const STATUS_COLORS = {
   new:              'bg-blue-100 text-blue-700',
@@ -29,6 +31,7 @@ export default function Dashboard() {
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [onboardingStatus, setOnboardingStatus] = useState(null);
   const [companyId, setCompanyId] = useState(null);
+  const { isTrial, isExpired, daysLeft } = useTrialStatus();
   // Check onboarding completion for next-action banner + checklist
   useEffect(() => {
     if (!user) return;
@@ -89,6 +92,11 @@ export default function Dashboard() {
           <Plus size={15} /> New Job
         </Link>
       </div>
+
+      {/* Trial countdown / expiry banner */}
+      {(isTrial || isExpired) && (
+        <TrialBanner daysLeft={daysLeft} isExpired={isExpired} />
+      )}
 
       {/* Smart next-action nudge — resolves automatically based on user state */}
       {user && (

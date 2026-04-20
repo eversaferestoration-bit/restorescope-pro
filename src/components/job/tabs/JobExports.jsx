@@ -3,6 +3,9 @@ import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { FileText, Camera, BookOpen, Download, Loader2, CheckCircle2, Lock, AlertTriangle, Info } from 'lucide-react';
+import UpgradeGate from '@/components/trial/UpgradeGate';
+import TrialBanner from '@/components/trial/TrialBanner';
+import { useTrialStatus } from '@/hooks/useTrialStatus';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 
@@ -100,6 +103,7 @@ export default function JobExports({ job }) {
   const [loading, setLoading] = useState(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const { canUse, isTrial, isExpired, daysLeft } = useTrialStatus();
 
   const { data: drafts = [] } = useQuery({
     queryKey: ['estimates', job.id],
@@ -141,6 +145,19 @@ export default function JobExports({ job }) {
     setLoading(null);
   };
 
+  if (isExpired) {
+    return (
+      <div className="space-y-5">
+        <div>
+          <h3 className="text-sm font-semibold font-display">Export Documents</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">Generate professional PDFs for carrier submission, documentation, and records.</p>
+        </div>
+        <TrialBanner isExpired={true} daysLeft={null} />
+        <UpgradeGate allowed={false} feature="document exports" reason="Your trial has ended. Upgrade to export estimates, photos, and justification packages." />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-5">
       <div>
@@ -149,6 +166,11 @@ export default function JobExports({ job }) {
           Generate professional PDFs for carrier submission, documentation, and records.
         </p>
       </div>
+
+      {/* Trial countdown hint */}
+      {isTrial && daysLeft !== null && daysLeft <= 5 && (
+        <TrialBanner daysLeft={daysLeft} isExpired={false} compact />
+      )}
 
       {/* Status banners */}
       {!approvedDraft && (
