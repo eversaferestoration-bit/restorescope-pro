@@ -1,13 +1,6 @@
 import { Droplets } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 
-const safeError = (err) => {
-  if (!err) return null;
-  if (typeof err === 'string') return err;
-  if (typeof err === 'object' && typeof err.message === 'string') return err.message;
-  return 'Something went wrong. Please try again.';
-};
-
 export default function Login() {
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center px-4 py-12">
