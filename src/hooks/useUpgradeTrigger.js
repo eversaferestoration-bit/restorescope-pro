@@ -19,7 +19,8 @@ import { useUsageLimits } from './useFeatureAccess';
  */
 export function useUpgradeTrigger({ feature = 'basic', checkLimits = false } = {}) {
   const { isTrial, isExpired, isPaid, daysLeft, loading } = useTrialStatus();
-  const { usage, loading: usageLoading } = checkLimits ? useUsageLimits() : { usage: null, loading: false };
+  const { usage, loading: usageLoading } = useUsageLimits();
+  const shouldCheckLimits = checkLimits;
 
   if (loading) return null;
 
@@ -42,7 +43,7 @@ export function useUpgradeTrigger({ feature = 'basic', checkLimits = false } = {
   }
 
   // 3. Usage limit hit
-  if (checkLimits && !usageLoading && usage?.limitReached) {
+  if (shouldCheckLimits && !usageLoading && usage?.limitReached) {
     return {
       variant: 'limit',
       message: `You've hit your plan limit. Upgrade to continue without interruption.`,
