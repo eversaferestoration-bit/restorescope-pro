@@ -12,6 +12,7 @@ import { ArrowLeft, ArrowRight, Check, Save } from 'lucide-react';
 import InsuredSelector from '@/components/job/InsuredSelector';
 import PropertySelector from '@/components/job/PropertySelector';
 import UserSelector from '@/components/job/UserSelector';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 
 const LOSS_TYPES = [
@@ -23,8 +24,7 @@ const LOSS_TYPES = [
 const SERVICE_TYPES = ['Mitigation', 'Restoration', 'Contents', 'Reconstruction', 'Inspection Only'];
 const STATUS_OPTIONS = ['new', 'in_progress', 'pending_approval', 'approved', 'closed'];
 
-const inputCls = 'w-full h-10 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring transition';
-const selectCls = 'w-full h-10 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring transition';
+const inputCls = 'w-full min-h-touch px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring transition';
 
 function Field({ label, required, error, children }) {
   return (
@@ -188,23 +188,36 @@ export default function NewJob() {
             </div>
 
             <Field label="Loss Type" required error={errors.loss_type}>
-              <select className={cn(selectCls, errors.loss_type && 'border-destructive')} value={form.loss_type} onChange={set('loss_type')}>
-                <option value="">Select…</option>
-                {LOSS_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-              </select>
+              <Select value={form.loss_type} onValueChange={(v) => setForm((f) => ({ ...f, loss_type: v }))}>
+                <SelectTrigger className={cn('min-h-touch', errors.loss_type && 'border-destructive')}>
+                  <SelectValue placeholder="Select…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {LOSS_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </Field>
 
             <Field label="Service Type" required error={errors.service_type}>
-              <select className={cn(selectCls, errors.service_type && 'border-destructive')} value={form.service_type} onChange={set('service_type')}>
-                <option value="">Select…</option>
-                {SERVICE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-              </select>
+              <Select value={form.service_type} onValueChange={(v) => setForm((f) => ({ ...f, service_type: v }))}>
+                <SelectTrigger className={cn('min-h-touch', errors.service_type && 'border-destructive')}>
+                  <SelectValue placeholder="Select…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SERVICE_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </Field>
 
             <Field label="Status">
-              <select className={selectCls} value={form.status} onChange={set('status')}>
-                {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
-              </select>
+              <Select value={form.status} onValueChange={(v) => setForm((f) => ({ ...f, status: v }))}>
+                <SelectTrigger className="min-h-touch">
+                  <SelectValue placeholder="Select…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {STATUS_OPTIONS.map((s) => <SelectItem key={s} value={s}>{s.replace(/_/g, ' ')}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </Field>
 
             <Field label="Date of Loss">
@@ -313,11 +326,11 @@ export default function NewJob() {
       )}
 
       {/* Nav buttons */}
-      <div className="flex justify-between mt-5">
+      <div className="flex justify-between mt-5 gap-3">
         <button
           type="button"
           onClick={() => step === 0 ? navigate(-1) : back()}
-          className="px-4 h-10 rounded-lg border border-border text-sm font-medium hover:bg-muted transition"
+          className="px-4 min-h-touch rounded-lg border border-border text-sm font-medium hover:bg-muted transition"
         >
           {step === 0 ? 'Cancel' : 'Back'}
         </button>
@@ -326,7 +339,7 @@ export default function NewJob() {
           <button
             type="button"
             onClick={next}
-            className="inline-flex items-center gap-2 px-5 h-10 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition"
+            className="inline-flex items-center gap-2 px-5 min-h-touch rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition"
           >
             Next <ArrowRight size={15} />
           </button>
@@ -335,7 +348,7 @@ export default function NewJob() {
             type="button"
             onClick={handleSubmit}
             disabled={saving}
-            className="inline-flex items-center gap-2 px-5 h-10 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition disabled:opacity-60"
+            className="inline-flex items-center gap-2 px-5 min-h-touch rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition disabled:opacity-60"
           >
             <Save size={15} /> {saving ? 'Creating…' : 'Create Job'}
           </button>

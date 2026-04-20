@@ -64,7 +64,7 @@ export default function Signup() {
 
           <button
             onClick={handleSignup}
-            className="w-full h-10 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition"
+            className="w-full min-h-touch rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition"
           >
             Create account
           </button>
@@ -80,7 +80,7 @@ export default function Signup() {
           Already have an account?{' '}
           <button
             onClick={() => base44.auth.redirectToLogin('/dashboard')}
-            className="text-primary font-medium hover:underline"
+            className="text-primary font-medium hover:underline touch-target"
           >
             Sign in
           </button>

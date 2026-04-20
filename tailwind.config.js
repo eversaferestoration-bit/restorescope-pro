@@ -13,6 +13,12 @@ module.exports = {
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
       },
+      minHeight: {
+        'touch': '2.75rem', // 44px
+      },
+      minWidth: {
+        'touch': '2.75rem', // 44px
+      },
       colors: {
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',

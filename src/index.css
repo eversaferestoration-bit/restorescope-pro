@@ -95,6 +95,43 @@
   .safe-top {
     padding-top: env(safe-area-inset-top, 0px);
   }
+
+  /* Touch target minimum 44x44px */
+  .touch-target {
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* User select utilities */
+  .user-select-none {
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  .user-select-text {
+    user-select: text;
+    -webkit-user-select: text;
+  }
+
+  /* Prevent text selection on interactive elements */
+  button, [role="button"], input[type="checkbox"], input[type="radio"], [role="tab"], [role="menuitem"] {
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  /* Allow text selection on text content */
+  p, span, a, label, h1, h2, h3, h4, h5, h6 {
+    user-select: text;
+    -webkit-user-select: text;
+  }
+
+  /* Disable overscroll rubber-banding */
+  .scrollable-container {
+    overscroll-behavior: none;
+  }
 }
 
 /* Scrollbar */
