@@ -136,6 +136,7 @@ export default function Dashboard() {
             <TrialCountdownCard isExpired={isExpired} daysLeft={daysLeft} />
           </div>
         )}
+        <StatCard
           label="Active Jobs"
           value={activeJobs.length}
           icon={FolderOpen}
