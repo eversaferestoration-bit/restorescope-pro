@@ -144,7 +144,7 @@ export default function Onboarding() {
     try {
       let cId = companyId;
       if (!cId) {
-        // Create company with optional beta access
+        // Create company
         const companyData = {
           name: form.company_name.trim(),
           phone: form.phone || undefined,
@@ -156,7 +156,7 @@ export default function Onboarding() {
           is_deleted: false,
         };
 
-        // Add beta fields if admin selected the toggle
+        // Add beta fields if admin manually selected the toggle
         if (grantBeta) {
           const startDate = new Date();
           const endDate = new Date(startDate);
@@ -170,6 +170,23 @@ export default function Onboarding() {
         const company = await base44.entities.Company.create(companyData);
         cId = company.id;
         setCompanyId(cId);
+
+        // Auto-activate beta for first 10 companies (if not already set by admin)
+        if (!grantBeta) {
+          const allCompanies = await base44.asServiceRole.entities.Company.filter({ is_deleted: false });
+          if (allCompanies.length <= 10) {
+            const startDate = new Date();
+            const endDate = new Date(startDate);
+            endDate.setDate(endDate.getDate() + 14);
+            await base44.asServiceRole.entities.Company.update(cId, {
+              is_beta_user: true,
+              beta_start_date: startDate.toISOString().split('T')[0],
+              beta_end_date: endDate.toISOString().split('T')[0],
+              beta_status: 'active',
+            });
+            setBetaActivated(true);
+          }
+        }
 
         // Apply beta access if invite code was stored during signup
         const inviteCode = sessionStorage.getItem('beta_invite_code');
