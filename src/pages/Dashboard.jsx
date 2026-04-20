@@ -88,7 +88,7 @@ export default function Dashboard() {
 
   return (
     <div
-      className="p-4 md:p-6 max-w-6xl mx-auto space-y-6 relative"
+      className="p-4 md:p-6 max-w-6xl mx-auto space-y-6 relative scrollable-container"
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}

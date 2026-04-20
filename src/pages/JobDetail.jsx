@@ -109,7 +109,7 @@ export default function JobDetail() {
   const isKnowledgeTab = activeTab === 'knowledge';
 
   return (
-    <div className="flex flex-col min-h-full">
+    <div className="flex flex-col min-h-full scrollable-container">
       {/* Header */}
       <div className="px-4 md:px-6 pt-4 pb-3 border-b border-border bg-card/60">
         <button
