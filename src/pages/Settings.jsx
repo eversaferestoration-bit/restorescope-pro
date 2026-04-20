@@ -1,6 +1,15 @@
-import { Settings as SettingsIcon } from 'lucide-react';
+import { Settings as SettingsIcon, ListChecks } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export default function Settings() {
+  const navigate = useNavigate();
+
+  const handleReopenChecklist = () => {
+    localStorage.removeItem('activation_checklist_dismissed');
+    window.dispatchEvent(new Event('reopen_activation_checklist'));
+    navigate('/dashboard');
+  };
+
   return (
     <div className="p-4 md:p-6 max-w-3xl mx-auto">
       <div className="mb-6">
@@ -18,6 +27,23 @@ export default function Settings() {
             <button className="text-xs text-primary font-medium hover:underline">Manage</button>
           </div>
         ))}
+
+        {/* Reopen activation checklist */}
+        <div className="flex items-center justify-between px-5 py-4">
+          <div className="flex items-center gap-3">
+            <ListChecks size={16} className="text-primary" />
+            <div>
+              <p className="text-sm font-medium">Getting started checklist</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Reopen the activation checklist on the dashboard</p>
+            </div>
+          </div>
+          <button
+            onClick={handleReopenChecklist}
+            className="text-xs text-primary font-medium hover:underline"
+          >
+            Reopen
+          </button>
+        </div>
       </div>
     </div>
   );

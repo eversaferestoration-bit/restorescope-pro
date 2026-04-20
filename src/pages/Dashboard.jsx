@@ -14,6 +14,7 @@ import SyncErrorsWidget from '@/components/dashboard/SyncErrorsWidget';
 import UsageStatsWidget from '@/components/dashboard/UsageStatsWidget';
 import RecentActivityWidget from '@/components/dashboard/RecentActivityWidget';
 import FinishSetupCard from '@/components/dashboard/FinishSetupCard';
+import ActivationChecklist from '@/components/dashboard/ActivationChecklist';
 
 const STATUS_COLORS = {
   new:              'bg-blue-100 text-blue-700',
@@ -27,16 +28,24 @@ export default function Dashboard() {
   const { user } = useAuth();
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [onboardingStatus, setOnboardingStatus] = useState(null);
+  const [companyId, setCompanyId] = useState(null);
+  const [showChecklist, setShowChecklist] = useState(false);
 
-  // Check onboarding completion for the finish setup card
+  // Check onboarding completion for the finish setup card + checklist
   useEffect(() => {
     if (!user) return;
     base44.entities.UserProfile.filter({ user_id: user.id, is_deleted: false })
       .then((profiles) => {
         if (profiles.length > 0) {
-          const status = profiles[0].onboarding_status;
+          const profile = profiles[0];
+          const status = profile.onboarding_status;
+          setCompanyId(profile.company_id || null);
           if (status && status !== 'onboarding_completed') {
             setOnboardingStatus(status);
+            setShowChecklist(true);
+          } else {
+            // Still show checklist if no estimate exists yet (checked inside component)
+            setShowChecklist(true);
           }
         }
       })
@@ -89,6 +98,11 @@ export default function Dashboard() {
 
       {/* Finish setup card — shown only when onboarding is incomplete */}
       {onboardingStatus && <FinishSetupCard onboardingStatus={onboardingStatus} />}
+
+      {/* Activation checklist — shown to new users until fully activated */}
+      {showChecklist && user && (
+        <ActivationChecklist userId={user.id} companyId={companyId} />
+      )}
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
