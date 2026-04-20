@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Droplets } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
@@ -12,6 +12,11 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+
+  useEffect(() => {
+    console.log("APP:", base44);
+    console.log("APP.AUTH:", base44?.auth);
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
