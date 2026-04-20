@@ -18,7 +18,7 @@ import ClientLogin from '@/pages/client/ClientLogin';
 import ClientPortal from '@/pages/client/ClientPortal';
 
 // App pages
-import Onboarding from '@/pages/Onboarding.jsx';
+import Onboarding from '@/pages/Onboarding';
 import Dashboard from '@/pages/Dashboard';
 import Jobs from '@/pages/Jobs';
 import NewJob from '@/pages/NewJob';
