@@ -8,6 +8,7 @@ import TrialBanner from '@/components/trial/TrialBanner';
 import { useTrialStatus } from '@/hooks/useTrialStatus';
 import { useBetaAccess } from '@/hooks/useBetaAccess';
 import BetaExpiredGate from '@/components/beta/BetaExpiredGate';
+import UpgradeRequiredModal from '@/components/trial/UpgradeRequiredModal';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 
@@ -105,6 +106,7 @@ export default function JobExports({ job }) {
   const [loading, setLoading] = useState(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const { canUse, isTrial, isExpired, daysLeft } = useTrialStatus();
   const { isBlockedByExpiredBeta } = useBetaAccess();
 
@@ -121,6 +123,10 @@ export default function JobExports({ job }) {
   const approvedDraft = drafts.find((d) => d.status === 'approved' || d.status === 'locked');
 
   const handleExport = async (exportType) => {
+    if (isBlockedByExpiredBeta) {
+      setShowUpgradeModal(true);
+      return;
+    }
     setLoading(exportType);
     setError('');
     setSuccess('');
@@ -148,17 +154,7 @@ export default function JobExports({ job }) {
     setLoading(null);
   };
 
-  if (isBlockedByExpiredBeta) {
-    return (
-      <div className="space-y-5">
-        <div>
-          <h3 className="text-sm font-semibold font-display">Export Documents</h3>
-          <p className="text-xs text-muted-foreground mt-0.5">Generate professional PDFs for carrier submission, documentation, and records.</p>
-        </div>
-        <BetaExpiredGate action="exporting documents" />
-      </div>
-    );
-  }
+
 
   if (isExpired) {
     return (
@@ -244,6 +240,14 @@ export default function JobExports({ job }) {
             </p>
           )}
         </div>
+      )}
+
+      {/* Upgrade modal */}
+      {showUpgradeModal && (
+        <UpgradeRequiredModal
+          action="Exporting documents"
+          onClose={() => setShowUpgradeModal(false)}
+        />
       )}
     </div>
   );

@@ -7,6 +7,7 @@ import UpgradeNudge from '@/components/trial/UpgradeNudge';
 import { useUpgradeTrigger } from '@/hooks/useUpgradeTrigger';
 import { useBetaAccess } from '@/hooks/useBetaAccess';
 import BetaExpiredGate from '@/components/beta/BetaExpiredGate';
+import UpgradeRequiredModal from '@/components/trial/UpgradeRequiredModal';
 import { ArrowLeft, ArrowRight, Check, Save } from 'lucide-react';
 import InsuredSelector from '@/components/job/InsuredSelector';
 import PropertySelector from '@/components/job/PropertySelector';
@@ -118,8 +119,13 @@ export default function NewJob() {
   const back = () => { setErrors({}); setStep((s) => s - 1); };
 
   const [submitError, setSubmitError] = useState('');
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   const handleSubmit = async () => {
+    if (isBlockedByExpiredBeta) {
+      setShowUpgradeModal(true);
+      return;
+    }
     if (!validate(step)) return;
     setSaving(true);
     setSubmitError('');
@@ -147,17 +153,8 @@ export default function NewJob() {
     }
   };
 
-  if (isBlockedByExpiredBeta) {
-    return (
-      <div className="p-4 md:p-6 max-w-xl mx-auto">
-        <button onClick={() => navigate(-1)} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-5 transition">
-          <ArrowLeft size={15} /> Back
-        </button>
-        <h1 className="text-2xl font-bold font-display mb-5">New Job</h1>
-        <BetaExpiredGate action="creating new jobs" />
-      </div>
-    );
-  }
+  // Show modal if beta expired, but allow UI to render
+  // User can't submit, but can see the form
 
   return (
     <div className="p-4 md:p-6 max-w-xl mx-auto">
@@ -305,6 +302,14 @@ export default function NewJob() {
 
       {submitError && (
         <div className="mt-4 px-4 py-2.5 bg-destructive/10 border border-destructive/30 rounded-lg text-sm text-destructive">{submitError}</div>
+      )}
+
+      {/* Upgrade modal */}
+      {showUpgradeModal && (
+        <UpgradeRequiredModal
+          action="Creating new jobs"
+          onClose={() => setShowUpgradeModal(false)}
+        />
       )}
 
       {/* Nav buttons */}
