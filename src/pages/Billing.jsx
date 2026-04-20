@@ -1,352 +1,183 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { base44 } from '@/api/base44Client';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useAuth } from '@/lib/AuthContext';
-import { CreditCard, Check, Zap, TrendingUp, Building2, Sparkles, AlertCircle, Loader2 } from 'lucide-react';
+import { Check, Zap, Users, TrendingUp, Building2, Star } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const TIER_COLORS = {
-  starter: 'bg-blue-100 text-blue-700',
-  professional: 'bg-purple-100 text-purple-700',
-  business: 'bg-amber-100 text-amber-700',
-  enterprise: 'bg-slate-800 text-white',
-};
+const PLANS = [
+  {
+    key: 'solo',
+    name: 'Solo',
+    price: 99,
+    period: '/mo',
+    icon: Zap,
+    iconBg: 'bg-blue-100 text-blue-600',
+    description: 'Perfect for independent contractors',
+    features: [
+      '1 user',
+      'Job creation & tracking',
+      'Photo uploads',
+      'Basic scope generation',
+      'PDF exports',
+    ],
+    cta: 'Start Free Trial',
+    popular: false,
+  },
+  {
+    key: 'team',
+    name: 'Team',
+    price: 249,
+    period: '/mo',
+    icon: Users,
+    iconBg: 'bg-primary/10 text-primary',
+    description: 'Great for small restoration teams',
+    features: [
+      'Up to 5 users',
+      'Everything in Solo',
+      'Full estimate builder',
+      'AI scope generation',
+      'Carrier negotiation tools',
+      'Team assignment & roles',
+    ],
+    cta: 'Start Free Trial',
+    popular: true,
+  },
+  {
+    key: 'growth',
+    name: 'Growth',
+    price: 499,
+    period: '/mo',
+    icon: TrendingUp,
+    iconBg: 'bg-amber-100 text-amber-600',
+    description: 'For scaling restoration companies',
+    features: [
+      'Unlimited users',
+      'Everything in Team',
+      'Advanced analytics',
+      'Performance optimization',
+      'Adjuster behavior insights',
+      'Claim defense analysis',
+      'Priority support',
+    ],
+    cta: 'Start Free Trial',
+    popular: false,
+  },
+  {
+    key: 'enterprise',
+    name: 'Enterprise',
+    price: null,
+    period: null,
+    icon: Building2,
+    iconBg: 'bg-slate-200 text-slate-700',
+    description: 'Custom solutions for large operations',
+    features: [
+      'All Growth features',
+      'Multi-location support',
+      'Custom integrations',
+      'Dedicated account manager',
+      'SLA guarantees',
+      'Custom pricing & billing',
+    ],
+    cta: 'Contact Sales',
+    popular: false,
+  },
+];
 
-const TIER_ICONS = {
-  starter: Zap,
-  professional: TrendingUp,
-  business: Building2,
-  enterprise: Building2,
-};
-
-function PlanCard({ plan, currentPlanCode, onSelect, loading }) {
-  const Icon = TIER_ICONS[plan.tier] || Zap;
-  const isCurrent = plan.code === currentPlanCode;
-  const isEnterprise = plan.tier === 'enterprise';
+function PlanCard({ plan }) {
+  const Icon = plan.icon;
 
   return (
     <div className={cn(
-      'rounded-2xl border-2 p-6 transition-all hover:shadow-lg',
-      isCurrent ? 'border-primary bg-accent/30' : 'border-border bg-card',
-      isEnterprise && !isCurrent && 'border-slate-700 bg-slate-800/10'
+      'relative flex flex-col rounded-2xl border-2 p-6 transition-all bg-card',
+      plan.popular
+        ? 'border-primary shadow-lg shadow-primary/10 scale-[1.02]'
+        : 'border-border hover:border-primary/30 hover:shadow-md'
     )}>
-      <div className="flex items-start justify-between mb-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center', TIER_COLORS[plan.tier])}>
-              <Icon size={16} />
-            </div>
-            <h3 className="text-lg font-bold font-display">{plan.name}</h3>
+      {/* Most Popular badge */}
+      {plan.popular && (
+        <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
+          <div className="flex items-center gap-1 bg-primary text-primary-foreground text-xs font-bold px-3 py-1 rounded-full shadow">
+            <Star size={11} className="fill-current" /> Most Popular
           </div>
-          <p className="text-xs text-muted-foreground mt-1 capitalize">{plan.tier} tier</p>
         </div>
-        {isCurrent && (
-          <span className="text-xs font-semibold text-primary bg-primary/10 px-2 py-1 rounded-full">
-            Current Plan
-          </span>
-        )}
-      </div>
-
-      <div className="mb-4">
-        <div className="flex items-baseline gap-1">
-          <span className="text-3xl font-bold font-display">${plan.monthly_price}</span>
-          <span className="text-sm text-muted-foreground">/month</span>
-        </div>
-        {plan.annual_price && (
-          <p className="text-xs text-muted-foreground mt-1">
-            ${plan.annual_price}/year (save {Math.round((1 - plan.annual_price / (plan.monthly_price * 12)) * 100)}%)
-          </p>
-        )}
-      </div>
-
-      <div className="space-y-2 mb-4">
-        <div className="flex items-center gap-2 text-sm">
-          <Check size={14} className="text-green-600" />
-          <span>{plan.seat_limit} {plan.seat_limit === 1 ? 'seat' : 'seats'}</span>
-        </div>
-        <div className="flex items-center gap-2 text-sm">
-          <Check size={14} className="text-green-600" />
-          <span>{plan.monthly_job_limit} jobs/month</span>
-        </div>
-        <div className="flex items-center gap-2 text-sm">
-          <Check size={14} className="text-green-600" />
-          <span>{plan.monthly_ai_limit} AI analyses/month</span>
-        </div>
-        <div className="flex items-center gap-2 text-sm">
-          <Check size={14} className="text-green-600" />
-          <span>{plan.storage_limit_mb} MB storage</span>
-        </div>
-        {plan.overage_job_price && (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <AlertCircle size={12} />
-            <span>Overage: ${plan.overage_job_price}/job</span>
-          </div>
-        )}
-        {plan.overage_ai_price && (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <AlertCircle size={12} />
-            <span>Overage: ${plan.overage_ai_price}/AI analysis</span>
-          </div>
-        )}
-        {plan.premium_analytics && (
-          <div className="flex items-center gap-2 text-sm text-purple-600">
-            <Sparkles size={14} />
-            <span>Premium analytics</span>
-          </div>
-        )}
-        {plan.enterprise_features && (
-          <div className="flex items-center gap-2 text-sm text-slate-600">
-            <Building2 size={14} />
-            <span>Enterprise features</span>
-          </div>
-        )}
-      </div>
-
-      {!isCurrent && (
-        <button
-          onClick={() => onSelect(plan)}
-          disabled={loading}
-          className={cn(
-            'w-full h-10 rounded-lg text-sm font-semibold transition',
-            isEnterprise
-              ? 'bg-slate-800 text-white hover:bg-slate-700'
-              : 'bg-primary text-primary-foreground hover:bg-primary/90',
-            loading && 'opacity-60 cursor-not-allowed'
-          )}
-        >
-          {loading ? <Loader2 size={16} className="animate-spin inline" /> : isEnterprise ? 'Contact Sales' : 'Select Plan'}
-        </button>
       )}
-    </div>
-  );
-}
 
-function UsageSummary({ subscription }) {
-  const { data: usageRecord } = useQuery({
-    queryKey: ['current-usage', subscription?.id],
-    queryFn: () => base44.entities.UsageRecord.filter({ 
-      subscription_id: subscription.id, 
-      status: 'active' 
-    }, '-period_start', 1),
-    select: (d) => d[0],
-    enabled: !!subscription?.id,
-  });
-
-  if (!usageRecord) return null;
-
-  const jobUsagePercent = (usageRecord.jobs_used / usageRecord.jobs_limit) * 100;
-  const aiUsagePercent = (usageRecord.ai_analyses_used / usageRecord.ai_analyses_limit) * 100;
-
-  return (
-    <div className="bg-card rounded-xl border border-border p-5 mb-6">
-      <h3 className="text-sm font-semibold font-display mb-4">Current Period Usage</h3>
-      
-      <div className="space-y-4">
-        <div>
-          <div className="flex items-center justify-between text-sm mb-1">
-            <span className="text-muted-foreground">Jobs</span>
-            <span className="font-medium">{usageRecord.jobs_used} / {usageRecord.jobs_limit}</span>
-          </div>
-          <div className="h-2 bg-muted rounded-full overflow-hidden">
-            <div 
-              className={cn('h-full transition-all', jobUsagePercent > 90 ? 'bg-destructive' : jobUsagePercent > 70 ? 'bg-amber-500' : 'bg-primary')}
-              style={{ width: `${Math.min(jobUsagePercent, 100)}%` }}
-            />
-          </div>
-          {usageRecord.overage_jobs > 0 && (
-            <p className="text-xs text-destructive mt-1">
-              {usageRecord.overage_jobs} overage jobs (${(usageRecord.overage_jobs * 5).toFixed(2)})
-            </p>
-          )}
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-4">
+        <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center shrink-0', plan.iconBg)}>
+          <Icon size={18} />
         </div>
-
         <div>
-          <div className="flex items-center justify-between text-sm mb-1">
-            <span className="text-muted-foreground">AI Analyses</span>
-            <span className="font-medium">{usageRecord.ai_analyses_used} / {usageRecord.ai_analyses_limit}</span>
-          </div>
-          <div className="h-2 bg-muted rounded-full overflow-hidden">
-            <div 
-              className={cn('h-full transition-all', aiUsagePercent > 90 ? 'bg-destructive' : aiUsagePercent > 70 ? 'bg-amber-500' : 'bg-primary')}
-              style={{ width: `${Math.min(aiUsagePercent, 100)}%` }}
-            />
-          </div>
-          {usageRecord.overage_ai > 0 && (
-            <p className="text-xs text-destructive mt-1">
-              {usageRecord.overage_ai} overage analyses (${(usageRecord.overage_ai * 2).toFixed(2)})
-            </p>
-          )}
+          <h3 className="text-lg font-bold font-display leading-tight">{plan.name}</h3>
+          <p className="text-xs text-muted-foreground">{plan.description}</p>
         </div>
-
-        <div>
-          <div className="flex items-center justify-between text-sm mb-1">
-            <span className="text-muted-foreground">Storage</span>
-            <span className="font-medium">{(usageRecord.storage_used_mb / 1024).toFixed(1)} GB / {(usageRecord.storage_limit_mb / 1024).toFixed(0)} GB</span>
-          </div>
-          <div className="h-2 bg-muted rounded-full overflow-hidden">
-            <div 
-              className={cn('h-full transition-all', (usageRecord.storage_used_mb / usageRecord.storage_limit_mb) > 0.9 ? 'bg-destructive' : 'bg-primary')}
-              style={{ width: `${Math.min((usageRecord.storage_used_mb / usageRecord.storage_limit_mb) * 100, 100)}%` }}
-            />
-          </div>
-        </div>
-
-        {usageRecord.overage_charges > 0 && (
-          <div className="pt-3 border-t border-border">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">Overage Charges</span>
-              <span className="font-semibold text-destructive">${usageRecord.overage_charges.toFixed(2)}</span>
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">Will be billed at period end</p>
-          </div>
-        )}
       </div>
+
+      {/* Price */}
+      <div className="mb-5">
+        {plan.price ? (
+          <div className="flex items-baseline gap-1">
+            <span className="text-4xl font-bold font-display">${plan.price}</span>
+            <span className="text-sm text-muted-foreground">{plan.period}</span>
+          </div>
+        ) : (
+          <div className="text-2xl font-bold font-display text-muted-foreground">Custom</div>
+        )}
+        <p className="text-xs text-muted-foreground mt-1">
+          {plan.price ? '14-day free trial, no credit card required' : 'Tailored to your needs'}
+        </p>
+      </div>
+
+      {/* CTA */}
+      <button
+        className={cn(
+          'w-full h-11 rounded-xl text-sm font-semibold transition mb-5',
+          plan.popular
+            ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+            : plan.key === 'enterprise'
+            ? 'bg-slate-800 text-white hover:bg-slate-700'
+            : 'border-2 border-primary text-primary hover:bg-primary/5'
+        )}
+      >
+        {plan.cta}
+      </button>
+
+      {/* Divider */}
+      <div className="border-t border-border mb-4" />
+
+      {/* Features */}
+      <ul className="space-y-2.5 flex-1">
+        {plan.features.map((f) => (
+          <li key={f} className="flex items-start gap-2.5 text-sm">
+            <Check size={15} className="text-green-500 shrink-0 mt-0.5" />
+            <span className={plan.popular ? 'text-foreground' : 'text-muted-foreground'}>{f}</span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
 
 export default function Billing() {
-  const { user } = useAuth();
-  const qc = useQueryClient();
-  const [selectedPlan, setSelectedPlan] = useState(null);
-  const [loading, setLoading] = useState(false);
-
-  const { data: company } = useQuery({
-    queryKey: ['user-company'],
-    queryFn: async () => {
-      const profiles = await base44.entities.UserProfile.filter({ user_id: user.id, is_deleted: false });
-      if (!profiles.length) return null;
-      const companies = await base44.entities.Company.filter({ id: profiles[0].company_id, is_deleted: false });
-      return companies[0];
-    },
-    enabled: !!user?.id,
-  });
-
-  const { data: plans = [] } = useQuery({
-    queryKey: ['plans'],
-    queryFn: () => base44.entities.Plan.filter({ is_active: true }, 'monthly_price'),
-  });
-
-  const { data: subscription } = useQuery({
-    queryKey: ['subscription', company?.id],
-    queryFn: () => base44.entities.Subscription.filter({ company_id: company?.id }, '-created_date', 1),
-    select: (d) => d[0],
-    enabled: !!company?.id,
-  });
-
-  const selectPlanMutation = useMutation({
-    mutationFn: async (plan) => {
-      if (plan.tier === 'enterprise') {
-        // For enterprise, create a lead/contact request
-        return { success: true, enterprise: true };
-      }
-      
-      // For other plans, update/create subscription
-      if (subscription?.id) {
-        await base44.entities.Subscription.update(subscription.id, {
-          provider_customer_id: plan.code,
-          status: 'active',
-          billing_cycle: 'monthly',
-        });
-      } else {
-        await base44.entities.Subscription.create({
-          company_id: company.id,
-          provider: 'base44',
-          provider_customer_id: plan.code,
-          status: 'active',
-          billing_cycle: 'monthly',
-          trial_end: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-        });
-      }
-      return { success: true, plan };
-    },
-    onSuccess: () => {
-      qc.invalidateQueries(['subscription', company?.id]);
-      setSelectedPlan(null);
-    },
-  });
-
-  const handleSelectPlan = (plan) => {
-    setSelectedPlan(plan.code);
-    selectPlanMutation.mutate(plan);
-  };
-
-  const starterPlan = plans.find(p => p.tier === 'starter');
-  const professionalPlan = plans.find(p => p.tier === 'professional');
-  const businessPlan = plans.find(p => p.tier === 'business');
-  const enterprisePlan = plans.find(p => p.tier === 'enterprise');
-
   return (
-    <div className="p-4 md:p-6 max-w-6xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold font-display">Billing & Plans</h1>
-        <p className="text-sm text-muted-foreground mt-1">Manage your subscription and usage</p>
+    <div className="p-4 md:p-8 max-w-6xl mx-auto">
+      {/* Header */}
+      <div className="text-center mb-10">
+        <h1 className="text-3xl font-bold font-display mb-2">Simple, transparent pricing</h1>
+        <p className="text-muted-foreground text-base max-w-md mx-auto">
+          Start free for 14 days. No credit card required. Upgrade or cancel anytime.
+        </p>
       </div>
 
-      {subscription && <UsageSummary subscription={subscription} />}
-
-      <div className="mb-6">
-        <h2 className="text-lg font-semibold font-display mb-4">Available Plans</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {starterPlan && (
-            <PlanCard
-              plan={starterPlan}
-              currentPlanCode={subscription?.provider_customer_id}
-              onSelect={handleSelectPlan}
-              loading={loading && selectedPlan === starterPlan.code}
-            />
-          )}
-          {professionalPlan && (
-            <PlanCard
-              plan={professionalPlan}
-              currentPlanCode={subscription?.provider_customer_id}
-              onSelect={handleSelectPlan}
-              loading={loading && selectedPlan === professionalPlan.code}
-            />
-          )}
-          {businessPlan && (
-            <PlanCard
-              plan={businessPlan}
-              currentPlanCode={subscription?.provider_customer_id}
-              onSelect={handleSelectPlan}
-              loading={loading && selectedPlan === businessPlan.code}
-            />
-          )}
-          {enterprisePlan && (
-            <PlanCard
-              plan={enterprisePlan}
-              currentPlanCode={subscription?.provider_customer_id}
-              onSelect={handleSelectPlan}
-              loading={loading && selectedPlan === enterprisePlan.code}
-            />
-          )}
-        </div>
+      {/* Plan cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 items-start">
+        {PLANS.map((plan) => (
+          <PlanCard key={plan.key} plan={plan} />
+        ))}
       </div>
 
-      <div className="bg-card rounded-xl border border-border p-6">
-        <h3 className="text-sm font-semibold font-display mb-3">Plan Features</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-          <div>
-            <p className="font-medium mb-2">All plans include:</p>
-            <ul className="space-y-1 text-muted-foreground">
-              <li className="flex items-center gap-2"><Check size={14} className="text-green-600" /> Core estimating tools</li>
-              <li className="flex items-center gap-2"><Check size={14} className="text-green-600" /> Photo analysis AI</li>
-              <li className="flex items-center gap-2"><Check size={14} className="text-green-600" /> Scope generation</li>
-              <li className="flex items-center gap-2"><Check size={14} className="text-green-600" /> Basic reporting</li>
-            </ul>
-          </div>
-          <div>
-            <p className="font-medium mb-2">Premium & Business add:</p>
-            <ul className="space-y-1 text-muted-foreground">
-              <li className="flex items-center gap-2"><Check size={14} className="text-green-600" /> Premium analytics</li>
-              <li className="flex items-center gap-2"><Check size={14} className="text-green-600" /> Adjuster insights</li>
-              <li className="flex items-center gap-2"><Check size={14} className="text-green-600" /> Claim defense</li>
-              <li className="flex items-center gap-2"><Check size={14} className="text-green-600" /> Priority support</li>
-            </ul>
-          </div>
-        </div>
-      </div>
+      {/* Bottom note */}
+      <p className="text-center text-xs text-muted-foreground mt-10">
+        All plans include core job tracking, photo uploads, and PDF exports. Need something custom?{' '}
+        <button className="text-primary font-medium hover:underline">Contact us</button>
+      </p>
     </div>
   );
 }
