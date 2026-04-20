@@ -5,21 +5,53 @@ import { useAuth } from '@/lib/AuthContext';
 import { Plus, Save, Droplets, Wind } from 'lucide-react';
 import RoomPicker from '@/components/job/RoomPicker';
 import EntryList from '@/components/job/EntryList';
+import SelectBottomSheet from '@/components/mobile/SelectBottomSheet';
 
-const MATERIALS = ['Drywall', 'Wood Subfloor', 'Carpet', 'Concrete', 'Plywood', 'OSB', 'Insulation', 'Other'];
+const MATERIALS = [
+  { value: 'Drywall', label: 'Drywall' },
+  { value: 'Wood Subfloor', label: 'Wood Subfloor' },
+  { value: 'Carpet', label: 'Carpet' },
+  { value: 'Concrete', label: 'Concrete' },
+  { value: 'Plywood', label: 'Plywood' },
+  { value: 'OSB', label: 'OSB' },
+  { value: 'Insulation', label: 'Insulation' },
+  { value: 'Other', label: 'Other' },
+];
+const UNITS = [
+  { value: '%WME', label: '%WME' },
+  { value: '%MC', label: '%MC' },
+  { value: 'RH%', label: 'RH%' },
+];
 const inputCls = 'w-full h-9 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring';
 
 function MoistureForm({ job, roomId, user, onClose }) {
   const qc = useQueryClient();
   const [form, setForm] = useState({ location_description: '', material: '', reading_value: '', unit: '%WME', instrument: '' });
+  const [optimistic, setOptimistic] = useState(null);
 
   const addMutation = useMutation({
     mutationFn: (data) => base44.functions.invoke('saveReading', data),
-    onSuccess: () => { qc.invalidateQueries(['moisture', job.id]); onClose(); },
+    onSuccess: () => {
+      qc.invalidateQueries(['moisture', job.id]);
+      setOptimistic(null);
+      onClose();
+    },
+    onError: () => setOptimistic(null),
   });
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    const optimisticData = {
+      id: `temp_${Date.now()}`,
+      reading_value: Number(form.reading_value),
+      unit: form.unit,
+      material: form.material,
+      location_description: form.location_description,
+      instrument: form.instrument,
+      recorded_by: user?.email,
+      recorded_at: new Date().toISOString(),
+    };
+    setOptimistic(optimisticData);
     addMutation.mutate({
       job_id: job.id,
       room_id: roomId,
@@ -32,23 +64,23 @@ function MoistureForm({ job, roomId, user, onClose }) {
     <form onSubmit={handleSubmit} className="bg-card rounded-xl border border-primary/40 p-4 space-y-3">
       <p className="text-xs font-semibold text-primary">Moisture Reading</p>
       <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="text-xs font-medium">Reading Value *</label>
-          <input required type="number" step="0.1" className={inputCls} value={form.reading_value} onChange={(e) => setForm((f) => ({ ...f, reading_value: e.target.value }))} placeholder="e.g. 22" />
-        </div>
-        <div>
-          <label className="text-xs font-medium">Unit</label>
-          <select className={inputCls} value={form.unit} onChange={(e) => setForm((f) => ({ ...f, unit: e.target.value }))}>
-            {['%WME', '%MC', 'RH%'].map((u) => <option key={u} value={u}>{u}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="text-xs font-medium">Material</label>
-          <select className={inputCls} value={form.material} onChange={(e) => setForm((f) => ({ ...f, material: e.target.value }))}>
-            <option value="">Select…</option>
-            {MATERIALS.map((m) => <option key={m} value={m}>{m}</option>)}
-          </select>
-        </div>
+         <div>
+           <label className="text-xs font-medium">Reading Value *</label>
+           <input required type="number" step="0.1" className={inputCls} value={form.reading_value} onChange={(e) => setForm((f) => ({ ...f, reading_value: e.target.value }))} placeholder="e.g. 22" />
+         </div>
+         <SelectBottomSheet
+           label="Unit"
+           value={form.unit}
+           onChange={(v) => setForm((f) => ({ ...f, unit: v }))}
+           options={UNITS}
+         />
+         <SelectBottomSheet
+           label="Material"
+           value={form.material}
+           onChange={(v) => setForm((f) => ({ ...f, material: v }))}
+           options={MATERIALS}
+           placeholder="Select…"
+         />
         <div>
           <label className="text-xs font-medium">Instrument</label>
           <input className={inputCls} value={form.instrument} onChange={(e) => setForm((f) => ({ ...f, instrument: e.target.value }))} placeholder="e.g. Delmhorst BD-10" />
@@ -71,14 +103,31 @@ function MoistureForm({ job, roomId, user, onClose }) {
 function EnvForm({ job, roomId, user, onClose }) {
   const qc = useQueryClient();
   const [form, setForm] = useState({ temperature_f: '', relative_humidity: '', dew_point: '', gpp: '', instrument: '' });
+  const [optimistic, setOptimistic] = useState(null);
 
   const addMutation = useMutation({
     mutationFn: (data) => base44.functions.invoke('saveReading', data),
-    onSuccess: () => { qc.invalidateQueries(['env', job.id]); onClose(); },
+    onSuccess: () => {
+      qc.invalidateQueries(['env', job.id]);
+      setOptimistic(null);
+      onClose();
+    },
+    onError: () => setOptimistic(null),
   });
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    const optimisticData = {
+      id: `temp_${Date.now()}`,
+      temperature_f: form.temperature_f ? Number(form.temperature_f) : null,
+      relative_humidity: form.relative_humidity ? Number(form.relative_humidity) : null,
+      dew_point: form.dew_point ? Number(form.dew_point) : null,
+      gpp: form.gpp ? Number(form.gpp) : null,
+      instrument: form.instrument,
+      recorded_by: user?.email,
+      recorded_at: new Date().toISOString(),
+    };
+    setOptimistic(optimisticData);
     addMutation.mutate({
       job_id: job.id,
       room_id: roomId,

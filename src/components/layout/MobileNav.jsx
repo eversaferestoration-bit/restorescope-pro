@@ -1,9 +1,29 @@
 import { Link, useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { mobileNavItems } from './navItems';
 
+/**
+ * Mobile navigation with tab-based stack preservation.
+ * Each tab maintains its own navigation history via sessionStorage.
+ */
 export default function MobileNav() {
   const location = useLocation();
+
+  // Preserve navigation stack per tab
+  useEffect(() => {
+    const tabPath = mobileNavItems.find(item => 
+      location.pathname === item.path || location.pathname.startsWith(item.path)
+    )?.path || '/dashboard';
+    
+    const storageKey = `nav_stack_${tabPath}`;
+    const stack = JSON.parse(sessionStorage.getItem(storageKey) || '[]');
+    
+    if (!stack.includes(location.pathname)) {
+      stack.push(location.pathname);
+      sessionStorage.setItem(storageKey, JSON.stringify(stack.slice(-20))); // keep last 20
+    }
+  }, [location.pathname]);
 
   return (
     <nav className="lg:hidden border-t border-border bg-card safe-bottom shrink-0">
@@ -18,8 +38,14 @@ export default function MobileNav() {
             <Link
               key={item.path}
               to={item.path}
+              onClick={() => {
+                // Clear nav stack only for /jobs/new to reset to create job
+                if (item.path === '/jobs/new') {
+                  sessionStorage.removeItem('nav_stack_/jobs');
+                }
+              }}
               className={cn(
-                'flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl transition-all min-w-[60px]',
+                'flex flex-col items-center gap-0.5 px-3 py-2 rounded-xl transition-all min-w-[60px] touch-target',
                 isNew
                   ? 'relative'
                   : isActive

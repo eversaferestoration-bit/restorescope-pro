@@ -2,12 +2,14 @@ import { Toaster } from "@/components/ui/toaster";
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClientInstance } from '@/lib/query-client';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
+import { AnimatePresence } from 'framer-motion';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import { DemoProvider } from '@/lib/DemoContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import ProtectedRoute from '@/lib/ProtectedRoute';
 import AppLayout from '@/components/layout/AppLayout';
+import PageTransition from '@/components/PageTransition';
 
 // Auth pages
 import Login from '@/pages/auth/Login';
@@ -75,7 +77,9 @@ const AuthenticatedApp = () => {
         path="/onboarding"
         element={
           <ProtectedRoute>
-            <Onboarding />
+            <PageTransition>
+              <Onboarding />
+            </PageTransition>
           </ProtectedRoute>
         }
       />
@@ -89,23 +93,23 @@ const AuthenticatedApp = () => {
         }
       >
         <Route index element={<Navigate to="/dashboard" replace />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/jobs" element={<Jobs />} />
-        <Route path="/jobs/new" element={<NewJob />} />
-        <Route path="/jobs/:jobId" element={<JobDetail />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="/billing" element={<Billing />} />
-        <Route path="/users" element={<Users />} />
-        <Route path="/templates" element={<Templates />} />
-        <Route path="/pricing-profiles" element={<PricingProfiles />} />
-        <Route path="/audit-log" element={<AuditLog />} />
-        <Route path="/analytics" element={<Analytics />} />
-        <Route path="/team-performance" element={<TeamPerformance />} />
-        <Route path="/dominance-validation" element={<DominanceValidation />} />
-        <Route path="/enterprise" element={<EnterpriseSettings />} />
-        <Route path="/demo" element={<DemoJob />} />
-        <Route path="/beta-admin" element={<BetaAdmin />} />
-        <Route path="/beta-management" element={<BetaManagement />} />
+        <Route path="/dashboard" element={<PageTransition><Dashboard /></PageTransition>} />
+        <Route path="/jobs" element={<PageTransition><Jobs /></PageTransition>} />
+        <Route path="/jobs/new" element={<PageTransition><NewJob /></PageTransition>} />
+        <Route path="/jobs/:jobId" element={<PageTransition><JobDetail /></PageTransition>} />
+        <Route path="/settings" element={<PageTransition><Settings /></PageTransition>} />
+        <Route path="/billing" element={<PageTransition><Billing /></PageTransition>} />
+        <Route path="/users" element={<PageTransition><Users /></PageTransition>} />
+        <Route path="/templates" element={<PageTransition><Templates /></PageTransition>} />
+        <Route path="/pricing-profiles" element={<PageTransition><PricingProfiles /></PageTransition>} />
+        <Route path="/audit-log" element={<PageTransition><AuditLog /></PageTransition>} />
+        <Route path="/analytics" element={<PageTransition><Analytics /></PageTransition>} />
+        <Route path="/team-performance" element={<PageTransition><TeamPerformance /></PageTransition>} />
+        <Route path="/dominance-validation" element={<PageTransition><DominanceValidation /></PageTransition>} />
+        <Route path="/enterprise" element={<PageTransition><EnterpriseSettings /></PageTransition>} />
+        <Route path="/demo" element={<PageTransition><DemoJob /></PageTransition>} />
+        <Route path="/beta-admin" element={<PageTransition><BetaAdmin /></PageTransition>} />
+        <Route path="/beta-management" element={<PageTransition><BetaManagement /></PageTransition>} />
       </Route>
 
       <Route path="*" element={<PageNotFound />} />

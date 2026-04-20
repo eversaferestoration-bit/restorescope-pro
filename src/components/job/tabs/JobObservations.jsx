@@ -5,9 +5,22 @@ import { useAuth } from '@/lib/AuthContext';
 import { Plus, Save } from 'lucide-react';
 import RoomPicker from '@/components/job/RoomPicker';
 import EntryList from '@/components/job/EntryList';
+import SelectBottomSheet from '@/components/mobile/SelectBottomSheet';
 
-const SEVERITIES = ['Low', 'Medium', 'High', 'Critical'];
-const TYPES = ['Visible Damage', 'Odor', 'Staining', 'Mold Growth', 'Structural', 'Other'];
+const SEVERITIES = [
+  { value: 'Low', label: 'Low' },
+  { value: 'Medium', label: 'Medium' },
+  { value: 'High', label: 'High' },
+  { value: 'Critical', label: 'Critical' },
+];
+const TYPES = [
+  { value: 'Visible Damage', label: 'Visible Damage' },
+  { value: 'Odor', label: 'Odor' },
+  { value: 'Staining', label: 'Staining' },
+  { value: 'Mold Growth', label: 'Mold Growth' },
+  { value: 'Structural', label: 'Structural' },
+  { value: 'Other', label: 'Other' },
+];
 const inputCls = 'w-full h-9 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring';
 
 export default function JobObservations({ job }) {
@@ -16,6 +29,7 @@ export default function JobObservations({ job }) {
   const [roomId, setRoomId] = useState(null);
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState({ description: '', observation_type: '', severity: '' });
+  const [optimisticData, setOptimisticData] = useState(null);
 
   const { data: rooms = [] } = useQuery({
     queryKey: ['rooms', job.id],
@@ -30,18 +44,32 @@ export default function JobObservations({ job }) {
     retry: 2,
   });
 
+  // Optimistic UI: show data immediately, update on success
+  const displayObservations = optimisticData ? [optimisticData, ...observations] : observations;
+
   const addMutation = useMutation({
     mutationFn: (data) => base44.functions.invoke('saveObservation', data),
     onSuccess: () => {
       qc.invalidateQueries(['observations', job.id]);
       setAdding(false);
       setForm({ description: '', observation_type: '', severity: '' });
+      setOptimisticData(null);
+    },
+    onError: () => {
+      setOptimisticData(null);
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id) => base44.functions.invoke('softDeleteRecord', { entity_type: 'Observation', entity_id: id }),
+    onMutate: (id) => {
+      // Optimistically remove from display
+      qc.setQueryData(['observations', job.id, roomId], (old) => 
+        old?.filter(o => o.id !== id) || []
+      );
+    },
     onSuccess: () => qc.invalidateQueries(['observations', job.id]),
+    onError: () => qc.invalidateQueries(['observations', job.id]),
   });
 
   const isTechnician = user?.role === 'technician';
@@ -49,6 +77,19 @@ export default function JobObservations({ job }) {
   const handleAdd = (e) => {
     e.preventDefault();
     if (!roomId) return;
+    
+    // Optimistic update
+    const optimistic = {
+      id: `temp_${Date.now()}`,
+      description: form.description,
+      observation_type: form.observation_type,
+      severity: form.severity,
+      room_id: roomId,
+      recorded_by: user?.email,
+      recorded_at: new Date().toISOString(),
+    };
+    setOptimisticData(optimistic);
+    
     addMutation.mutate({
       job_id: job.id,
       room_id: roomId,
@@ -58,7 +99,7 @@ export default function JobObservations({ job }) {
     });
   };
 
-  const rows = observations.map((o) => ({
+  const rows = displayObservations.map((o) => ({
     id: o.id,
     primary: o.description,
     badge: o.severity || o.observation_type,
@@ -85,20 +126,20 @@ export default function JobObservations({ job }) {
         <form onSubmit={handleAdd} className="bg-card rounded-xl border border-primary/40 p-4 space-y-3">
           {!roomId && <p className="text-xs text-destructive font-medium">Select a room above first.</p>}
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-medium">Type</label>
-              <select className={inputCls} value={form.observation_type} onChange={(e) => setForm((f) => ({ ...f, observation_type: e.target.value }))}>
-                <option value="">Select…</option>
-                {TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="text-xs font-medium">Severity</label>
-              <select className={inputCls} value={form.severity} onChange={(e) => setForm((f) => ({ ...f, severity: e.target.value }))}>
-                <option value="">Select…</option>
-                {SEVERITIES.map((s) => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </div>
+            <SelectBottomSheet
+              label="Type"
+              value={form.observation_type}
+              onChange={(v) => setForm((f) => ({ ...f, observation_type: v }))}
+              options={TYPES}
+              placeholder="Select…"
+            />
+            <SelectBottomSheet
+              label="Severity"
+              value={form.severity}
+              onChange={(v) => setForm((f) => ({ ...f, severity: v }))}
+              options={SEVERITIES}
+              placeholder="Select…"
+            />
             <div className="col-span-2">
               <label className="text-xs font-medium">Description *</label>
               <textarea required rows={2} className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring" value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder="Describe what you observed…" />

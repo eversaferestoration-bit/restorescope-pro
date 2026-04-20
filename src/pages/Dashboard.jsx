@@ -3,8 +3,9 @@ import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/lib/AuthContext';
+import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import UpgradePrompt from '@/components/UpgradePrompt';
-import { FolderOpen, Send, Camera, CloudOff, Plus, ChevronRight, AlertCircle, Clock } from 'lucide-react';
+import { FolderOpen, Send, Camera, CloudOff, Plus, ChevronRight, AlertCircle, Clock, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import StatCard from '@/components/dashboard/StatCard';
@@ -36,6 +37,18 @@ export default function Dashboard() {
   const [companyId, setCompanyId] = useState(null);
   const { isTrial, isExpired, daysLeft } = useTrialStatus();
   const { enterDemo } = useDemo();
+
+  // Pull-to-refresh setup
+  const dashboardQuery = useQuery({
+    queryKey: ['jobs-dashboard'],
+    queryFn: () => base44.entities.Job.filter({ is_deleted: false }, '-created_date', 30),
+    staleTime: 3 * 60 * 1000,
+    gcTime: 5 * 60 * 1000,
+  });
+
+  const { isRefreshing, onTouchStart, onTouchMove, onTouchEnd } = usePullToRefresh(
+    () => dashboardQuery.refetch()
+  );
   // Check onboarding completion for next-action banner + checklist
   useEffect(() => {
     if (!user) return;
@@ -53,12 +66,8 @@ export default function Dashboard() {
       .catch(() => {});
   }, [user?.id]);
 
-  const { data: jobs = [], isLoading } = useQuery({
-    queryKey: ['jobs-dashboard'],
-    queryFn: () => base44.entities.Job.filter({ is_deleted: false }, '-created_date', 30),
-    staleTime: 3 * 60 * 1000,
-    gcTime: 5 * 60 * 1000,
-  });
+  // Re-use the query defined above for pull-to-refresh
+  const { data: jobs = [], isLoading } = dashboardQuery;
 
   const { data: pendingApprovals = [] } = useQuery({
     queryKey: ['dashboard-pending-approvals-count'],
@@ -78,7 +87,18 @@ export default function Dashboard() {
   const emergency = jobs.filter(j => j.emergency_flag && ['new', 'in_progress'].includes(j.status));
 
   return (
-    <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-6">
+    <div
+      className="p-4 md:p-6 max-w-6xl mx-auto space-y-6 relative"
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+    >
+      {/* Pull-to-refresh indicator */}
+      {isRefreshing && (
+        <div className="sticky top-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-full shadow-lg text-sm font-medium">
+          <RefreshCw size={14} className="animate-spin" /> Refreshing…
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>

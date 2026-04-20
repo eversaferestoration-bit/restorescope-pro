@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
-import { Plus, FolderOpen, Search, ChevronRight, AlertCircle, Clock } from 'lucide-react';
+import { usePullToRefresh } from '@/hooks/usePullToRefresh';
+import { Plus, FolderOpen, Search, ChevronRight, AlertCircle, Clock, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 
 const STATUS_COLORS = {
@@ -18,7 +19,7 @@ export default function Jobs() {
   const [page, setPage] = useState(0);
   const PAGE_SIZE = 30;
 
-  const { data: jobs = [], isLoading, isFetching } = useQuery({
+  const jobsQuery = useQuery({
     queryKey: ['jobs', page, search],
     queryFn: async () => {
       // Fetch with pagination
@@ -38,6 +39,11 @@ export default function Jobs() {
     staleTime: 2 * 60 * 1000,
     gcTime: 5 * 60 * 1000,
   });
+
+  const { data: jobs = [], isLoading, isFetching } = jobsQuery;
+  const { isRefreshing, onTouchStart, onTouchMove, onTouchEnd } = usePullToRefresh(
+    () => jobsQuery.refetch()
+  );
 
   // Get total count for pagination
   const { data: totalCount = 0 } = useQuery({
@@ -60,7 +66,19 @@ export default function Jobs() {
   const hasMore = page < totalPages - 1;
 
   return (
-    <div className="p-4 md:p-6 max-w-5xl mx-auto">
+    <div
+      className="p-4 md:p-6 max-w-5xl mx-auto relative"
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+    >
+      {/* Pull-to-refresh indicator */}
+      {isRefreshing && (
+        <div className="sticky top-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-full shadow-lg text-sm font-medium">
+          <RefreshCw size={14} className="animate-spin" /> Refreshing…
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div>
