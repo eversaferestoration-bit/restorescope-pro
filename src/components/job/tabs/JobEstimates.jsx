@@ -4,7 +4,9 @@ import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { FilePlus, Loader2, AlertTriangle, Lock, ChevronDown, Shield, FileText } from 'lucide-react';
 import UpgradeGate from '@/components/trial/UpgradeGate';
+import UpgradeNudge from '@/components/trial/UpgradeNudge';
 import { useTrialStatus } from '@/hooks/useTrialStatus';
+import { useUpgradeTrigger } from '@/hooks/useUpgradeTrigger';
 import { cn } from '@/lib/utils';
 import EstimateDraftCard from '@/components/job/estimates/EstimateDraftCard';
 import JobDefense from '@/components/job/tabs/JobDefense';
@@ -21,6 +23,7 @@ export default function JobEstimates({ job }) {
   const [selectedDefenseEstimateId, setSelectedDefenseEstimateId] = useState(null);
   const isTechnician = user?.role === 'technician';
   const { canUse, isTrial, isExpired, daysLeft } = useTrialStatus();
+  const nudge = useUpgradeTrigger({ feature: 'estimate', checkLimits: true });
 
   const { data: drafts = [], isLoading } = useQuery({
     queryKey: ['estimates', job.id],
@@ -123,7 +126,10 @@ export default function JobEstimates({ job }) {
 
       {/* Estimates sub-tab */}
       {activeTab === 'estimates' && (
-        <div>
+        <div className="space-y-3">
+      {/* Upgrade nudge — trial expiry or limit hit */}
+      {nudge && !isExpired && <UpgradeNudge {...nudge} />}
+
       {/* Generate bar */}
       {!isTechnician && (
         <div className="space-y-2">

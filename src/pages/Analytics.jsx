@@ -3,6 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import UpgradePrompt from '@/components/UpgradePrompt';
+import UpgradeNudge from '@/components/trial/UpgradeNudge';
+import { useUpgradeTrigger } from '@/hooks/useUpgradeTrigger';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -193,6 +195,7 @@ function JobStatusPieChart({ data }) {
 export default function AnalyticsPage() {
   const { user } = useAuth();
   const [timeRange, setTimeRange] = useState('30d');
+  const nudge = useUpgradeTrigger({ feature: 'advanced' });
 
   const { data: analytics, isLoading, error, refetch } = useQuery({
     queryKey: ['analytics', timeRange],
@@ -256,6 +259,9 @@ export default function AnalyticsPage() {
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-7xl mx-auto space-y-6">
+        {/* Upgrade nudge */}
+        {nudge && <UpgradeNudge {...nudge} />}
+
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>

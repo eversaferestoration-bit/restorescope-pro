@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { logAction } from '@/lib/auditLog';
+import UpgradeNudge from '@/components/trial/UpgradeNudge';
+import { useUpgradeTrigger } from '@/hooks/useUpgradeTrigger';
 import { ArrowLeft, ArrowRight, Check, Save } from 'lucide-react';
 import InsuredSelector from '@/components/job/InsuredSelector';
 import PropertySelector from '@/components/job/PropertySelector';
@@ -68,6 +70,7 @@ const STEPS = ['Job Info', 'Insured & Property', 'Assignment', 'Review'];
 export default function NewJob() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const nudge = useUpgradeTrigger({ feature: 'estimate', checkLimits: true });
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
@@ -154,6 +157,8 @@ export default function NewJob() {
         <h1 className="text-2xl font-bold font-display">New Job</h1>
         <p className="text-sm text-muted-foreground mt-0.5">Step {step + 1} of {STEPS.length} — {STEPS[step]}</p>
       </div>
+
+      {nudge && <UpgradeNudge {...nudge} className="mb-4" />}
 
       <StepIndicator steps={STEPS} current={step} />
 

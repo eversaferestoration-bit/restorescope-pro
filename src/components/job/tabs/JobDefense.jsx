@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
+import UpgradeNudge from '@/components/trial/UpgradeNudge';
+import { useUpgradeTrigger } from '@/hooks/useUpgradeTrigger';
 import { Shield, RefreshCw, Clock, ChevronDown, ChevronUp } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -35,6 +37,7 @@ export default function JobDefense({ job, estimateId }) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const isTechnician = user?.role === 'technician';
+  const nudge = useUpgradeTrigger({ feature: 'advanced' });
 
   // Load all defenses for this estimate, most recent first
   const { data: defenses = [], isLoading } = useQuery({
@@ -67,6 +70,9 @@ export default function JobDefense({ job, estimateId }) {
 
   return (
     <div className="space-y-5">
+      {/* Upgrade nudge for advanced feature */}
+      {nudge && <UpgradeNudge {...nudge} />}
+
       {/* Header */}
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
