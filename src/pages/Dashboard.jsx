@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
@@ -13,6 +13,7 @@ import MissingPhotosWidget from '@/components/dashboard/MissingPhotosWidget';
 import SyncErrorsWidget from '@/components/dashboard/SyncErrorsWidget';
 import UsageStatsWidget from '@/components/dashboard/UsageStatsWidget';
 import RecentActivityWidget from '@/components/dashboard/RecentActivityWidget';
+import FinishSetupCard from '@/components/dashboard/FinishSetupCard';
 
 const STATUS_COLORS = {
   new:              'bg-blue-100 text-blue-700',
@@ -25,6 +26,22 @@ const STATUS_COLORS = {
 export default function Dashboard() {
   const { user } = useAuth();
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [onboardingStatus, setOnboardingStatus] = useState(null);
+
+  // Check onboarding completion for the finish setup card
+  useEffect(() => {
+    if (!user) return;
+    base44.entities.UserProfile.filter({ user_id: user.id, is_deleted: false })
+      .then((profiles) => {
+        if (profiles.length > 0) {
+          const status = profiles[0].onboarding_status;
+          if (status && status !== 'onboarding_completed') {
+            setOnboardingStatus(status);
+          }
+        }
+      })
+      .catch(() => {});
+  }, [user?.id]);
 
   const { data: jobs = [], isLoading } = useQuery({
     queryKey: ['jobs-dashboard'],
@@ -69,6 +86,9 @@ export default function Dashboard() {
           <Plus size={15} /> New Job
         </Link>
       </div>
+
+      {/* Finish setup card — shown only when onboarding is incomplete */}
+      {onboardingStatus && <FinishSetupCard onboardingStatus={onboardingStatus} />}
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
