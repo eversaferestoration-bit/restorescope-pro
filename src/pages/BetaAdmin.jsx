@@ -25,6 +25,18 @@ export default function BetaAdmin() {
   const [manualForm, setManualForm] = useState({ company_id: '', trial_days: 30 });
   const [activatingManual, setActivatingManual] = useState(false);
 
+  const { data: invites = [], isLoading: loadingInvites } = useQuery({
+    queryKey: ['beta-invites'],
+    queryFn: () => base44.entities.BetaInvite.filter({ is_deleted: false }, '-created_date'),
+    enabled: user?.role === 'admin',
+  });
+
+  const { data: companies = [], isLoading: loadingCompanies } = useQuery({
+    queryKey: ['beta-companies'],
+    queryFn: () => base44.entities.Company.filter({ is_beta_user: true, is_deleted: false }, '-created_date'),
+    enabled: user?.role === 'admin',
+  });
+
   if (user?.role !== 'admin') {
     return (
       <div className="p-6 max-w-2xl mx-auto">
@@ -36,16 +48,6 @@ export default function BetaAdmin() {
       </div>
     );
   }
-
-  const { data: invites = [], isLoading: loadingInvites } = useQuery({
-    queryKey: ['beta-invites'],
-    queryFn: () => base44.entities.BetaInvite.filter({ is_deleted: false }, '-created_date'),
-  });
-
-  const { data: companies = [], isLoading: loadingCompanies } = useQuery({
-    queryKey: ['beta-companies'],
-    queryFn: () => base44.entities.Company.filter({ is_beta_user: true, is_deleted: false }, '-created_date'),
-  });
 
   const handleGenerateInvite = async () => {
     setGeneratingCode(true);
