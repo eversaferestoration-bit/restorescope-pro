@@ -3,6 +3,13 @@ import { Link } from 'react-router-dom';
 import { Droplets, ArrowLeft, CheckCircle } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 
+const getErrorMessage = (err) => {
+  if (!err) return null;
+  if (typeof err === 'string') return err;
+  if (typeof err === 'object') return err.message || 'Something went wrong. Please try again.';
+  return 'Something went wrong. Please try again.';
+};
+
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
@@ -59,7 +66,7 @@ export default function ForgotPassword() {
 
               {error && (
                 <div className="mb-4 px-3 py-2.5 rounded-lg bg-destructive/10 text-destructive text-sm">
-                  {error}
+                  {getErrorMessage(error)}
                 </div>
               )}
 
