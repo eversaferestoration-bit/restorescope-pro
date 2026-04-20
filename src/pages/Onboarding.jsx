@@ -171,14 +171,20 @@ export default function Onboarding() {
         cId = company.id;
         setCompanyId(cId);
 
-        // Redeem beta invite if one was stored during signup
+        // Apply beta access if invite code was stored during signup
         const inviteCode = sessionStorage.getItem('beta_invite_code');
-        if (inviteCode) {
-          try {
-            await base44.functions.invoke('redeemBetaInvite', { invite_code: inviteCode, company_id: cId });
-            sessionStorage.removeItem('beta_invite_code');
-            setBetaActivated(true);
-          } catch { /* non-blocking */ }
+        if (inviteCode === 'BETA2025') {
+          const startDate = new Date();
+          const endDate = new Date(startDate);
+          endDate.setDate(endDate.getDate() + 14);
+          await base44.asServiceRole.entities.Company.update(cId, {
+            is_beta_user: true,
+            beta_start_date: startDate.toISOString().split('T')[0],
+            beta_end_date: endDate.toISOString().split('T')[0],
+            beta_status: 'active',
+          });
+          sessionStorage.removeItem('beta_invite_code');
+          setBetaActivated(true);
         }
 
         const profile = await base44.entities.UserProfile.create({
