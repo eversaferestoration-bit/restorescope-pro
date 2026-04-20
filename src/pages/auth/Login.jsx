@@ -17,16 +17,15 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
-      const res = await base44.auth.login(email, password);
-      
+      const res = await base44.auth.signInWithPassword({ email, password });
+
       if (!res?.user) {
         throw new Error('Invalid email or password');
       }
 
       navigate(from, { replace: true });
     } catch (err) {
-      console.error('Login error:', err);
-      setError(err?.message || 'Unable to sign in. Please try again.');
+      setError(err?.message || 'Login failed');
     } finally {
       setLoading(false);
     }
