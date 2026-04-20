@@ -16,6 +16,7 @@ import RecentActivityWidget from '@/components/dashboard/RecentActivityWidget';
 import ActivationChecklist from '@/components/dashboard/ActivationChecklist';
 import NextActionBanner from '@/components/dashboard/NextActionBanner';
 import TrialBanner from '@/components/trial/TrialBanner';
+import TrialCountdownCard from '@/components/dashboard/TrialCountdownCard';
 import { useTrialStatus } from '@/hooks/useTrialStatus';
 import BusinessMetrics from '@/components/dashboard/BusinessMetrics';
 import { useDemo } from '@/lib/DemoContext';
@@ -127,9 +128,15 @@ export default function Dashboard() {
       {/* Business metrics — this month */}
       <BusinessMetrics />
 
+      {/* Trial countdown card — in stat grid for seamless integration */}
+      {(isTrial || isExpired) && (
+        <div className="col-span-2 lg:col-span-1 lg:col-start-1 order-first lg:order-none">
+          <TrialCountdownCard isExpired={isExpired} daysLeft={daysLeft} />
+        </div>
+      )}
+
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard
           label="Active Jobs"
           value={activeJobs.length}
           icon={FolderOpen}
