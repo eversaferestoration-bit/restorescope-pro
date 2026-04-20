@@ -17,6 +17,7 @@ import ActivationChecklist from '@/components/dashboard/ActivationChecklist';
 import NextActionBanner from '@/components/dashboard/NextActionBanner';
 import TrialBanner from '@/components/trial/TrialBanner';
 import { useTrialStatus } from '@/hooks/useTrialStatus';
+import BusinessMetrics from '@/components/dashboard/BusinessMetrics';
 
 const STATUS_COLORS = {
   new:              'bg-blue-100 text-blue-700',
@@ -111,6 +112,9 @@ export default function Dashboard() {
       {user && (
         <ActivationChecklist userId={user.id} companyId={companyId} />
       )}
+
+      {/* Business metrics — this month */}
+      <BusinessMetrics />
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
