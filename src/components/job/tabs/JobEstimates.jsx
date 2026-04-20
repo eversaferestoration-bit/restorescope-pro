@@ -7,6 +7,8 @@ import UpgradeGate from '@/components/trial/UpgradeGate';
 import UpgradeNudge from '@/components/trial/UpgradeNudge';
 import { useTrialStatus } from '@/hooks/useTrialStatus';
 import { useUpgradeTrigger } from '@/hooks/useUpgradeTrigger';
+import { useBetaAccess } from '@/hooks/useBetaAccess';
+import BetaExpiredGate from '@/components/beta/BetaExpiredGate';
 import { cn } from '@/lib/utils';
 import EstimateDraftCard from '@/components/job/estimates/EstimateDraftCard';
 import JobDefense from '@/components/job/tabs/JobDefense';
@@ -24,6 +26,7 @@ export default function JobEstimates({ job }) {
   const isTechnician = user?.role === 'technician';
   const { canUse, isTrial, isExpired, daysLeft } = useTrialStatus();
   const nudge = useUpgradeTrigger({ feature: 'estimate', checkLimits: true });
+  const { isBlockedByExpiredBeta } = useBetaAccess();
 
   const { data: drafts = [], isLoading } = useQuery({
     queryKey: ['estimates', job.id],
@@ -133,7 +136,9 @@ export default function JobEstimates({ job }) {
       {/* Generate bar */}
       {!isTechnician && (
         <div className="space-y-2">
-          {isExpired ? (
+          {isBlockedByExpiredBeta ? (
+            <BetaExpiredGate action="generating estimates" />
+          ) : isExpired ? (
             <UpgradeGate allowed={false} feature="estimate generation" reason="Your trial has ended. Upgrade to continue generating AI-powered estimates." />
           ) : (
             <div className="flex items-center gap-2 flex-wrap">

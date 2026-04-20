@@ -9,13 +9,14 @@ import { isAfter, parseISO } from 'date-fns';
  *
  * {
  *   loading,
- *   isBeta,       — company is a beta user AND status is active
- *   isBetaExpired — company was a beta user but beta has expired
+ *   isBeta,              — company is a beta user AND status is active
+ *   isBetaExpired,       — company was a beta user but beta has expired
+ *   isBlockedByExpiredBeta — expired beta AND no active subscription → read-only mode
  * }
  */
 export function useBetaAccess() {
   const { user } = useAuth();
-  const [state, setState] = useState({ loading: true, isBeta: false, isBetaExpired: false });
+  const [state, setState] = useState({ loading: true, isBeta: false, isBetaExpired: false, isBlockedByExpiredBeta: false });
 
   useEffect(() => {
     if (!user?.id) return;
@@ -34,7 +35,7 @@ export function useBetaAccess() {
         const company = companies[0];
 
         if (!company.is_beta_user) {
-          setState({ loading: false, isBeta: false, isBetaExpired: false });
+          setState({ loading: false, isBeta: false, isBetaExpired: false, isBlockedByExpiredBeta: false });
           return;
         }
 
@@ -48,14 +49,23 @@ export function useBetaAccess() {
         }
 
         const effectiveStatus = hasExpired ? 'expired' : (company.beta_status || 'active');
+        const betaExpired = effectiveStatus === 'expired';
+
+        // Check if there's an active subscription — if so, don't block
+        let hasActiveSub = false;
+        if (betaExpired) {
+          const subs = await base44.entities.Subscription.filter({ company_id: companyId, status: 'active' }, '-created_date', 1);
+          hasActiveSub = subs.length > 0;
+        }
 
         setState({
           loading: false,
           isBeta: effectiveStatus === 'active',
-          isBetaExpired: effectiveStatus === 'expired',
+          isBetaExpired: betaExpired,
+          isBlockedByExpiredBeta: betaExpired && !hasActiveSub,
         });
       } catch {
-        setState({ loading: false, isBeta: false, isBetaExpired: false });
+        setState({ loading: false, isBeta: false, isBetaExpired: false, isBlockedByExpiredBeta: false });
       }
     };
 

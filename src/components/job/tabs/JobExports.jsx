@@ -6,6 +6,8 @@ import { FileText, Camera, BookOpen, Download, Loader2, CheckCircle2, Lock, Aler
 import UpgradeGate from '@/components/trial/UpgradeGate';
 import TrialBanner from '@/components/trial/TrialBanner';
 import { useTrialStatus } from '@/hooks/useTrialStatus';
+import { useBetaAccess } from '@/hooks/useBetaAccess';
+import BetaExpiredGate from '@/components/beta/BetaExpiredGate';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 
@@ -104,6 +106,7 @@ export default function JobExports({ job }) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const { canUse, isTrial, isExpired, daysLeft } = useTrialStatus();
+  const { isBlockedByExpiredBeta } = useBetaAccess();
 
   const { data: drafts = [] } = useQuery({
     queryKey: ['estimates', job.id],
@@ -144,6 +147,18 @@ export default function JobExports({ job }) {
     }
     setLoading(null);
   };
+
+  if (isBlockedByExpiredBeta) {
+    return (
+      <div className="space-y-5">
+        <div>
+          <h3 className="text-sm font-semibold font-display">Export Documents</h3>
+          <p className="text-xs text-muted-foreground mt-0.5">Generate professional PDFs for carrier submission, documentation, and records.</p>
+        </div>
+        <BetaExpiredGate action="exporting documents" />
+      </div>
+    );
+  }
 
   if (isExpired) {
     return (

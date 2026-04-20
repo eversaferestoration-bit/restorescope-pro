@@ -5,6 +5,8 @@ import { useAuth } from '@/lib/AuthContext';
 import { logAction } from '@/lib/auditLog';
 import UpgradeNudge from '@/components/trial/UpgradeNudge';
 import { useUpgradeTrigger } from '@/hooks/useUpgradeTrigger';
+import { useBetaAccess } from '@/hooks/useBetaAccess';
+import BetaExpiredGate from '@/components/beta/BetaExpiredGate';
 import { ArrowLeft, ArrowRight, Check, Save } from 'lucide-react';
 import InsuredSelector from '@/components/job/InsuredSelector';
 import PropertySelector from '@/components/job/PropertySelector';
@@ -71,6 +73,7 @@ export default function NewJob() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const nudge = useUpgradeTrigger({ feature: 'estimate', checkLimits: true });
+  const { isBlockedByExpiredBeta } = useBetaAccess();
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
@@ -143,6 +146,18 @@ export default function NewJob() {
       setSaving(false);
     }
   };
+
+  if (isBlockedByExpiredBeta) {
+    return (
+      <div className="p-4 md:p-6 max-w-xl mx-auto">
+        <button onClick={() => navigate(-1)} className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-5 transition">
+          <ArrowLeft size={15} /> Back
+        </button>
+        <h1 className="text-2xl font-bold font-display mb-5">New Job</h1>
+        <BetaExpiredGate action="creating new jobs" />
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 md:p-6 max-w-xl mx-auto">
