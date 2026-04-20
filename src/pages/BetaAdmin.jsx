@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Plus, Copy, Check, FlaskConical, Link2, Calendar, Users, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Plus, Copy, Check, FlaskConical, Link2, Calendar, Users, ToggleLeft, ToggleRight, ChevronDown, Trash2 } from 'lucide-react';
 import { format, parseISO, addDays } from 'date-fns';
 
 export default function BetaAdmin() {
@@ -24,6 +24,12 @@ export default function BetaAdmin() {
   // Manual beta form
   const [manualForm, setManualForm] = useState({ company_id: '', trial_days: 30 });
   const [activatingManual, setActivatingManual] = useState(false);
+
+  // Expand state for company management
+  const [expandedCompany, setExpandedCompany] = useState(null);
+  const [extendingDays, setExtendingDays] = useState({});
+  const [endingBeta, setEndingBeta] = useState({});
+  const [convertingPaid, setConvertingPaid] = useState({});
 
   const { data: invites = [], isLoading: loadingInvites } = useQuery({
     queryKey: ['beta-invites'],
@@ -102,6 +108,58 @@ export default function BetaAdmin() {
 
   const getInviteUrl = (code) =>
     `${window.location.origin}/signup?invite=${encodeURIComponent(code)}`;
+
+  const handleExtendBeta = async (companyId, extendDays) => {
+    if (!extendDays || extendDays <= 0) return;
+    setExtendingDays((s) => ({ ...s, [companyId]: true }));
+    try {
+      const co = companies.find((c) => c.id === companyId);
+      const currentEndDate = co.beta_end_date ? parseISO(co.beta_end_date) : new Date();
+      const newEndDate = addDays(currentEndDate, Number(extendDays));
+      await base44.entities.Company.update(companyId, {
+        beta_end_date: format(newEndDate, 'yyyy-MM-dd'),
+      });
+      qc.invalidateQueries(['beta-companies']);
+      setExpandedCompany(null);
+      toast.success(`Extended beta by ${extendDays} days`);
+    } catch (e) {
+      toast.error('Failed to extend beta');
+    }
+    setExtendingDays((s) => ({ ...s, [companyId]: false }));
+  };
+
+  const handleEndBeta = async (companyId) => {
+    setEndingBeta((s) => ({ ...s, [companyId]: true }));
+    try {
+      await base44.entities.Company.update(companyId, {
+        is_beta_user: false,
+        beta_status: 'expired',
+      });
+      qc.invalidateQueries(['beta-companies']);
+      setExpandedCompany(null);
+      toast.success('Beta access ended');
+    } catch (e) {
+      toast.error('Failed to end beta');
+    }
+    setEndingBeta((s) => ({ ...s, [companyId]: false }));
+  };
+
+  const handleConvertToPaid = async (companyId) => {
+    setConvertingPaid((s) => ({ ...s, [companyId]: true }));
+    try {
+      await base44.entities.Company.update(companyId, {
+        is_beta_user: false,
+        beta_status: 'converted_to_paid',
+        status: 'active',
+      });
+      qc.invalidateQueries(['beta-companies']);
+      setExpandedCompany(null);
+      toast.success('Company converted to paid plan');
+    } catch (e) {
+      toast.error('Failed to convert to paid');
+    }
+    setConvertingPaid((s) => ({ ...s, [companyId]: false }));
+  };
 
   const tabs = [
     { key: 'invites', label: 'Invite Codes' },
@@ -280,29 +338,112 @@ export default function BetaAdmin() {
           ) : companies.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">No beta companies yet.</p>
           ) : (
-            companies.map((co) => (
-              <Card key={co.id}>
-                <CardContent className="p-4 flex items-center justify-between gap-3 flex-wrap">
-                  <div>
-                    <p className="font-semibold text-sm">{co.name}</p>
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5 flex-wrap">
-                      <span>ID: <code className="font-mono">{co.id}</code></span>
-                      {co.beta_start_date && <span>Started {format(parseISO(co.beta_start_date), 'MMM d, yyyy')}</span>}
-                      {co.beta_end_date && <span>Ends {format(parseISO(co.beta_end_date), 'MMM d, yyyy')}</span>}
+            companies.map((co) => {
+              const daysRemaining = co.beta_end_date
+                ? Math.ceil((parseISO(co.beta_end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+                : null;
+              const isExpired = daysRemaining !== null && daysRemaining <= 0;
+              const isExpanded = expandedCompany === co.id;
+
+              return (
+                <Card key={co.id}>
+                  <CardContent className="p-4 space-y-3">
+                    {/* Header row */}
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-sm">{co.name}</p>
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5 flex-wrap">
+                          {daysRemaining !== null && (
+                            <span className={isExpired ? 'text-red-600 font-medium' : 'text-green-600 font-medium'}>
+                              {isExpired ? 'Expired' : `${daysRemaining} days left`}
+                            </span>
+                          )}
+                          {co.beta_start_date && <span>{format(parseISO(co.beta_start_date), 'MMM d')} →</span>}
+                          {co.beta_end_date && <span>{format(parseISO(co.beta_end_date), 'MMM d, yyyy')}</span>}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Badge
+                          className={
+                            co.beta_status === 'active'
+                              ? 'bg-green-100 text-green-700'
+                              : co.beta_status === 'expired'
+                              ? 'bg-red-100 text-red-700'
+                              : 'bg-blue-100 text-blue-700'
+                          }
+                        >
+                          {co.beta_status || 'active'}
+                        </Badge>
+                        <button
+                          onClick={() => setExpandedCompany(isExpanded ? null : co.id)}
+                          className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-border hover:bg-muted transition"
+                        >
+                          <ChevronDown size={14} className={`transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                  <Badge
-                    className={
-                      co.beta_status === 'active'
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-red-100 text-red-700'
-                    }
-                  >
-                    {co.beta_status || 'active'}
-                  </Badge>
-                </CardContent>
-              </Card>
-            ))
+
+                    {/* Expanded actions */}
+                    {isExpanded && (
+                      <div className="pt-3 border-t border-border space-y-3">
+                        <p className="text-xs text-muted-foreground">ID: <code className="font-mono">{co.id}</code></p>
+
+                        {/* Extend beta */}
+                        <div className="flex items-end gap-2">
+                          <div className="flex-1">
+                            <Label className="text-xs mb-1 block">Extend by (days)</Label>
+                            <Input
+                              type="number"
+                              min={1}
+                              max={365}
+                              placeholder="30"
+                              id={`extend-${co.id}`}
+                              className="h-8 text-sm"
+                            />
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              const input = document.getElementById(`extend-${co.id}`);
+                              const days = Number(input.value);
+                              if (days > 0) handleExtendBeta(co.id, days);
+                              input.value = '';
+                            }}
+                            disabled={extendingDays[co.id]}
+                            className="h-8"
+                          >
+                            {extendingDays[co.id] ? 'Extending…' : 'Extend'}
+                          </Button>
+                        </div>
+
+                        {/* Convert to paid */}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleConvertToPaid(co.id)}
+                          disabled={convertingPaid[co.id]}
+                          className="w-full h-8 text-sm"
+                        >
+                          {convertingPaid[co.id] ? 'Converting…' : 'Convert to Paid'}
+                        </Button>
+
+                        {/* End beta early */}
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => handleEndBeta(co.id)}
+                          disabled={endingBeta[co.id]}
+                          className="w-full h-8 text-sm"
+                        >
+                          {endingBeta[co.id] ? 'Ending…' : 'End Beta Early'}
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })
           )}
         </div>
       )}
