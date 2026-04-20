@@ -18,6 +18,7 @@ import NextActionBanner from '@/components/dashboard/NextActionBanner';
 import TrialBanner from '@/components/trial/TrialBanner';
 import { useTrialStatus } from '@/hooks/useTrialStatus';
 import BusinessMetrics from '@/components/dashboard/BusinessMetrics';
+import { useDemo } from '@/lib/DemoContext';
 
 const STATUS_COLORS = {
   new:              'bg-blue-100 text-blue-700',
@@ -33,6 +34,7 @@ export default function Dashboard() {
   const [onboardingStatus, setOnboardingStatus] = useState(null);
   const [companyId, setCompanyId] = useState(null);
   const { isTrial, isExpired, daysLeft } = useTrialStatus();
+  const { enterDemo } = useDemo();
   // Check onboarding completion for next-action banner + checklist
   useEffect(() => {
     if (!user) return;
@@ -86,12 +88,21 @@ export default function Dashboard() {
             {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
           </p>
         </div>
-        <Link
-          to="/jobs/new"
-          className="inline-flex items-center gap-2 px-4 h-9 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition"
-        >
-          <Plus size={15} /> New Job
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            to="/demo"
+            onClick={enterDemo}
+            className="inline-flex items-center gap-2 px-4 h-9 rounded-lg border border-border text-sm font-medium hover:bg-muted transition"
+          >
+            View Demo
+          </Link>
+          <Link
+            to="/jobs/new"
+            className="inline-flex items-center gap-2 px-4 h-9 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition"
+          >
+            <Plus size={15} /> New Job
+          </Link>
+        </div>
       </div>
 
       {/* Trial countdown / expiry banner */}

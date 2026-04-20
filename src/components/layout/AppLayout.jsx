@@ -2,6 +2,7 @@ import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import MobileNav from './MobileNav';
 import TopBar from './TopBar';
+import DemoBanner from '@/components/demo/DemoBanner';
 import { useSecurity } from '@/hooks/useSecurity';
 
 export default function AppLayout() {
@@ -15,6 +16,7 @@ export default function AppLayout() {
 
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <DemoBanner />
         <TopBar />
         <main className="flex-1 overflow-y-auto">
           <div className="animate-fade-in">

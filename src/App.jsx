@@ -4,6 +4,7 @@ import { queryClientInstance } from '@/lib/query-client';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
+import { DemoProvider } from '@/lib/DemoContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import ProtectedRoute from '@/lib/ProtectedRoute';
 import AppLayout from '@/components/layout/AppLayout';
@@ -33,6 +34,7 @@ import Analytics from '@/pages/Analytics';
 import EnterpriseSettings from '@/pages/EnterpriseSettings';
 import TeamPerformance from '@/pages/TeamPerformance';
 import DominanceValidation from '@/pages/DominanceValidation';
+import DemoJob from '@/pages/DemoJob';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -99,6 +101,7 @@ const AuthenticatedApp = () => {
         <Route path="/team-performance" element={<TeamPerformance />} />
         <Route path="/dominance-validation" element={<DominanceValidation />} />
         <Route path="/enterprise" element={<EnterpriseSettings />} />
+        <Route path="/demo" element={<DemoJob />} />
       </Route>
 
       <Route path="*" element={<PageNotFound />} />
@@ -109,12 +112,14 @@ const AuthenticatedApp = () => {
 function App() {
   return (
     <AuthProvider>
+      <DemoProvider>
       <QueryClientProvider client={queryClientInstance}>
         <Router>
           <AuthenticatedApp />
         </Router>
         <Toaster />
       </QueryClientProvider>
+      </DemoProvider>
     </AuthProvider>
   );
 }
