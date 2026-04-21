@@ -99,8 +99,9 @@ export default function Onboarding() {
             return;
           }
 
+          // Resume at saved step, minimum step 1, maximum step 5
           const savedStep = profile.current_onboarding_step || 1;
-          setStep(Math.max(savedStep, 1));
+          setStep(Math.min(Math.max(savedStep, 1), 5));
           setRole(profile.role || 'admin');
 
           if (profile.company_id) {

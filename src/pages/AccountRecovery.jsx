@@ -29,6 +29,7 @@ export default function AccountRecovery() {
   const [repairing, setRepairing] = useState(false);
   const [error, setError] = useState('');
   const [retryCount, setRetryCount] = useState(0);
+  const [retryLocked, setRetryLocked] = useState(false);
 
   // Check if we arrived here due to a duplicate signup attempt
   const params = new URLSearchParams(window.location.search);
@@ -78,9 +79,13 @@ export default function AccountRecovery() {
   };
 
   const handleRepairAndResume = async () => {
+    if (retryLocked || retryCount >= 3) return;
+    
     setRepairing(true);
     setError('');
-    setRetryCount(retryCount + 1);
+    const newCount = retryCount + 1;
+    setRetryCount(newCount);
+    
     try {
       const email = normalizeEmail(user?.email || '');
       const companies = await base44.entities.Company.filter({ created_by: email, is_deleted: false });
@@ -98,6 +103,9 @@ export default function AccountRecovery() {
       setTimeout(() => navigate('/onboarding', { replace: true }), 500);
     } catch (e) {
       setError('Repair failed. Please try again or contact support.');
+      // Lock retry button for 3 seconds after failure
+      setRetryLocked(true);
+      setTimeout(() => setRetryLocked(false), 3000);
     } finally {
       setRepairing(false);
     }
@@ -183,10 +191,18 @@ export default function AccountRecovery() {
               <div className="space-y-2">
                 <button
                   onClick={handleRepairAndResume}
-                  disabled={repairing}
+                  disabled={repairing || retryLocked || retryCount >= 3}
                   className="w-full h-10 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition flex items-center justify-center gap-2 disabled:opacity-60"
                 >
-                  {repairing ? <><RefreshCw size={14} className="animate-spin" /> Repairing…</> : <><RefreshCw size={14} /> Retry Repair</>}
+                  {repairing ? (
+                    <><RefreshCw size={14} className="animate-spin" /> Repairing…</>
+                  ) : retryCount >= 3 ? (
+                    <>Max attempts reached</>
+                  ) : retryLocked ? (
+                    <><RefreshCw size={14} /> Retry available in 3s…</>
+                  ) : (
+                    <><RefreshCw size={14} /> Retry Repair</>
+                  )}
                 </button>
                 <button
                   onClick={handleResumeOnboarding}

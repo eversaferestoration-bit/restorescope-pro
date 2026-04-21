@@ -41,8 +41,8 @@ export default function ProtectedRoute({ children }) {
     return children;
   }
 
-  // For any other state (unknown/null), redirect to auth-check for verification
-  if (accountState && accountState !== 'ready') {
+  // Any other state (unknown/null) — redirect to auth-check
+  if (accountState) {
     return <Navigate to="/auth-check" replace />;
   }
 
