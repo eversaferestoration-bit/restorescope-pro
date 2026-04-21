@@ -2,9 +2,12 @@
   "name": "KnowledgeItem",
   "type": "object",
   "properties": {
-    "title": {
+    "company_id": {
       "type": "string",
-      "description": "Knowledge item title"
+      "description": "Company this knowledge item belongs to"
+    },
+    "title": {
+      "type": "string"
     },
     "category": {
       "type": "string",
@@ -17,19 +20,16 @@
         "pricing",
         "dispute_resolution",
         "technical_procedure"
-      ],
-      "description": "Knowledge category"
+      ]
     },
     "content": {
-      "type": "string",
-      "description": "Detailed knowledge content"
+      "type": "string"
     },
     "related_scope": {
       "type": "array",
       "items": {
         "type": "string"
-      },
-      "description": "Related scope categories (e.g., 'containment', 'drying', 'remediation')"
+      }
     },
     "created_by": {
       "type": "string",
@@ -39,25 +39,21 @@
       "type": "array",
       "items": {
         "type": "string"
-      },
-      "description": "Searchable tags"
+      }
     },
     "loss_types": {
       "type": "array",
       "items": {
         "type": "string"
-      },
-      "description": "Applicable loss types (e.g., 'water', 'fire', 'mold')"
+      }
     },
     "success_count": {
       "type": "integer",
-      "default": 0,
-      "description": "Number of successful applications"
+      "default": 0
     },
     "is_pinned": {
       "type": "boolean",
-      "default": false,
-      "description": "Pinned for quick access"
+      "default": false
     },
     "is_deleted": {
       "type": "boolean",
@@ -69,5 +65,39 @@
     "category",
     "content",
     "created_by"
-  ]
+  ],
+  "rls": {
+    "read": {
+      "data.company_id": "{{user.company_id}}"
+    },
+    "create": {
+      "data.company_id": "{{user.company_id}}"
+    },
+    "update": {
+      "data.company_id": "{{user.company_id}}",
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "data.created_by": "{{user.email}}"
+        }
+      ]
+    },
+    "delete": {
+      "data.company_id": "{{user.company_id}}",
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "data.created_by": "{{user.email}}"
+        }
+      ]
+    }
+  }
 }

@@ -3,37 +3,29 @@
   "type": "object",
   "properties": {
     "region_code": {
-      "type": "string",
-      "description": "Geographic region (anonymized)"
+      "type": "string"
     },
     "loss_type": {
-      "type": "string",
-      "description": "Type of loss (water, fire, mold, etc.)"
+      "type": "string"
     },
     "service_type": {
-      "type": "string",
-      "description": "Service type (extraction, drying, remediation)"
+      "type": "string"
     },
     "category": {
-      "type": "string",
-      "description": "Scope category"
+      "type": "string"
     },
     "period": {
       "type": "string",
-      "format": "date-time",
-      "description": "Period start date"
+      "format": "date-time"
     },
     "avg_unit_price": {
-      "type": "number",
-      "description": "Average unit price across jobs"
+      "type": "number"
     },
     "median_unit_price": {
-      "type": "number",
-      "description": "Median unit price"
+      "type": "number"
     },
     "price_stddev": {
-      "type": "number",
-      "description": "Standard deviation of pricing"
+      "type": "number"
     },
     "min_price": {
       "type": "number"
@@ -43,18 +35,15 @@
     },
     "sample_size": {
       "type": "integer",
-      "default": 0,
-      "description": "Number of data points"
+      "default": 0
     },
     "price_momentum": {
-      "type": "number",
-      "description": "Price change vs previous period (-1 to 1)"
+      "type": "number"
     },
     "confidence_score": {
       "type": "number",
       "minimum": 0,
-      "maximum": 1,
-      "description": "Statistical confidence in data"
+      "maximum": 1
     },
     "is_deleted": {
       "type": "boolean",
@@ -66,5 +55,23 @@
     "loss_type",
     "category",
     "period"
-  ]
+  ],
+  "rls": {
+    "read": {},
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
 }

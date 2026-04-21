@@ -42,5 +42,19 @@
     "company_id",
     "job_id",
     "room_id"
-  ]
+  ],
+  "rls": {
+    "read": {
+      "data.company_id": "{{user.company_id}}"
+    },
+    "create": {
+      "data.company_id": "{{user.company_id}}"
+    },
+    "update": {
+      "data.company_id": "{{user.company_id}}"
+    },
+    "delete": {
+      "data.company_id": "{{user.company_id}}"
+    }
+  }
 }

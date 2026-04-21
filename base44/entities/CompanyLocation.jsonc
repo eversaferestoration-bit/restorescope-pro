@@ -3,15 +3,14 @@
   "type": "object",
   "properties": {
     "company_id": {
-      "type": "string"
+      "type": "string",
+      "description": "Parent company ID"
     },
     "name": {
-      "type": "string",
-      "description": "Location name"
+      "type": "string"
     },
     "code": {
-      "type": "string",
-      "description": "Unique code for this location"
+      "type": "string"
     },
     "address": {
       "type": "string"
@@ -29,8 +28,7 @@
       "type": "string"
     },
     "manager_id": {
-      "type": "string",
-      "description": "Location manager user ID"
+      "type": "string"
     },
     "is_headquarters": {
       "type": "boolean",
@@ -41,12 +39,10 @@
       "default": true
     },
     "pricing_profile_id": {
-      "type": "string",
-      "description": "Location-specific pricing profile"
+      "type": "string"
     },
-    "timezone": {
-      "type": "string",
-      "default": "America/Chicago"
+    "settings": {
+      "type": "object"
     },
     "is_deleted": {
       "type": "boolean",
@@ -57,5 +53,46 @@
     "company_id",
     "name",
     "code"
-  ]
+  ],
+  "rls": {
+    "read": {
+      "data.company_id": "{{user.company_id}}"
+    },
+    "create": {
+      "data.company_id": "{{user.company_id}}",
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "manager"
+          }
+        }
+      ]
+    },
+    "update": {
+      "data.company_id": "{{user.company_id}}",
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "manager"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "data.company_id": "{{user.company_id}}",
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
 }

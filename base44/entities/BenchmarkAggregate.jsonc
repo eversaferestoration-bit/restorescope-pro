@@ -1,40 +1,40 @@
 {
-  "name": "AdjusterBehavior",
+  "name": "BenchmarkAggregate",
   "type": "object",
   "properties": {
-    "adjuster_id": {
+    "metric_type": {
+      "type": "string",
+      "enum": [
+        "estimate_total",
+        "line_item_price",
+        "scope_count",
+        "category_price"
+      ]
+    },
+    "region_code": {
       "type": "string"
     },
-    "adjuster_name": {
+    "loss_type": {
       "type": "string"
     },
-    "carrier_id": {
-      "type": "string"
-    },
-    "approval_rate": {
-      "type": "number",
-      "minimum": 0,
-      "maximum": 100
-    },
-    "avg_reduction_percent": {
-      "type": "number",
-      "minimum": 0
-    },
-    "common_rejected_categories": {
-      "type": "array",
-      "items": {
-        "type": "string"
-      }
-    },
-    "avg_response_time_days": {
+    "avg_estimate_total": {
       "type": "number"
     },
-    "total_interactions": {
+    "avg_line_item_price": {
+      "type": "number"
+    },
+    "avg_scope_count": {
+      "type": "number"
+    },
+    "high_percentile_value": {
+      "type": "number"
+    },
+    "low_percentile_value": {
+      "type": "number"
+    },
+    "sample_size": {
       "type": "integer",
       "default": 0
-    },
-    "notes": {
-      "type": "string"
     },
     "last_updated": {
       "type": "string",
@@ -46,7 +46,8 @@
     }
   },
   "required": [
-    "adjuster_id"
+    "metric_type",
+    "region_code"
   ],
   "rls": {
     "read": {},

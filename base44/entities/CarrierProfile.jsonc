@@ -3,18 +3,15 @@
   "type": "object",
   "properties": {
     "carrier_name": {
-      "type": "string",
-      "description": "Name of the insurance carrier"
+      "type": "string"
     },
     "avg_approval_rate": {
       "type": "number",
-      "description": "Average approval rate across all jobs (0-100)",
       "minimum": 0,
       "maximum": 100
     },
     "avg_reduction_percent": {
       "type": "number",
-      "description": "Average reduction percentage negotiated (0-100)",
       "minimum": 0,
       "maximum": 100
     },
@@ -22,15 +19,13 @@
       "type": "array",
       "items": {
         "type": "string"
-      },
-      "description": "Common dispute categories for this carrier"
+      }
     },
     "preferred_documentation": {
       "type": "array",
       "items": {
         "type": "string"
-      },
-      "description": "Documentation types this carrier prefers"
+      }
     },
     "response_behavior": {
       "type": "string",
@@ -39,26 +34,21 @@
         "moderate",
         "slow",
         "variable"
-      ],
-      "description": "Typical response time behavior"
+      ]
     },
     "last_updated": {
       "type": "string",
-      "format": "date-time",
-      "description": "Last time this profile was updated"
+      "format": "date-time"
     },
     "total_interactions": {
       "type": "integer",
-      "default": 0,
-      "description": "Total number of jobs/interactions"
+      "default": 0
     },
     "avg_response_time_days": {
-      "type": "number",
-      "description": "Average response time in days"
+      "type": "number"
     },
     "dispute_rate": {
       "type": "number",
-      "description": "Percentage of jobs with disputes (0-100)",
       "minimum": 0,
       "maximum": 100
     },
@@ -69,5 +59,23 @@
   },
   "required": [
     "carrier_name"
-  ]
+  ],
+  "rls": {
+    "read": {},
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
 }

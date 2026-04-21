@@ -83,5 +83,55 @@
   "required": [
     "company_id",
     "name"
-  ]
+  ],
+  "rls": {
+    "read": {
+      "data.company_id": "{{user.company_id}}"
+    },
+    "create": {
+      "data.company_id": "{{user.company_id}}",
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "manager"
+          }
+        }
+      ]
+    },
+    "update": {
+      "data.company_id": "{{user.company_id}}",
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "manager"
+          }
+        }
+      ]
+    },
+    "delete": {
+      "data.company_id": "{{user.company_id}}",
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "manager"
+          }
+        }
+      ]
+    }
+  }
 }
