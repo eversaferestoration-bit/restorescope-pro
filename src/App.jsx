@@ -15,6 +15,7 @@ import PageTransition from '@/components/PageTransition';
 import Login from '@/pages/auth/Login';
 import Signup from '@/pages/auth/Signup';
 import ForgotPassword from '@/pages/auth/ForgotPassword';
+import AuthCheck from '@/pages/AuthCheck';
 
 // Client pages
 import ClientLogin from '@/pages/client/ClientLogin';
@@ -71,6 +72,7 @@ const AuthenticatedApp = () => {
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/auth-check" element={<AuthCheck />} />
       
       {/* Client portal routes */}
       <Route path="/client-login" element={<ClientLogin />} />
