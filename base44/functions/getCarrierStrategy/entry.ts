@@ -4,14 +4,36 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
  * Get Carrier Strategy Recommendations
  * Input: carrier_name
  * Output: documentation emphasis, risk areas, strategy suggestions
+ * Access: Owner_Admin and Manager only
  */
+
+const FORBIDDEN = Response.json(
+  { success: false, message: 'Forbidden', code: 'FORBIDDEN' },
+  { status: 403 }
+);
 
 Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
-  
+
   const user = await base44.auth.me();
   if (!user) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  // Role check — read from auth context, never trust client-supplied values
+  const allowedRoles = ['admin', 'manager'];
+  if (!allowedRoles.includes(user.role)) {
+    // Log denied attempt via service role
+    base44.asServiceRole.entities.AuditLog.create({
+      company_id: user.company_id || '',
+      entity_type: 'function',
+      entity_id: 'getCarrierStrategy',
+      action: 'forbidden',
+      actor_email: user.email,
+      actor_id: user.id,
+      description: `Forbidden access attempt to getCarrierStrategy by role: ${user.role}`,
+    }).catch(() => {});
+    return FORBIDDEN;
   }
 
   try {
@@ -29,7 +51,6 @@ Deno.serve(async (req) => {
     });
 
     if (!profiles.length) {
-      // No profile yet - return generic recommendations
       return Response.json({
         success: true,
         carrier_name,
@@ -59,14 +80,12 @@ Deno.serve(async (req) => {
 
     const profile = profiles[0];
 
-    // Generate recommendations based on profile data
     const recommendations = {
       documentation_emphasis: [],
       risk_areas: [],
       strategy_suggestions: [],
     };
 
-    // Documentation emphasis based on carrier preferences
     if (profile.preferred_documentation?.length > 0) {
       const docMapping = {
         'moisture_logs': 'Daily moisture logs with clear readings',
@@ -75,11 +94,8 @@ Deno.serve(async (req) => {
         'reports': 'Detailed technical reports with findings',
         'diagrams': 'Floor plans and moisture mapping diagrams',
       };
-
       profile.preferred_documentation.forEach(doc => {
-        if (docMapping[doc]) {
-          recommendations.documentation_emphasis.push(docMapping[doc]);
-        }
+        if (docMapping[doc]) recommendations.documentation_emphasis.push(docMapping[doc]);
       });
     } else {
       recommendations.documentation_emphasis = [
@@ -89,7 +105,6 @@ Deno.serve(async (req) => {
       ];
     }
 
-    // Risk areas based on common disputes
     if (profile.common_disputes?.length > 0) {
       const disputeMapping = {
         'documentation': 'Incomplete or missing documentation',
@@ -98,11 +113,8 @@ Deno.serve(async (req) => {
         'photography': 'Insufficient photographic evidence',
         'necessity': 'Questioned necessity of procedures',
       };
-
       profile.common_disputes.forEach(dispute => {
-        if (disputeMapping[dispute]) {
-          recommendations.risk_areas.push(disputeMapping[dispute]);
-        }
+        if (disputeMapping[dispute]) recommendations.risk_areas.push(disputeMapping[dispute]);
       });
     } else {
       recommendations.risk_areas = [
@@ -111,10 +123,8 @@ Deno.serve(async (req) => {
       ];
     }
 
-    // Strategy suggestions based on carrier behavior
     const { avg_approval_rate, avg_reduction_percent, response_behavior, dispute_rate } = profile;
 
-    // Approval rate strategies
     if (avg_approval_rate < 50) {
       recommendations.strategy_suggestions.push(
         'Low approval rate - consider pre-submission review',
@@ -133,7 +143,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Reduction strategies
     if (avg_reduction_percent > 15) {
       recommendations.strategy_suggestions.push(
         `High reduction rate (${avg_reduction_percent.toFixed(1)}%) - strengthen pricing justification`,
@@ -141,28 +150,20 @@ Deno.serve(async (req) => {
         'Provide detailed line-item breakdowns',
       );
     } else if (avg_reduction_percent > 5) {
-      recommendations.strategy_suggestions.push(
-        'Moderate reductions - review pricing on disputed categories',
-      );
+      recommendations.strategy_suggestions.push('Moderate reductions - review pricing on disputed categories');
     } else {
-      recommendations.strategy_suggestions.push(
-        'Low reduction rate - pricing well-accepted',
-      );
+      recommendations.strategy_suggestions.push('Low reduction rate - pricing well-accepted');
     }
 
-    // Response time strategies
     if (response_behavior === 'slow') {
       recommendations.strategy_suggestions.push(
         'Slow responder - submit early and follow up proactively',
         'Build in buffer time for approval timelines',
       );
     } else if (response_behavior === 'fast') {
-      recommendations.strategy_suggestions.push(
-        'Fast responder - leverage quick turnaround for supplements',
-      );
+      recommendations.strategy_suggestions.push('Fast responder - leverage quick turnaround for supplements');
     }
 
-    // Dispute rate strategies
     if (dispute_rate > 30) {
       recommendations.strategy_suggestions.push(
         'High dispute rate - request carrier feedback on submissions',
@@ -170,10 +171,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Calculate overall carrier difficulty
     let difficulty_level = 'moderate';
     let difficulty_score = 50;
-
     if (avg_approval_rate < 50 || dispute_rate > 40 || avg_reduction_percent > 20) {
       difficulty_level = 'challenging';
       difficulty_score = 75;
@@ -200,9 +199,6 @@ Deno.serve(async (req) => {
     });
 
   } catch (error) {
-    return Response.json({
-      success: false,
-      error: error.message,
-    }, { status: 500 });
+    return Response.json({ success: false, error: error.message }, { status: 500 });
   }
 });
