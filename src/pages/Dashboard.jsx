@@ -68,6 +68,7 @@ export default function Dashboard() {
           if (status && status !== 'onboarding_completed') {
             setOnboardingStatus(status);
           }
+          console.log('[Dashboard] UserProfile initialized:', profile.id, '| Company:', profile.company_id);
         } else {
           console.warn('[Dashboard] No UserProfile found for user:', user.id);
           setProfileError('missing');
@@ -76,6 +77,7 @@ export default function Dashboard() {
       .catch((err) => {
         console.error('[Dashboard] UserProfile query failed:', err?.message || err);
         setProfileError('query_failed');
+        setSafeMode(true);
       });
   }, [user?.id]);
 
@@ -89,12 +91,17 @@ export default function Dashboard() {
       navigate('/account-recovery');
       return;
     }
+    if (profileError === 'query_failed') {
+      console.warn('[Dashboard] UserProfile query failed — entering safe mode');
+      setSafeMode(true);
+      return;
+    }
     // If profile loads but jobs query fails — show safe mode
     if (userProfileId && jobsError) {
-      console.warn('[Dashboard] Jobs query failed — entering safe mode');
+      console.warn('[Dashboard] Jobs query failed — entering safe mode:', jobsError?.message);
       setSafeMode(true);
     }
-  }, [profileError, jobsError, userProfileId]);
+  }, [profileError, jobsError, userProfileId, navigate]);
 
   // Pending approvals — allowed for all users (company-scoped via RLS)
   const { data: pendingApprovals = [], error: approvalsError } = useQuery({
