@@ -55,14 +55,22 @@ export default function Signup() {
             <p className="text-lg font-bold font-display">RestoreScope Pro</p>
           </div>
 
-          <div className="bg-card rounded-2xl border border-border shadow-sm p-6 text-center">
-            <div className="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center mx-auto mb-4">
-              <AlertCircle size={22} className="text-amber-600" />
+          <div className="bg-card rounded-2xl border border-border shadow-sm p-6">
+            <div className="flex flex-col items-center text-center mb-5">
+              <div className="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center mb-3">
+                <AlertCircle size={22} className="text-amber-600" />
+              </div>
+              <h2 className="text-lg font-semibold font-display mb-1">Account already exists</h2>
+              <p className="text-sm text-muted-foreground">
+                An account with this email already exists.
+              </p>
             </div>
-            <h2 className="text-lg font-semibold font-display mb-2">Account already exists</h2>
-            <p className="text-sm text-muted-foreground mb-6">
-              An account with this email already exists. Sign in to continue, or reset your password if you've forgotten it.
-            </p>
+
+            <div className="bg-muted/60 rounded-lg px-4 py-3 mb-5 text-sm text-muted-foreground">
+              <span className="font-semibold text-foreground">Don't know your password?</span>{' '}
+              Use <Link to="/forgot-password" className="text-primary font-semibold hover:underline">Forgot password?</Link> to get a reset link sent to your email.
+            </div>
+
             <div className="flex flex-col gap-3">
               <button
                 onClick={() => base44.auth.redirectToLogin('/dashboard')}
@@ -74,7 +82,7 @@ export default function Signup() {
                 to="/forgot-password"
                 className="w-full h-10 rounded-lg border border-border text-sm font-medium hover:bg-muted transition flex items-center justify-center"
               >
-                Reset my password
+                Forgot password?
               </Link>
             </div>
           </div>

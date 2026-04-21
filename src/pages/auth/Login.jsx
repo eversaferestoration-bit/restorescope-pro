@@ -91,11 +91,11 @@ export default function Login() {
             )}
           </div>
 
-          {/* Forgot password — shown prominently */}
+          {/* Forgot password — shown prominently below email */}
           <div className="flex justify-end mb-4">
             <Link
               to="/forgot-password"
-              className="text-xs text-primary font-medium hover:underline"
+              className="text-sm text-primary font-semibold hover:underline"
             >
               Forgot your password?
             </Link>

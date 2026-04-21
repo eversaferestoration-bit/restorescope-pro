@@ -27,23 +27,19 @@ export default function ForgotPassword() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    if (!EMAIL_REGEX.test(email.trim())) {
+    const normalized = email.trim().toLowerCase();
+    if (!EMAIL_REGEX.test(normalized)) {
       setError('Enter a valid email address.');
       return;
     }
     setLoading(true);
     try {
-      await base44.auth.forgotPassword(email.trim().toLowerCase());
-      setSent(true);
-    } catch (err) {
-      const msg = typeof err === 'string' ? err : (err?.message || '');
-      if (msg.toLowerCase().includes('not found') || msg.toLowerCase().includes('no user')) {
-        setError('No account found for this email.');
-      } else {
-        setError('Could not send reset email. Please try again.');
-      }
+      await base44.auth.forgotPassword(normalized);
+    } catch {
+      // Intentionally swallow — never reveal whether email exists
     } finally {
       setLoading(false);
+      setSent(true); // Always show confirmation regardless of outcome
     }
   };
 
@@ -65,7 +61,7 @@ export default function ForgotPassword() {
               </div>
               <h2 className="text-xl font-semibold font-display mb-2">Check your email</h2>
               <p className="text-sm text-muted-foreground mb-6">
-                We've sent a password reset link to <strong>{email}</strong>.
+                If <strong>{email.trim().toLowerCase()}</strong> is registered, a password reset link has been sent. Check your inbox and spam folder.
               </p>
               <Link
                 to="/login"
