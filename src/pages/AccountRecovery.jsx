@@ -204,9 +204,9 @@ export default function AccountRecovery() {
               <div className="flex items-start gap-3">
                 <AlertCircle size={20} className="text-amber-500 shrink-0 mt-0.5" />
                 <div>
-                  <h2 className="font-semibold font-display text-base">Setup incomplete</h2>
+                  <h2 className="font-semibold font-display text-base">Login succeeded, setup incomplete</h2>
                   <p className="text-sm text-muted-foreground mt-1">
-                    Your account exists but setup was never completed. Let's finish setting up your company.
+                    Your account exists but company setup was never completed. Let's finish setting up your company.
                   </p>
                 </div>
               </div>
@@ -217,6 +217,7 @@ export default function AccountRecovery() {
               >
                 <ArrowRight size={15} /> Complete setup
               </button>
+              <p className="text-center text-xs text-muted-foreground">Your session is active.</p>
             </>
           )}
 
@@ -225,7 +226,7 @@ export default function AccountRecovery() {
               <div className="flex items-start gap-3">
                 <AlertCircle size={20} className="text-amber-500 shrink-0 mt-0.5" />
                 <div>
-                  <h2 className="font-semibold font-display text-base">Finish your setup</h2>
+                  <h2 className="font-semibold font-display text-base">Login succeeded, finish your setup</h2>
                   <p className="text-sm text-muted-foreground mt-1">
                     Your account setup was started but not completed. Resume where you left off.
                   </p>
@@ -237,11 +238,13 @@ export default function AccountRecovery() {
               >
                 <ArrowRight size={15} /> Resume setup
               </button>
+              <p className="text-center text-xs text-muted-foreground">Your session is active.</p>
             </>
           )}
         </div>
 
         <p className="text-center text-xs text-muted-foreground mt-5">
+          {user?.email && <span className="block mb-2">Logged in as: <strong>{user.email}</strong></span>}
           Need help?{' '}
           <a href="mailto:support@restorescope.com" className="text-primary hover:underline">
             Contact support
