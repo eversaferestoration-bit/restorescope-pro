@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
+import { normalizeEmail } from '@/lib/authRepair';
 
 const AuthContext = createContext();
 
@@ -20,15 +21,20 @@ export const AuthProvider = ({ children }) => {
     setAuthError(null);
     try {
       const currentUser = await base44.auth.me();
+      // Log normalized email for debugging
+      const normalizedEmail = normalizeEmail(currentUser?.email || '');
+      console.log('[AuthContext] User loaded. Email (normalized):', normalizedEmail, '| Role:', currentUser?.role);
       setUser(currentUser);
       setIsAuthenticated(true);
     } catch (error) {
       setUser(null);
       setIsAuthenticated(false);
       const status = error?.status || error?.response?.status;
+      const reason = error?.data?.extra_data?.reason || error?.response?.data?.extra_data?.reason;
+      console.log('[AuthContext] Auth check failed. Status:', status, '| Reason:', reason || error?.message);
       if (status === 401 || status === 403) {
         setAuthError({ type: 'auth_required', message: 'Authentication required' });
-      } else if (error?.data?.extra_data?.reason === 'user_not_registered') {
+      } else if (reason === 'user_not_registered') {
         setAuthError({ type: 'user_not_registered', message: 'User not registered for this app' });
       }
       // For other errors (network, etc.) don't set authError — let the app render normally

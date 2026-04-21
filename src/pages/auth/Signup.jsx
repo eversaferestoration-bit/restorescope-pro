@@ -1,12 +1,19 @@
 import { useState } from 'react';
-import { Droplets, FlaskConical } from 'lucide-react';
+import { Droplets, FlaskConical, AlertCircle } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import { normalizeEmail } from '@/lib/authRepair';
 
 const BETA_INVITE_CODE = 'BETA2025';
 
 export default function Signup() {
   const [inviteInput, setInviteInput] = useState('');
   const [inviteError, setInviteError] = useState('');
+
+  // Check if redirected back with an error (e.g. duplicate account)
+  const params = new URLSearchParams(window.location.search);
+  const authErrorParam = params.get('error');
+  const duplicateAccountError =
+    authErrorParam === 'email_exists' || authErrorParam === 'user_already_exists';
 
   const handleSignup = () => {
     setInviteError('');
@@ -20,6 +27,15 @@ export default function Signup() {
     if (code === BETA_INVITE_CODE) {
       sessionStorage.setItem('beta_invite_code', BETA_INVITE_CODE);
     }
+
+    // Normalize any stored email context before redirecting
+    const storedEmail = sessionStorage.getItem('signup_email');
+    if (storedEmail) {
+      const normalized = normalizeEmail(storedEmail);
+      console.log('[Signup] Normalized email before redirect:', normalized);
+      sessionStorage.setItem('signup_email', normalized);
+    }
+
     base44.auth.redirectToLogin('/onboarding');
   };
 
@@ -39,6 +55,30 @@ export default function Signup() {
           <h2 className="text-xl font-semibold font-display mb-1">Create an account</h2>
           <p className="text-sm text-muted-foreground mb-6">Start your free trial today</p>
 
+          {/* Duplicate account error message */}
+          {duplicateAccountError && (
+            <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5 mb-4">
+              <AlertCircle size={15} className="text-amber-600 shrink-0 mt-0.5" />
+              <p className="text-xs text-amber-800">
+                An account already exists for this email. Try{' '}
+                <button
+                  onClick={() => base44.auth.redirectToLogin('/dashboard')}
+                  className="font-semibold underline"
+                >
+                  signing in
+                </button>
+                {' '}or{' '}
+                <button
+                  onClick={() => base44.auth.redirectToLogin('/dashboard')}
+                  className="font-semibold underline"
+                >
+                  reset your password
+                </button>
+                .
+              </p>
+            </div>
+          )}
+
           <div className="mb-4">
             <label className="block text-sm font-medium mb-1.5">Invite Code (optional)</label>
             <input
@@ -51,7 +91,7 @@ export default function Signup() {
               placeholder="Enter code if you have one"
               className="w-full h-10 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring transition"
             />
-            {inviteInput && inviteInput.trim() === BETA_INVITE_CODE && (
+            {inviteInput && inviteInput.trim().toUpperCase() === BETA_INVITE_CODE && (
               <div className="flex items-center gap-2 bg-violet-50 border border-violet-200 rounded-lg px-3 py-2 mt-2">
                 <FlaskConical size={14} className="text-violet-600" />
                 <p className="text-xs text-violet-700">Valid beta invite code!</p>
