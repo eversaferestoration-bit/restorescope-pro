@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
@@ -12,20 +12,36 @@ const STATUS_STYLES = {
   none:    'bg-muted text-muted-foreground',
 };
 
+function getSafeCompany(company) {
+  return {
+    ...company,
+    beta_status: company.beta_status || 'none',
+    beta_start_date: company.beta_start_date || null,
+    beta_end_date: company.beta_end_date || null,
+    is_beta_user: company.is_beta_user || false,
+    name: company.name || '(Unnamed)',
+    email: company.email || null,
+  };
+}
+
 function getBetaStatus(company) {
   if (!company.is_beta_user) return 'none';
   if (company.beta_status === 'expired') return 'expired';
   if (company.beta_end_date) {
-    const end = parseISO(company.beta_end_date);
-    if (end < new Date()) return 'expired';
+    try {
+      const end = parseISO(company.beta_end_date);
+      if (end < new Date()) return 'expired';
+    } catch { return 'expired'; }
   }
   return company.beta_status === 'active' ? 'active' : 'none';
 }
 
 function getDaysRemaining(company) {
-  if (!company.beta_end_date || getBetaStatus(company) !== 'active') return null;
-  const days = differenceInDays(parseISO(company.beta_end_date), new Date());
-  return Math.max(0, days);
+  if (!company.beta_end_date || getBetaStatus(company) !== 'active') return 0;
+  try {
+    const days = differenceInDays(parseISO(company.beta_end_date), new Date());
+    return Math.max(0, days);
+  } catch { return 0; }
 }
 
 function ActionMenu({ company, onAction }) {
@@ -87,10 +103,26 @@ export default function BetaUsers() {
   const [search, setSearch] = useState('');
   const [showSearch, setShowSearch] = useState(false);
 
-  const { data: companies = [], isLoading } = useQuery({
+  useEffect(() => {
+    console.log('[BetaUsers] Page loaded');
+  }, []);
+
+  const { data: rawCompanies = [], isLoading, isError } = useQuery({
     queryKey: ['companies-beta'],
-    queryFn: () => base44.entities.Company.filter({ is_deleted: false }, 'name', 200),
+    queryFn: async () => {
+      console.log('[BetaUsers] Company fetch started');
+      const result = await base44.entities.Company.filter({ is_deleted: false }, 'name', 200);
+      console.log(`[BetaUsers] Company fetch success — ${result.length} companies`);
+      return result;
+    },
+    onError: (err) => {
+      console.error('[BetaUsers] Company fetch error:', err);
+    },
+    retry: 2,
+    staleTime: 30 * 1000,
   });
+
+  const companies = rawCompanies.map((c) => { try { return getSafeCompany(c); } catch { return null; } }).filter(Boolean);
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.Company.update(id, data),
@@ -182,7 +214,13 @@ export default function BetaUsers() {
       <div className="bg-card border border-border rounded-xl overflow-hidden">
         {isLoading ? (
           <div className="p-6 space-y-3">
+            <p className="text-sm text-muted-foreground text-center mb-2">Loading companies…</p>
             {[1,2,3,4].map(i => <div key={i} className="h-12 rounded-lg bg-muted animate-pulse" />)}
+          </div>
+        ) : isError ? (
+          <div className="p-10 text-center space-y-2">
+            <p className="text-sm font-semibold text-destructive">Failed to load companies</p>
+            <p className="text-xs text-muted-foreground">Check your connection and try refreshing the page.</p>
           </div>
         ) : filtered.length === 0 ? (
           <div className="p-10 text-center text-sm text-muted-foreground">No companies found.</div>
@@ -216,7 +254,7 @@ export default function BetaUsers() {
                           </span>
                         </td>
                         <td className="px-4 py-3">
-                          {daysLeft !== null
+                          {status === 'active'
                             ? <span className={cn('font-medium', daysLeft <= 3 && 'text-destructive')}>{daysLeft}d</span>
                             : <span className="text-muted-foreground">—</span>
                           }
@@ -256,7 +294,7 @@ export default function BetaUsers() {
                     <div className="flex gap-4 text-xs text-muted-foreground">
                       <span>Start: {company.beta_start_date ? format(parseISO(company.beta_start_date), 'MMM d') : '—'}</span>
                       <span>End: {company.beta_end_date ? format(parseISO(company.beta_end_date), 'MMM d') : '—'}</span>
-                      {daysLeft !== null && (
+                      {status === 'active' && (
                         <span className={cn('font-medium', daysLeft <= 3 ? 'text-destructive' : 'text-foreground')}>{daysLeft}d left</span>
                       )}
                     </div>
