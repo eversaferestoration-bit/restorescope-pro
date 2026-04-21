@@ -11,10 +11,63 @@ export const AuthProvider = ({ children }) => {
   const [isLoadingPublicSettings, setIsLoadingPublicSettings] = useState(false);
   const [authError, setAuthError] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
+  const [accountState, setAccountState] = useState(null); // 'incomplete', 'setup_required', 'ready'
+  const [accountStateChecked, setAccountStateChecked] = useState(false);
 
   useEffect(() => {
     checkUserAuth();
   }, []);
+
+  // Validate required account records exist
+  const checkAccountState = async (authUser) => {
+    if (!authUser) return null;
+    
+    try {
+      console.log('[AuthContext] Checking account state for user:', authUser.id);
+
+      // Check UserProfile exists
+      const profiles = await base44.entities.UserProfile.filter({ user_id: authUser.id, is_deleted: false });
+      if (profiles.length === 0) {
+        console.warn('[AuthContext] No UserProfile found — redirecting to account-recovery');
+        setAccountState('incomplete');
+        return 'incomplete';
+      }
+
+      const profile = profiles[0];
+      console.log('[AuthContext] UserProfile found:', profile.id);
+
+      // Check Company exists
+      if (!profile.company_id) {
+        console.warn('[AuthContext] No company_id in profile — setup required');
+        setAccountState('setup_required');
+        return 'setup_required';
+      }
+
+      const companies = await base44.entities.Company.filter({ id: profile.company_id, is_deleted: false });
+      if (companies.length === 0) {
+        console.warn('[AuthContext] Company not found — setup required');
+        setAccountState('setup_required');
+        return 'setup_required';
+      }
+
+      console.log('[AuthContext] Company found:', profile.company_id);
+
+      // Check onboarding status
+      if (profile.onboarding_status && profile.onboarding_status !== 'onboarding_completed') {
+        console.log('[AuthContext] Onboarding incomplete — state:', profile.onboarding_status);
+        setAccountState('incomplete');
+        return 'incomplete';
+      }
+
+      console.log('[AuthContext] Account state is READY');
+      setAccountState('ready');
+      return 'ready';
+    } catch (err) {
+      console.error('[AuthContext] Account state check failed:', err?.message || err);
+      setAccountState('incomplete');
+      return 'incomplete';
+    }
+  };
 
   const checkUserAuth = async () => {
     setIsLoadingAuth(true);
@@ -26,6 +79,9 @@ export const AuthProvider = ({ children }) => {
       console.log('[AuthContext] User loaded. Email (normalized):', normalizedEmail, '| Role:', currentUser?.role);
       setUser(currentUser);
       setIsAuthenticated(true);
+
+      // After successful auth, check account state
+      await checkAccountState(currentUser);
     } catch (error) {
       setUser(null);
       setIsAuthenticated(false);
@@ -40,6 +96,7 @@ export const AuthProvider = ({ children }) => {
       // For other errors (network, etc.) don't set authError — let the app render normally
     } finally {
       setIsLoadingAuth(false);
+      setAccountStateChecked(true);
       setAuthChecked(true);
     }
   };
@@ -62,6 +119,8 @@ export const AuthProvider = ({ children }) => {
       isLoadingPublicSettings,
       authError,
       authChecked,
+      accountState,
+      accountStateChecked,
       logout,
       navigateToLogin,
       checkUserAuth,

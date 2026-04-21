@@ -1,93 +1,46 @@
-import { useState, useEffect, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
-import { base44 } from '@/api/base44Client';
-import { diagnoseAccountState, repairPartialAccount } from '@/lib/authRepair';
+import { Navigate } from 'react-router-dom';
 
 export default function ProtectedRoute({ children }) {
-  const { isLoadingAuth, isLoadingPublicSettings, authError, isAuthenticated, user } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const [checked, setChecked] = useState(false);
-  const checkedUserRef = useRef(null);
+  const { isLoadingAuth, authError, isAuthenticated, accountState, accountStateChecked } = useAuth();
 
-  useEffect(() => {
-    if (!isAuthenticated || !user) {
-      setChecked(true);
-      return;
-    }
-
-    // Already on onboarding — let it manage itself
-    if (location.pathname === '/onboarding') {
-      setChecked(true);
-      return;
-    }
-
-    // Already checked for this user — skip
-    if (checkedUserRef.current === user.id) return;
-
-    console.log('[ProtectedRoute] Diagnosing account state for user:', user.id);
-
-    diagnoseAccountState(user)
-      .then(async ({ state }) => {
-        console.log('[ProtectedRoute] Account state:', state);
-
-        if (state === 'ok') {
-          checkedUserRef.current = user.id;
-          setChecked(true);
-          return;
-        }
-
-        if (state === 'no_profile') {
-          const { fixed } = await repairPartialAccount(user);
-          if (fixed) {
-            console.log('[ProtectedRoute] Auto-repaired profile — proceeding');
-            checkedUserRef.current = user.id;
-            setChecked(true);
-          } else {
-            navigate('/onboarding', { replace: true });
-          }
-          return;
-        }
-
-        if (state === 'no_company' || state === 'onboarding_incomplete') {
-          navigate('/onboarding', { replace: true });
-          return;
-        }
-
-        // Unknown state — fail open
-        checkedUserRef.current = user.id;
-        setChecked(true);
-      })
-      .catch((err) => {
-        console.warn('[ProtectedRoute] Diagnosis failed (network?):', err?.message);
-        checkedUserRef.current = user.id;
-        setChecked(true);
-      });
-  }, [isAuthenticated, user?.id]); // intentionally excludes location.pathname — re-diagnosis only needed on user change
-
-  useEffect(() => {
-    if (!isLoadingAuth && !isLoadingPublicSettings) {
-      if (authError?.type === 'auth_required' || (!isAuthenticated && !authError)) {
-        base44.auth.redirectToLogin(window.location.pathname + window.location.search);
-      }
-    }
-  }, [isLoadingAuth, isLoadingPublicSettings, authError, isAuthenticated]);
-
-  if (isLoadingAuth || isLoadingPublicSettings || (isAuthenticated && !checked && location.pathname !== '/onboarding')) {
+  // Loading auth or checking account state
+  if (isLoadingAuth || !accountStateChecked) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-[3px] border-primary/20 border-t-primary rounded-full animate-spin" />
+          <div className="w-8 h-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
           <span className="text-sm text-muted-foreground">Loading…</span>
         </div>
       </div>
     );
   }
 
-  if (authError?.type === 'auth_required' || (!isAuthenticated && !authError)) {
-    return null;
+  // Auth error — not authenticated
+  if (authError) {
+    return <Navigate to="/login" replace />;
   }
 
-  return children;
+  // Not authenticated
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  // Account incomplete — needs recovery
+  if (accountState === 'incomplete') {
+    return <Navigate to="/account-recovery" replace />;
+  }
+
+  // Setup required — needs onboarding
+  if (accountState === 'setup_required') {
+    return <Navigate to="/onboarding" replace />;
+  }
+
+  // Ready — allow access
+  if (accountState === 'ready') {
+    return children;
+  }
+
+  // Unknown state — redirect to login for safety
+  return <Navigate to="/login" replace />;
 }
