@@ -27,12 +27,14 @@ export default function BusinessMetrics() {
   const { data: jobs = [], isLoading: loadingJobs, error: jobsError } = useQuery({
     queryKey: ['biz-metrics-jobs', monthStart],
     queryFn: () => base44.entities.Job.filter({ is_deleted: false }, '-created_date', 200),
+    enabled: true, // Load on demand once dashboard mounts
     staleTime: 5 * 60 * 1000,
   });
 
   const { data: estimates = [], isLoading: loadingEstimates, error: estimatesError } = useQuery({
     queryKey: ['biz-metrics-estimates', monthStart],
     queryFn: () => base44.entities.EstimateDraft.filter({ is_deleted: false }, '-created_date', 200),
+    enabled: true, // Load on demand once dashboard mounts
     staleTime: 5 * 60 * 1000,
   });
 

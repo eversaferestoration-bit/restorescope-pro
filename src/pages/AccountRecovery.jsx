@@ -23,11 +23,12 @@ const STATE = {
 };
 
 export default function AccountRecovery() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [state, setState] = useState(STATE.CHECKING);
   const [repairing, setRepairing] = useState(false);
   const [error, setError] = useState('');
+  const [retryCount, setRetryCount] = useState(0);
 
   // Check if we arrived here due to a duplicate signup attempt
   const params = new URLSearchParams(window.location.search);
@@ -79,18 +80,22 @@ export default function AccountRecovery() {
   const handleRepairAndResume = async () => {
     setRepairing(true);
     setError('');
+    setRetryCount(retryCount + 1);
     try {
       const email = normalizeEmail(user?.email || '');
       const companies = await base44.entities.Company.filter({ created_by: email, is_deleted: false });
       if (companies.length > 0) {
         const repaired = await repairMissingUserProfile(user, companies[0]);
         if (repaired) {
-          navigate('/dashboard', { replace: true });
+          // Clear retry count and go to dashboard
+          setRetryCount(0);
+          setTimeout(() => navigate('/dashboard', { replace: true }), 500);
           return;
         }
       }
       // No company found either — start fresh onboarding
-      navigate('/onboarding', { replace: true });
+      setRetryCount(0);
+      setTimeout(() => navigate('/onboarding', { replace: true }), 500);
     } catch (e) {
       setError('Repair failed. Please try again or contact support.');
     } finally {
@@ -98,8 +103,15 @@ export default function AccountRecovery() {
     }
   };
 
-  const handleResumeOnboarding = () => navigate('/onboarding', { replace: true });
-  const handleSignIn = () => base44.auth.redirectToLogin('/dashboard');
+  const handleResumeOnboarding = () => {
+    setRetryCount(0);
+    navigate('/onboarding', { replace: true });
+  };
+  const handleSignIn = () => {
+    // Only logout if user explicitly chooses to sign back in
+    logout();
+    setTimeout(() => base44.auth.redirectToLogin('/dashboard'), 300);
+  };
   const handleResetPassword = () => navigate('/forgot-password');
 
   return (
@@ -145,6 +157,9 @@ export default function AccountRecovery() {
                   Reset my password
                 </button>
               </div>
+              <p className="text-center text-xs text-muted-foreground">
+                Your session is active. No need to sign in again.
+              </p>
             </>
           )}
 
@@ -153,20 +168,34 @@ export default function AccountRecovery() {
               <div className="flex items-start gap-3">
                 <AlertCircle size={20} className="text-amber-500 shrink-0 mt-0.5" />
                 <div>
-                  <h2 className="font-semibold font-display text-base">Account needs repair</h2>
+                  <h2 className="font-semibold font-display text-base">Login succeeded, account needs repair</h2>
                   <p className="text-sm text-muted-foreground mt-1">
                     Your company was found but your profile record is missing. We can repair this automatically.
                   </p>
                 </div>
               </div>
               {error && <p className="text-sm text-destructive">{error}</p>}
-              <button
-                onClick={handleRepairAndResume}
-                disabled={repairing}
-                className="w-full h-10 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition flex items-center justify-center gap-2 disabled:opacity-60"
-              >
-                {repairing ? <><RefreshCw size={14} className="animate-spin" /> Repairing…</> : <><RefreshCw size={14} /> Repair & Continue</>}
-              </button>
+              {retryCount > 2 && (
+                <p className="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2">
+                  Repair has been attempted {retryCount} times. If this continues, please contact support.
+                </p>
+              )}
+              <div className="space-y-2">
+                <button
+                  onClick={handleRepairAndResume}
+                  disabled={repairing}
+                  className="w-full h-10 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition flex items-center justify-center gap-2 disabled:opacity-60"
+                >
+                  {repairing ? <><RefreshCw size={14} className="animate-spin" /> Repairing…</> : <><RefreshCw size={14} /> Retry Repair</>}
+                </button>
+                <button
+                  onClick={handleResumeOnboarding}
+                  className="w-full h-10 rounded-lg border border-border text-sm font-medium hover:bg-muted transition flex items-center justify-center gap-2"
+                >
+                  <ArrowRight size={14} /> Continue to Setup
+                </button>
+              </div>
+              <p className="text-center text-xs text-muted-foreground">Your session is active.</p>
             </>
           )}
 

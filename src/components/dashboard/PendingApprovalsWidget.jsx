@@ -8,6 +8,7 @@ export default function PendingApprovalsWidget() {
   const { data: drafts = [], isLoading, error } = useQuery({
     queryKey: ['dashboard-pending-approvals'],
     queryFn: () => base44.entities.EstimateDraft.filter({ status: 'submitted', is_deleted: false }, '-created_date', 10),
+    staleTime: 2 * 60 * 1000,
   });
 
   // Gracefully handle permission errors

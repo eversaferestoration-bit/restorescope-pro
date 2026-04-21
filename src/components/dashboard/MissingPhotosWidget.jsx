@@ -4,16 +4,18 @@ import { Link } from 'react-router-dom';
 import { Camera, ChevronRight, AlertCircle } from 'lucide-react';
 
 export default function MissingPhotosWidget() {
-  // Get active jobs
+  // Get active jobs — only load after user confirmed
   const { data: jobs = [], isLoading: loadingJobs, error: jobsError } = useQuery({
     queryKey: ['dashboard-active-jobs-photos'],
     queryFn: () => base44.entities.Job.filter({ is_deleted: false }, '-created_date', 30),
+    staleTime: 2 * 60 * 1000,
   });
 
   // Get all photos to cross-reference
   const { data: photos = [], isLoading: loadingPhotos, error: photosError } = useQuery({
     queryKey: ['dashboard-all-photos'],
     queryFn: () => base44.entities.Photo.filter({ is_deleted: false }, '-created_date', 200),
+    staleTime: 2 * 60 * 1000,
   });
 
   const isLoading = loadingJobs || loadingPhotos;

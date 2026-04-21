@@ -28,7 +28,7 @@ export default function ProtectedRoute({ children }) {
 
   // Account incomplete — needs recovery
   if (accountState === 'incomplete') {
-    return <Navigate to="/auth-check" replace />;
+    return <Navigate to="/account-recovery" replace />;
   }
 
   // Setup required — needs onboarding
@@ -41,6 +41,11 @@ export default function ProtectedRoute({ children }) {
     return children;
   }
 
-  // Unknown state — redirect to login for safety
+  // For any other state (unknown/null), redirect to auth-check for verification
+  if (accountState && accountState !== 'ready') {
+    return <Navigate to="/auth-check" replace />;
+  }
+
+  // Default: redirect to login for safety
   return <Navigate to="/login" replace />;
 }
