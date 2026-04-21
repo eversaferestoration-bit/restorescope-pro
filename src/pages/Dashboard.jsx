@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/lib/AuthContext';
@@ -31,10 +31,12 @@ const STATUS_COLORS = {
 };
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [onboardingStatus, setOnboardingStatus] = useState(null);
   const [companyId, setCompanyId] = useState(null);
+  const [profileError, setProfileError] = useState(null);
   const { isTrial, isExpired, daysLeft } = useTrialStatus();
   const { enterDemo } = useDemo();
 
@@ -49,7 +51,8 @@ export default function Dashboard() {
   const { isRefreshing, onTouchStart, onTouchMove, onTouchEnd } = usePullToRefresh(
     () => dashboardQuery.refetch()
   );
-  // Check onboarding completion for next-action banner + checklist
+
+  // Safe UserProfile initialization with repair fallback
   useEffect(() => {
     if (!user) return;
     base44.entities.UserProfile.filter({ user_id: user.id, is_deleted: false })
@@ -61,27 +64,55 @@ export default function Dashboard() {
           if (status && status !== 'onboarding_completed') {
             setOnboardingStatus(status);
           }
+        } else {
+          console.warn('[Dashboard] No UserProfile found for user:', user.id);
+          setProfileError('missing');
         }
       })
-      .catch(() => {});
+      .catch((err) => {
+        console.error('[Dashboard] UserProfile query failed:', err?.message || err);
+        setProfileError('query_failed');
+      });
   }, [user?.id]);
 
   // Re-use the query defined above for pull-to-refresh
-  const { data: jobs = [], isLoading } = dashboardQuery;
+  const { data: jobs = [], isLoading, error: jobsError } = dashboardQuery;
 
-  const { data: pendingApprovals = [] } = useQuery({
+  const { data: pendingApprovals = [], error: approvalsError } = useQuery({
     queryKey: ['dashboard-pending-approvals-count'],
     queryFn: () => base44.entities.EstimateDraft.filter({ status: 'submitted', is_deleted: false }),
     staleTime: 2 * 60 * 1000,
     gcTime: 5 * 60 * 1000,
   });
 
-  const { data: syncErrors = [] } = useQuery({
+  if (approvalsError) console.warn('[Dashboard] Pending approvals query failed:', approvalsError?.message);
+
+  const { data: syncErrors = [], error: syncError } = useQuery({
     queryKey: ['dashboard-sync-errors-count'],
     queryFn: () => base44.entities.Photo.filter({ sync_status: 'failed', is_deleted: false }),
     staleTime: 2 * 60 * 1000,
     gcTime: 5 * 60 * 1000,
   });
+
+  if (syncError) console.warn('[Dashboard] Sync errors query failed:', syncError?.message);
+
+  // Handle profile errors — redirect if needed
+  if (profileError === 'missing') {
+    console.log('[Dashboard] Redirecting to account-recovery due to missing profile');
+    return (
+      <div className="p-4 md:p-6 max-w-2xl mx-auto pt-20 text-center space-y-4">
+        <AlertCircle size={32} className="mx-auto text-amber-600" />
+        <h2 className="text-lg font-semibold font-display">Account setup required</h2>
+        <p className="text-sm text-muted-foreground">Your account needs to be set up before accessing the dashboard.</p>
+        <button
+          onClick={() => navigate('/account-recovery')}
+          className="inline-flex items-center gap-2 px-4 h-9 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition"
+        >
+          Complete Setup
+        </button>
+      </div>
+    );
+  }
 
   const activeJobs = jobs.filter(j => ['new', 'in_progress'].includes(j.status));
   const emergency = jobs.filter(j => j.emergency_flag && ['new', 'in_progress'].includes(j.status));
@@ -146,7 +177,14 @@ export default function Dashboard() {
       )}
 
       {/* Business metrics — this month */}
-      <BusinessMetrics />
+      {jobsError ? (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-start gap-3">
+          <AlertCircle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+          <p className="text-sm text-amber-700">Unable to load business metrics. Please refresh.</p>
+        </div>
+      ) : (
+        <BusinessMetrics />
+      )}
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -262,10 +300,24 @@ export default function Dashboard() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <PendingApprovalsWidget />
+            {approvalsError ? (
+              <div className="bg-card rounded-xl border border-border p-6 flex items-start gap-3">
+                <AlertCircle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+                <p className="text-sm text-muted-foreground">Unable to load pending approvals</p>
+              </div>
+            ) : (
+              <PendingApprovalsWidget />
+            )}
             <MissingPhotosWidget />
           </div>
-          <SyncErrorsWidget />
+          {syncError ? (
+            <div className="bg-card rounded-xl border border-border p-6 flex items-start gap-3">
+              <AlertCircle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+              <p className="text-sm text-muted-foreground">Unable to load sync errors</p>
+            </div>
+          ) : (
+            <SyncErrorsWidget />
+          )}
         </div>
 
         {/* Right col */}

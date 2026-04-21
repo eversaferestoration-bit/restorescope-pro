@@ -115,22 +115,16 @@
       }
     },
     "update": {
+      "data.id": "{{user.company_id}}",
       "$or": [
-        {
-          "$and": [
-            {
-              "data.id": "{{user.company_id}}"
-            },
-            {
-              "user_condition": {
-                "role": "admin"
-              }
-            }
-          ]
-        },
         {
           "user_condition": {
             "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "manager"
           }
         }
       ]
