@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/lib/AuthContext';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import UpgradePrompt from '@/components/UpgradePrompt';
+import DashboardSafeMode from '@/components/dashboard/DashboardSafeMode';
 import { FolderOpen, Send, Camera, CloudOff, Plus, ChevronRight, AlertCircle, Clock, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -37,6 +38,8 @@ export default function Dashboard() {
   const [onboardingStatus, setOnboardingStatus] = useState(null);
   const [companyId, setCompanyId] = useState(null);
   const [profileError, setProfileError] = useState(null);
+  const [safeMode, setSafeMode] = useState(false);
+  const [userProfileId, setUserProfileId] = useState(null);
   const { isTrial, isExpired, daysLeft } = useTrialStatus();
   const { enterDemo } = useDemo();
 
@@ -59,6 +62,7 @@ export default function Dashboard() {
       .then((profiles) => {
         if (profiles.length > 0) {
           const profile = profiles[0];
+          setUserProfileId(profile.id);
           setCompanyId(profile.company_id || null);
           const status = profile.onboarding_status;
           if (status && status !== 'onboarding_completed') {
@@ -77,6 +81,20 @@ export default function Dashboard() {
 
   // Re-use the query defined above for pull-to-refresh
   const { data: jobs = [], isLoading, error: jobsError } = dashboardQuery;
+
+  // Detect critical failures — trigger safe mode
+  useEffect(() => {
+    if (profileError === 'missing') {
+      console.log('[Dashboard] Redirecting to account-recovery due to missing profile');
+      navigate('/account-recovery');
+      return;
+    }
+    // If profile loads but jobs query fails — show safe mode
+    if (userProfileId && jobsError) {
+      console.warn('[Dashboard] Jobs query failed — entering safe mode');
+      setSafeMode(true);
+    }
+  }, [profileError, jobsError, userProfileId]);
 
   // Pending approvals — allowed for all users (company-scoped via RLS)
   const { data: pendingApprovals = [], error: approvalsError } = useQuery({
@@ -98,21 +116,17 @@ export default function Dashboard() {
 
   if (syncError) console.warn('[Dashboard] Sync errors query failed:', syncError?.message);
 
-  // Handle profile errors — redirect if needed
-  if (profileError === 'missing') {
-    console.log('[Dashboard] Redirecting to account-recovery due to missing profile');
+  // Safe mode — show minimal fallback when data fails to load
+  if (safeMode) {
     return (
-      <div className="p-4 md:p-6 max-w-2xl mx-auto pt-20 text-center space-y-4">
-        <AlertCircle size={32} className="mx-auto text-amber-600" />
-        <h2 className="text-lg font-semibold font-display">Account setup required</h2>
-        <p className="text-sm text-muted-foreground">Your account needs to be set up before accessing the dashboard.</p>
-        <button
-          onClick={() => navigate('/account-recovery')}
-          className="inline-flex items-center gap-2 px-4 h-9 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition"
-        >
-          Complete Setup
-        </button>
-      </div>
+      <DashboardSafeMode
+        onRetry={() => {
+          setSafeMode(false);
+          dashboardQuery.refetch();
+        }}
+        userProfileId={userProfileId}
+        onboardingStatus={onboardingStatus}
+      />
     );
   }
 
