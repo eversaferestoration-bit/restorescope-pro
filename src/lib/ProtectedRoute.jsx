@@ -84,8 +84,8 @@ export default function ProtectedRoute({ children }) {
           }
         }
 
-        console.warn('[ProtectedRoute] No company found — routing to onboarding');
-        navigate('/onboarding', { replace: true });
+        console.warn('[ProtectedRoute] No company found — routing to account recovery');
+        navigate('/account-recovery', { replace: true });
       })
       .catch((err) => {
         console.warn('[ProtectedRoute] Account check failed (network?):', err?.message);

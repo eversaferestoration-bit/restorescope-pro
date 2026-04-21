@@ -40,6 +40,7 @@ import DemoJob from '@/pages/DemoJob';
 import BetaAdmin from '@/pages/BetaAdmin';
 import BetaManagement from '@/pages/BetaManagement';
 import BetaUsers from '@/pages/BetaUsers';
+import AccountRecovery from '@/pages/AccountRecovery';
 
 
 const AuthenticatedApp = () => {
@@ -73,6 +74,9 @@ const AuthenticatedApp = () => {
       {/* Client portal routes */}
       <Route path="/client-login" element={<ClientLogin />} />
       <Route path="/client-portal" element={<ClientPortal />} />
+
+      {/* Account recovery — public, handles partial signup states */}
+      <Route path="/account-recovery" element={<AccountRecovery />} />
 
       {/* Onboarding — protected but outside app shell */}
       <Route

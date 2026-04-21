@@ -9,11 +9,16 @@ export default function Signup() {
   const [inviteInput, setInviteInput] = useState('');
   const [inviteError, setInviteError] = useState('');
 
-  // Check if redirected back with an error (e.g. duplicate account)
+  // Check if redirected back with a duplicate account error — redirect to recovery page
   const params = new URLSearchParams(window.location.search);
   const authErrorParam = params.get('error');
   const duplicateAccountError =
     authErrorParam === 'email_exists' || authErrorParam === 'user_already_exists';
+
+  // If duplicate email detected, immediately redirect to recovery flow
+  if (duplicateAccountError) {
+    window.location.replace('/account-recovery?reason=existing_email');
+  }
 
   const handleSignup = () => {
     setInviteError('');
