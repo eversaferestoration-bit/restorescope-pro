@@ -1,26 +1,44 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
-import { Search, FlaskConical, CheckCircle2, XCircle, Plus, CalendarPlus, CreditCard, ShieldOff } from 'lucide-react';
+import { Search, FlaskConical, XCircle, Plus, CalendarPlus, CreditCard, ShieldOff, AlertCircle } from 'lucide-react';
 import { format, differenceInDays, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
+
+function getSafeCompany(raw) {
+  return {
+    ...raw,
+    name: raw.name || '(Unnamed)',
+    email: raw.email || null,
+    is_beta_user: raw.is_beta_user || false,
+    beta_status: raw.beta_status || 'none',
+    beta_start_date: raw.beta_start_date || null,
+    beta_end_date: raw.beta_end_date || null,
+  };
+}
 
 function getBetaStatus(company) {
   if (!company.is_beta_user) return 'none';
   if (company.beta_status === 'expired') return 'expired';
   if (company.beta_end_date) {
-    const today = new Date();
-    const end = parseISO(company.beta_end_date);
-    if (end < today) return 'expired';
+    try {
+      if (parseISO(company.beta_end_date) < new Date()) return 'expired';
+    } catch { return 'expired'; }
   }
-  return 'active';
+  return company.beta_status === 'active' ? 'active' : 'none';
 }
 
 function getDaysRemaining(company) {
-  if (!company.beta_end_date || getBetaStatus(company) !== 'active') return null;
-  const days = differenceInDays(parseISO(company.beta_end_date), new Date());
-  return Math.max(0, days);
+  if (!company.beta_end_date || getBetaStatus(company) !== 'active') return 0;
+  try {
+    return Math.max(0, differenceInDays(parseISO(company.beta_end_date), new Date()));
+  } catch { return 0; }
+}
+
+function safeFormat(dateStr, fmt) {
+  if (!dateStr) return '—';
+  try { return format(parseISO(dateStr), fmt); } catch { return '—'; }
 }
 
 const STATUS_STYLES = {
@@ -35,11 +53,27 @@ export default function BetaManagement() {
   const [search, setSearch] = useState('');
   const [loadingId, setLoadingId] = useState(null);
 
-  const { data: companies = [], isLoading } = useQuery({
+  useEffect(() => {
+    console.log('[BetaManagement] Page loaded');
+  }, []);
+
+  const { data: rawCompanies = [], isLoading, isError } = useQuery({
     queryKey: ['beta-companies'],
-    queryFn: () => base44.entities.Company.filter({ is_deleted: false }, 'name', 500),
+    queryFn: async () => {
+      console.log('[BetaManagement] Company fetch started');
+      const result = await base44.entities.Company.filter({ is_deleted: false }, 'name', 500);
+      console.log(`[BetaManagement] Company fetch success — ${result.length} companies`);
+      return result;
+    },
+    onError: (err) => console.error('[BetaManagement] Company fetch error:', err),
+    retry: 2,
     staleTime: 60 * 1000,
   });
+
+  // Sanitize every record; skip malformed ones
+  const companies = rawCompanies.map((c) => {
+    try { return getSafeCompany(c); } catch { return null; }
+  }).filter(Boolean);
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.Company.update(id, data),
@@ -47,21 +81,9 @@ export default function BetaManagement() {
     onSettled: () => setLoadingId(null),
   });
 
-  // Admin-only guard
-  if (user?.role !== 'admin') {
-    return (
-      <div className="p-8 flex flex-col items-center justify-center gap-3 text-center">
-        <ShieldOff size={32} className="text-muted-foreground" />
-        <p className="font-semibold">Access Restricted</p>
-        <p className="text-sm text-muted-foreground">Only administrators can manage beta users.</p>
-      </div>
-    );
-  }
-
   const runAction = (company, action) => {
     setLoadingId(`${company.id}-${action}`);
     const today = new Date();
-
     if (action === 'enable') {
       const end = new Date(today);
       end.setDate(end.getDate() + 14);
@@ -103,6 +125,17 @@ export default function BetaManagement() {
     c.email?.toLowerCase().includes(search.toLowerCase())
   );
 
+  // Admin-only guard — rendered AFTER all hooks
+  if (user?.role !== 'admin') {
+    return (
+      <div className="p-8 flex flex-col items-center justify-center gap-3 text-center">
+        <ShieldOff size={32} className="text-muted-foreground" />
+        <p className="font-semibold">Access Restricted</p>
+        <p className="text-sm text-muted-foreground">Only administrators can manage beta users.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 md:p-6 max-w-6xl mx-auto scrollable-container">
       {/* Header */}
@@ -116,7 +149,7 @@ export default function BetaManagement() {
         </div>
       </div>
 
-      {/* Search */}
+      {/* Search — always visible */}
       <div className="relative mb-4">
         <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
         <input
@@ -128,9 +161,18 @@ export default function BetaManagement() {
         />
       </div>
 
-      {/* Table */}
+      {/* Content states */}
       {isLoading ? (
-        <div className="space-y-2">{[1,2,3,4].map(i => <div key={i} className="h-16 rounded-xl bg-muted animate-pulse" />)}</div>
+        <div className="space-y-2">
+          <p className="text-sm text-muted-foreground mb-3">Loading companies…</p>
+          {[1,2,3,4].map(i => <div key={i} className="h-16 rounded-xl bg-muted animate-pulse" />)}
+        </div>
+      ) : isError ? (
+        <div className="bg-card rounded-xl border border-border p-10 flex flex-col items-center gap-3 text-center">
+          <AlertCircle size={28} className="text-destructive" />
+          <p className="font-semibold text-destructive">Failed to load companies</p>
+          <p className="text-sm text-muted-foreground">Check your connection and try refreshing the page.</p>
+        </div>
       ) : (
         <>
           {/* Desktop table */}
@@ -144,10 +186,9 @@ export default function BetaManagement() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {filtered.length === 0 && (
-                  <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-muted-foreground">No companies found.</td></tr>
-                )}
-                {filtered.map((company) => {
+                {filtered.length === 0 ? (
+                  <tr><td colSpan={7} className="px-4 py-10 text-center text-sm text-muted-foreground">No companies found.</td></tr>
+                ) : filtered.map((company) => {
                   const status = getBetaStatus(company);
                   const daysLeft = getDaysRemaining(company);
                   return (
@@ -160,18 +201,14 @@ export default function BetaManagement() {
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        {daysLeft !== null ? (
+                        {status === 'active' ? (
                           <span className={cn('font-semibold', daysLeft <= 3 ? 'text-destructive' : 'text-foreground')}>
                             {daysLeft}d
                           </span>
                         ) : '—'}
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
-                        {company.beta_start_date ? format(parseISO(company.beta_start_date), 'MMM d, yyyy') : '—'}
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">
-                        {company.beta_end_date ? format(parseISO(company.beta_end_date), 'MMM d, yyyy') : '—'}
-                      </td>
+                      <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{safeFormat(company.beta_start_date, 'MMM d, yyyy')}</td>
+                      <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{safeFormat(company.beta_end_date, 'MMM d, yyyy')}</td>
                       <td className="px-4 py-3">
                         <ActionButtons company={company} status={status} loadingId={loadingId} onAction={runAction} />
                       </td>
@@ -184,10 +221,9 @@ export default function BetaManagement() {
 
           {/* Mobile cards */}
           <div className="md:hidden space-y-3">
-            {filtered.length === 0 && (
+            {filtered.length === 0 ? (
               <p className="text-center text-sm text-muted-foreground py-8">No companies found.</p>
-            )}
-            {filtered.map((company) => {
+            ) : filtered.map((company) => {
               const status = getBetaStatus(company);
               const daysLeft = getDaysRemaining(company);
               return (
@@ -202,9 +238,11 @@ export default function BetaManagement() {
                     </span>
                   </div>
                   <div className="flex gap-4 text-xs text-muted-foreground">
-                    {daysLeft !== null && <span className={cn('font-semibold', daysLeft <= 3 ? 'text-destructive' : 'text-foreground')}>{daysLeft}d left</span>}
-                    {company.beta_start_date && <span>Start: {format(parseISO(company.beta_start_date), 'MMM d')}</span>}
-                    {company.beta_end_date && <span>End: {format(parseISO(company.beta_end_date), 'MMM d')}</span>}
+                    {status === 'active' && (
+                      <span className={cn('font-semibold', daysLeft <= 3 ? 'text-destructive' : 'text-foreground')}>{daysLeft}d left</span>
+                    )}
+                    <span>Start: {safeFormat(company.beta_start_date, 'MMM d')}</span>
+                    <span>End: {safeFormat(company.beta_end_date, 'MMM d')}</span>
                   </div>
                   <ActionButtons company={company} status={status} loadingId={loadingId} onAction={runAction} compact />
                 </div>
@@ -228,41 +266,23 @@ function ActionButtons({ company, status, loadingId, onAction, compact = false }
 
   return (
     <div className={cn('flex flex-wrap gap-1.5', compact && 'gap-2')}>
-      {status === 'none' || status === 'expired' ? (
-        <button
-          onClick={() => onAction(company, 'enable')}
-          disabled={anyLoading}
-          className={cn(btnBase, 'bg-green-100 text-green-700 hover:bg-green-200')}
-        >
+      {(status === 'none' || status === 'expired') && (
+        <button onClick={() => onAction(company, 'enable')} disabled={anyLoading} className={cn(btnBase, 'bg-green-100 text-green-700 hover:bg-green-200')}>
           {isLoading('enable') ? '…' : <><Plus size={11} /> Enable Beta</>}
         </button>
-      ) : null}
-
+      )}
       {status === 'active' && (
         <>
-          <button
-            onClick={() => onAction(company, 'extend')}
-            disabled={anyLoading}
-            className={cn(btnBase, 'bg-blue-100 text-blue-700 hover:bg-blue-200')}
-          >
+          <button onClick={() => onAction(company, 'extend')} disabled={anyLoading} className={cn(btnBase, 'bg-blue-100 text-blue-700 hover:bg-blue-200')}>
             {isLoading('extend') ? '…' : <><CalendarPlus size={11} /> +7 Days</>}
           </button>
-          <button
-            onClick={() => onAction(company, 'end')}
-            disabled={anyLoading}
-            className={cn(btnBase, 'bg-red-100 text-red-700 hover:bg-red-200')}
-          >
+          <button onClick={() => onAction(company, 'end')} disabled={anyLoading} className={cn(btnBase, 'bg-red-100 text-red-700 hover:bg-red-200')}>
             {isLoading('end') ? '…' : <><XCircle size={11} /> End Beta</>}
           </button>
         </>
       )}
-
       {status !== 'none' && (
-        <button
-          onClick={() => onAction(company, 'paid')}
-          disabled={anyLoading}
-          className={cn(btnBase, 'bg-primary/10 text-primary hover:bg-primary/20')}
-        >
+        <button onClick={() => onAction(company, 'paid')} disabled={anyLoading} className={cn(btnBase, 'bg-primary/10 text-primary hover:bg-primary/20')}>
           {isLoading('paid') ? '…' : <><CreditCard size={11} /> Convert to Paid</>}
         </button>
       )}
