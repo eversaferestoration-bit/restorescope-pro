@@ -24,19 +24,24 @@ function MetricTile({ icon: Icon, color, bg, label, value, loading }) {
 export default function BusinessMetrics() {
   const monthStart = startOfMonth(new Date()).toISOString();
 
-  const { data: jobs = [], isLoading: loadingJobs } = useQuery({
+  const { data: jobs = [], isLoading: loadingJobs, error: jobsError } = useQuery({
     queryKey: ['biz-metrics-jobs', monthStart],
     queryFn: () => base44.entities.Job.filter({ is_deleted: false }, '-created_date', 200),
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: estimates = [], isLoading: loadingEstimates } = useQuery({
+  const { data: estimates = [], isLoading: loadingEstimates, error: estimatesError } = useQuery({
     queryKey: ['biz-metrics-estimates', monthStart],
     queryFn: () => base44.entities.EstimateDraft.filter({ is_deleted: false }, '-created_date', 200),
     staleTime: 5 * 60 * 1000,
   });
 
   const loading = loadingJobs || loadingEstimates;
+
+  // Gracefully skip if queries fail
+  if (jobsError || estimatesError) {
+    return null;
+  }
 
   // Jobs created this month
   const jobsThisMonth = jobs.filter(j => j.created_date >= monthStart).length;

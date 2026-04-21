@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { Activity } from 'lucide-react';
+import { useAuth } from '@/lib/AuthContext';
+import { Activity, AlertCircle } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -14,10 +15,18 @@ const ACTION_STYLES = {
 };
 
 export default function RecentActivityWidget() {
-  const { data: logs = [], isLoading } = useQuery({
+  const { user } = useAuth();
+
+  // AuditLog is admin-only (by RLS) — only query if user is admin
+  const { data: logs = [], isLoading, error } = useQuery({
     queryKey: ['dashboard-activity'],
     queryFn: () => base44.entities.AuditLog.list('-created_date', 15),
+    enabled: user?.role === 'admin',
   });
+
+  if (user?.role !== 'admin') {
+    return null; // RecentActivityWidget is admin-only
+  }
 
   return (
     <div className="bg-card rounded-xl border border-border">
@@ -26,7 +35,12 @@ export default function RecentActivityWidget() {
         <span className="text-sm font-semibold font-display">Recent Activity</span>
       </div>
 
-      {isLoading ? (
+      {error ? (
+        <div className="px-4 py-6 flex items-start gap-2 text-sm text-muted-foreground">
+          <AlertCircle size={14} className="shrink-0 mt-0.5" />
+          <span>Unable to load activity log</span>
+        </div>
+      ) : isLoading ? (
         <div className="p-3 space-y-2">{[1,2,3,4].map(i => <div key={i} className="h-10 rounded-lg bg-muted animate-pulse" />)}</div>
       ) : logs.length === 0 ? (
         <div className="px-4 py-6 text-center text-sm text-muted-foreground">No activity yet.</div>

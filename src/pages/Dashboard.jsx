@@ -40,7 +40,7 @@ export default function Dashboard() {
   const { isTrial, isExpired, daysLeft } = useTrialStatus();
   const { enterDemo } = useDemo();
 
-  // Pull-to-refresh setup
+  // Pull-to-refresh setup — core query for all users
   const dashboardQuery = useQuery({
     queryKey: ['jobs-dashboard'],
     queryFn: () => base44.entities.Job.filter({ is_deleted: false }, '-created_date', 30),
@@ -78,6 +78,7 @@ export default function Dashboard() {
   // Re-use the query defined above for pull-to-refresh
   const { data: jobs = [], isLoading, error: jobsError } = dashboardQuery;
 
+  // Pending approvals — allowed for all users (company-scoped via RLS)
   const { data: pendingApprovals = [], error: approvalsError } = useQuery({
     queryKey: ['dashboard-pending-approvals-count'],
     queryFn: () => base44.entities.EstimateDraft.filter({ status: 'submitted', is_deleted: false }),
@@ -87,6 +88,7 @@ export default function Dashboard() {
 
   if (approvalsError) console.warn('[Dashboard] Pending approvals query failed:', approvalsError?.message);
 
+  // Sync errors — allowed for all users (company-scoped via RLS)
   const { data: syncErrors = [], error: syncError } = useQuery({
     queryKey: ['dashboard-sync-errors-count'],
     queryFn: () => base44.entities.Photo.filter({ sync_status: 'failed', is_deleted: false }),
