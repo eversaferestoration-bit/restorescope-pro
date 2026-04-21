@@ -1,4 +1,5 @@
 import { Toaster } from "@/components/ui/toaster";
+import Privacy from '@/pages/Privacy';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClientInstance } from '@/lib/query-client';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
@@ -41,6 +42,7 @@ import BetaAdmin from '@/pages/BetaAdmin';
 import BetaManagement from '@/pages/BetaManagement';
 import BetaUsers from '@/pages/BetaUsers';
 import AccountRecovery from '@/pages/AccountRecovery';
+import Terms from '@/pages/Terms';
 
 
 const AuthenticatedApp = () => {
@@ -77,6 +79,10 @@ const AuthenticatedApp = () => {
 
       {/* Account recovery — public, handles partial signup states */}
       <Route path="/account-recovery" element={<AccountRecovery />} />
+
+      {/* Public legal pages */}
+      <Route path="/privacy" element={<Privacy />} />
+      <Route path="/terms" element={<Terms />} />
 
       {/* Onboarding — protected but outside app shell */}
       <Route
