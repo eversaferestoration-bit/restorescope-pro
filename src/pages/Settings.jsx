@@ -1,13 +1,22 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Settings as SettingsIcon, ListChecks, Trash2, AlertTriangle, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
+import CompanyBetaPanel from '@/components/admin/CompanyBetaPanel';
 
 export default function Settings() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [companyId, setCompanyId] = useState(null);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    base44.entities.UserProfile.filter({ user_id: user.id, is_deleted: false })
+      .then((profiles) => { if (profiles[0]?.company_id) setCompanyId(profiles[0].company_id); })
+      .catch(() => {});
+  }, [user?.id]);
   const [confirmText, setConfirmText] = useState('');
   const [deleting, setDeleting] = useState(false);
 
@@ -66,6 +75,14 @@ export default function Settings() {
           </button>
         </div>
       </div>
+
+      {/* Beta Access — admin only */}
+      {user?.role === 'admin' && companyId && (
+        <div className="mt-8">
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Beta Access Control</h2>
+          <CompanyBetaPanel companyId={companyId} />
+        </div>
+      )}
 
       {/* Delete Account Section */}
       <div className="mt-8 bg-red-50 border border-red-200 rounded-xl p-5">
