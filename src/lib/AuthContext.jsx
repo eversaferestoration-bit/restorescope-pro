@@ -69,6 +69,37 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const repairMissingUserProfile = async (authUser) => {
+    console.log('[AuthContext] Attempting to repair missing UserProfile for user:', authUser.id);
+    try {
+      // Check if company exists for this user
+      const companies = await base44.entities.Company.filter({ created_by: authUser.email, is_deleted: false });
+      let companyId = null;
+
+      if (companies.length > 0) {
+        companyId = companies[0].id;
+        console.log('[AuthContext] Found existing company:', companyId);
+      }
+
+      // Create UserProfile
+      const profile = await base44.entities.UserProfile.create({
+        user_id: authUser.id,
+        company_id: companyId || null,
+        email: authUser.email,
+        role: 'admin',
+        onboarding_status: companyId ? 'onboarding_completed' : 'account_created',
+        current_onboarding_step: 1,
+        completed_steps: [],
+        is_deleted: false,
+      });
+      console.log('[AuthContext] Repaired UserProfile:', profile.id);
+      return profile;
+    } catch (e) {
+      console.error('[AuthContext] Repair failed:', e?.message);
+      return null;
+    }
+  };
+
   const checkUserAuth = async () => {
     setIsLoadingAuth(true);
     setAuthError(null);
@@ -79,6 +110,16 @@ export const AuthProvider = ({ children }) => {
       console.log('[AuthContext] User loaded. Email (normalized):', normalizedEmail, '| Role:', currentUser?.role);
       setUser(currentUser);
       setIsAuthenticated(true);
+
+      // Try to repair if profile is missing
+      const profiles = await base44.entities.UserProfile.filter({ user_id: currentUser.id, is_deleted: false }).catch(() => []);
+      if (profiles.length === 0) {
+        console.warn('[AuthContext] No UserProfile found — attempting repair');
+        const repaired = await repairMissingUserProfile(currentUser);
+        if (!repaired) {
+          console.log('[AuthContext] Repair failed — will proceed to auth-check');
+        }
+      }
 
       // After successful auth, check account state
       await checkAccountState(currentUser);

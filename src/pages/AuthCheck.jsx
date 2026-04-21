@@ -200,12 +200,15 @@ export default function AuthCheck() {
             )}
 
           {checks.session.status === 'success' && checks.company.status === 'success' && checks.onboarding.status === 'success' && (
-            <Link
-              to="/dashboard"
+            <button
+              onClick={() => {
+                sessionStorage.removeItem('dashboard-ready');
+                navigate('/dashboard');
+              }}
               className="w-full h-10 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition flex items-center justify-center gap-2"
             >
               <ArrowRight size={14} /> Go to Dashboard
-            </Link>
+            </button>
           )}
 
           <Link

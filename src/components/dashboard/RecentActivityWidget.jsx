@@ -18,10 +18,12 @@ export default function RecentActivityWidget() {
   const { user } = useAuth();
 
   // AuditLog is admin-only (by RLS) — only query if user is admin
+  // Intentionally skip query on first load to avoid initial dashboard delay
   const { data: logs = [], isLoading, error } = useQuery({
     queryKey: ['dashboard-activity'],
     queryFn: () => base44.entities.AuditLog.list('-created_date', 15),
-    enabled: user?.role === 'admin',
+    enabled: user?.role === 'admin' && typeof window !== 'undefined' && sessionStorage.getItem('dashboard-ready'),
+    staleTime: 5 * 60 * 1000,
   });
 
   if (user?.role !== 'admin') {

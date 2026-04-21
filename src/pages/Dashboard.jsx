@@ -84,6 +84,13 @@ export default function Dashboard() {
   // Re-use the query defined above for pull-to-refresh
   const { data: jobs = [], isLoading, error: jobsError } = dashboardQuery;
 
+  // Mark dashboard as ready for secondary widgets after first render
+  useEffect(() => {
+    if (userProfileId && !sessionStorage.getItem('dashboard-ready')) {
+      sessionStorage.setItem('dashboard-ready', 'true');
+    }
+  }, [userProfileId]);
+
   // Detect critical failures — trigger safe mode
   useEffect(() => {
     if (profileError === 'missing') {
@@ -109,6 +116,7 @@ export default function Dashboard() {
     queryFn: () => base44.entities.EstimateDraft.filter({ status: 'submitted', is_deleted: false }),
     staleTime: 2 * 60 * 1000,
     gcTime: 5 * 60 * 1000,
+    enabled: !!userProfileId, // Only load after profile confirmed
   });
 
   if (approvalsError) console.warn('[Dashboard] Pending approvals query failed:', approvalsError?.message);
@@ -119,6 +127,7 @@ export default function Dashboard() {
     queryFn: () => base44.entities.Photo.filter({ sync_status: 'failed', is_deleted: false }),
     staleTime: 2 * 60 * 1000,
     gcTime: 5 * 60 * 1000,
+    enabled: !!userProfileId, // Only load after profile confirmed
   });
 
   if (syncError) console.warn('[Dashboard] Sync errors query failed:', syncError?.message);

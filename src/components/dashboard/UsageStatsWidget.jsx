@@ -32,20 +32,25 @@ export default function UsageStatsWidget() {
   const { user } = useAuth();
 
   // Usage stats allowed for all users (company-scoped via RLS)
+  // Defer until dashboard is ready to avoid login-time delay
+  const dashboardReady = typeof window !== 'undefined' && sessionStorage.getItem('dashboard-ready');
+  
   const { data: jobs = [], error: jobsError } = useQuery({
     queryKey: ['dashboard-usage-jobs'],
     queryFn: () => base44.entities.Job.filter({ is_deleted: false }),
+    enabled: !!dashboardReady,
   });
 
   const { data: photos = [], error: photosError } = useQuery({
     queryKey: ['dashboard-usage-photos'],
     queryFn: () => base44.entities.Photo.filter({ is_deleted: false }),
+    enabled: !!dashboardReady,
   });
 
   const { data: company, error: companyError } = useQuery({
     queryKey: ['dashboard-company', user?.company_id],
     queryFn: () => base44.entities.Company.filter({ id: user?.company_id, is_deleted: false }).then(r => r[0]),
-    enabled: !!user?.company_id,
+    enabled: !!user?.company_id && !!dashboardReady,
   });
 
   // Count jobs this month
