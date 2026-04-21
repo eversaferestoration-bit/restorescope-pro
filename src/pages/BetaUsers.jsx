@@ -87,6 +87,16 @@ export default function BetaUsers() {
   const [search, setSearch] = useState('');
   const [showSearch, setShowSearch] = useState(false);
 
+  const { data: companies = [], isLoading } = useQuery({
+    queryKey: ['companies-beta'],
+    queryFn: () => base44.entities.Company.filter({ is_deleted: false }, 'name', 200),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }) => base44.entities.Company.update(id, data),
+    onSuccess: () => qc.invalidateQueries(['companies-beta']),
+  });
+
   // Guard: admin only
   if (user?.role !== 'admin') {
     return (
@@ -97,16 +107,6 @@ export default function BetaUsers() {
       </div>
     );
   }
-
-  const { data: companies = [], isLoading } = useQuery({
-    queryKey: ['companies-beta'],
-    queryFn: () => base44.entities.Company.filter({ is_deleted: false }, 'name', 200),
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Company.update(id, data),
-    onSuccess: () => qc.invalidateQueries(['companies-beta']),
-  });
 
   const handleAction = (action, company) => {
     const today = new Date();

@@ -47,6 +47,17 @@ export default function BetaManagement() {
     onSettled: () => setLoadingId(null),
   });
 
+  // Admin-only guard
+  if (user?.role !== 'admin') {
+    return (
+      <div className="p-8 flex flex-col items-center justify-center gap-3 text-center">
+        <ShieldOff size={32} className="text-muted-foreground" />
+        <p className="font-semibold">Access Restricted</p>
+        <p className="text-sm text-muted-foreground">Only administrators can manage beta users.</p>
+      </div>
+    );
+  }
+
   const runAction = (company, action) => {
     setLoadingId(`${company.id}-${action}`);
     const today = new Date();
@@ -85,17 +96,6 @@ export default function BetaManagement() {
       }});
     }
   };
-
-  // Admin-only guard — after all hooks
-  if (user?.role !== 'admin') {
-    return (
-      <div className="p-8 flex flex-col items-center justify-center gap-3 text-center">
-        <ShieldOff size={32} className="text-muted-foreground" />
-        <p className="font-semibold">Access Restricted</p>
-        <p className="text-sm text-muted-foreground">Only administrators can manage beta users.</p>
-      </div>
-    );
-  }
 
   const filtered = companies.filter((c) =>
     !search ||
