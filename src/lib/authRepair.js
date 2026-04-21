@@ -19,10 +19,21 @@ export function normalizeEmail(email = '') {
 export async function diagnoseAccountState(user) {
   const email = normalizeEmail(user?.email || '');
 
-  // 1. Check for UserProfile
-  const profiles = await base44.entities.UserProfile.filter(
+  // 1. Check for UserProfile — first by user_id, then fall back to email
+  let profiles = await base44.entities.UserProfile.filter(
     { user_id: user.id, is_deleted: false }, '-created_date', 1
   ).catch(() => []);
+
+  // Fallback: profile may exist with matching email but mismatched user_id (e.g. re-auth)
+  if (profiles.length === 0 && email) {
+    profiles = await base44.entities.UserProfile.filter(
+      { email, is_deleted: false }, '-created_date', 1
+    ).catch(() => []);
+    // If found by email, heal the user_id mismatch silently
+    if (profiles.length > 0 && profiles[0].user_id !== user.id) {
+      base44.entities.UserProfile.update(profiles[0].id, { user_id: user.id }).catch(() => {});
+    }
+  }
 
   if (profiles.length === 0) {
     return { state: 'no_profile', profile: null, company: null };
@@ -41,9 +52,9 @@ export async function diagnoseAccountState(user) {
     return { state: 'no_company', profile, company: null };
   }
 
-  const companies = await base44.entities.Company.filter(
-    { id: profile.company_id, is_deleted: false }, '-created_date', 1
-  ).catch(() => []);
+  // Use get() to fetch company by id directly
+  const companyRecord = await base44.entities.Company.get(profile.company_id).catch(() => null);
+  const companies = companyRecord && !companyRecord.is_deleted ? [companyRecord] : [];
 
   if (companies.length === 0) {
     return { state: 'no_company', profile, company: null };
