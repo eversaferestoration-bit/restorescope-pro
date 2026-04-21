@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Droplets, FlaskConical, AlertCircle } from 'lucide-react';
+import { Droplets, AlertCircle } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { normalizeEmail } from '@/lib/authRepair';
 
@@ -16,7 +16,12 @@ function getUrlError() {
 export default function Signup() {
   const [inviteInput, setInviteInput] = useState('');
   const [inviteError, setInviteError] = useState('');
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
+  const [legalError, setLegalError] = useState('');
   const [urlError] = useState(getUrlError);
+
+  const legalValid = termsAccepted && privacyAccepted;
 
   // Pre-fill invite code from URL param (e.g. from an invite link)
   useEffect(() => {
@@ -27,6 +32,13 @@ export default function Signup() {
 
   const handleSignup = async () => {
     setInviteError('');
+    setLegalError('');
+
+    if (!legalValid) {
+      setLegalError('You must agree to the Terms of Service and Privacy Policy to continue.');
+      return;
+    }
+
     const code = inviteInput.trim().toUpperCase();
 
     if (code) {
@@ -43,6 +55,9 @@ export default function Signup() {
         return;
       }
     }
+
+    // Store legal acceptance in sessionStorage so Onboarding can save it to the profile
+    sessionStorage.setItem('legal_accepted_at', new Date().toISOString());
 
     base44.auth.redirectToLogin('/onboarding');
   };
@@ -122,18 +137,53 @@ export default function Signup() {
             {inviteError && <p className="text-xs text-destructive mt-1">{inviteError}</p>}
           </div>
 
+          {/* Legal acceptance checkboxes */}
+          <div className="space-y-2.5 mb-4">
+            <label className="flex items-start gap-2.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={termsAccepted}
+                onChange={(e) => { setTermsAccepted(e.target.checked); setLegalError(''); }}
+                className="mt-0.5 h-4 w-4 rounded border-input accent-primary shrink-0"
+              />
+              <span className="text-sm text-foreground">
+                I agree to the{' '}
+                <Link to="/terms" target="_blank" rel="noopener noreferrer" className="text-primary font-medium hover:underline">
+                  Terms of Service
+                </Link>
+              </span>
+            </label>
+
+            <label className="flex items-start gap-2.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={privacyAccepted}
+                onChange={(e) => { setPrivacyAccepted(e.target.checked); setLegalError(''); }}
+                className="mt-0.5 h-4 w-4 rounded border-input accent-primary shrink-0"
+              />
+              <span className="text-sm text-foreground">
+                I agree to the{' '}
+                <Link to="/privacy" target="_blank" rel="noopener noreferrer" className="text-primary font-medium hover:underline">
+                  Privacy Policy
+                </Link>
+              </span>
+            </label>
+
+            {legalError && (
+              <p className="text-xs text-destructive flex items-center gap-1">
+                <AlertCircle size={12} className="shrink-0" />
+                {legalError}
+              </p>
+            )}
+          </div>
+
           <button
             onClick={handleSignup}
-            className="w-full min-h-touch rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition"
+            disabled={!legalValid}
+            className="w-full min-h-touch rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Create account
           </button>
-
-          <p className="text-xs text-muted-foreground mt-4 text-center">
-            By signing up, you agree to our{' '}
-            <span className="text-primary">Terms of Service</span> and{' '}
-            <span className="text-primary">Privacy Policy</span>.
-          </p>
         </div>
 
         <p className="text-center text-sm text-muted-foreground mt-5">

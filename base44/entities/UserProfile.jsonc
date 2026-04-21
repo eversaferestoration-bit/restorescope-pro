@@ -64,6 +64,21 @@
       "type": "string",
       "format": "date-time"
     },
+    "accepted_terms": {
+      "type": "boolean",
+      "default": false,
+      "description": "User accepted Terms of Service"
+    },
+    "accepted_privacy_policy": {
+      "type": "boolean",
+      "default": false,
+      "description": "User accepted Privacy Policy"
+    },
+    "legal_accepted_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp when legal documents were accepted"
+    },
     "is_deleted": {
       "type": "boolean",
       "default": false

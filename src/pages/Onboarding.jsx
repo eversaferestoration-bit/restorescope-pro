@@ -204,6 +204,9 @@ export default function Onboarding() {
           setBetaActivated(true);
         }
 
+        // Pick up legal acceptance stored during signup
+        const legalAcceptedAt = sessionStorage.getItem('legal_accepted_at');
+
         const profile = await base44.entities.UserProfile.create({
           user_id: user.id,
           company_id: cId,
@@ -212,8 +215,12 @@ export default function Onboarding() {
           current_onboarding_step: 3,
           onboarding_status: 'company_completed',
           completed_steps: [1, 2],
+          accepted_terms: !!legalAcceptedAt,
+          accepted_privacy_policy: !!legalAcceptedAt,
+          legal_accepted_at: legalAcceptedAt || undefined,
           is_deleted: false,
         });
+        if (legalAcceptedAt) sessionStorage.removeItem('legal_accepted_at');
         setUserProfileId(profile.id);
         showSaved();
       } else {
