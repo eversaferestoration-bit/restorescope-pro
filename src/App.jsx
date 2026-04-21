@@ -39,6 +39,8 @@ import DominanceValidation from '@/pages/DominanceValidation';
 import DemoJob from '@/pages/DemoJob';
 import BetaAdmin from '@/pages/BetaAdmin';
 import BetaManagement from '@/pages/BetaManagement';
+import BetaUsers from '@/pages/BetaUsers';
+
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -110,6 +112,7 @@ const AuthenticatedApp = () => {
         <Route path="/demo" element={<PageTransition><DemoJob /></PageTransition>} />
         <Route path="/beta-admin" element={<PageTransition><BetaAdmin /></PageTransition>} />
         <Route path="/beta-management" element={<PageTransition><BetaManagement /></PageTransition>} />
+        <Route path="/beta-users" element={<PageTransition><BetaUsers /></PageTransition>} />
       </Route>
 
       <Route path="*" element={<PageNotFound />} />

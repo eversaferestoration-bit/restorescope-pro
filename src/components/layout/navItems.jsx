@@ -36,6 +36,7 @@ export const secondaryNavItems = [
 export const settingsNavItems = [
   { label: 'Settings', path: '/settings', icon: Settings },
   { label: 'Billing', path: '/billing', icon: CreditCard, adminOnly: true },
+  { label: 'Beta Users', path: '/beta-users', icon: FlaskConical, adminOnly: true },
 ];
 
 export const mobileNavItems = [
