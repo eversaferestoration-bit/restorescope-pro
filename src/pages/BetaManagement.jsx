@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
-import { Search, FlaskConical, XCircle, Plus, CalendarPlus, CreditCard, ShieldOff, AlertCircle } from 'lucide-react';
+import { Search, FlaskConical, XCircle, Plus, CalendarPlus, CreditCard, ShieldOff, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { format, differenceInDays, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -36,73 +36,58 @@ const STATUS_STYLES = {
   none:    'bg-muted text-muted-foreground',
 };
 
+const ACTION_LABELS = {
+  enable: 'Beta enabled',
+  extend: 'Beta extended +7 days',
+  end: 'Beta ended',
+  paid: 'Converted to paid',
+};
+
 export default function BetaManagement() {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
   const [loadingId, setLoadingId] = useState(null);
+  // { id: companyId, type: 'success'|'error', message: string }
+  const [toast, setToast] = useState(null);
 
   useEffect(() => {
-    console.log('[BetaManagement] Page loaded');
-  }, []);
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 3500);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   const { data: companies = [], isLoading, isError } = useQuery({
     queryKey: ['beta-companies'],
     queryFn: async () => {
-      console.log('[BetaManagement] Company fetch started');
       const res = await base44.functions.invoke('getBetaCompanies', {});
-      const list = res.data?.companies || [];
-      console.log(`[BetaManagement] Company fetch success — ${list.length} companies`);
-      return list;
+      return res.data?.companies || [];
     },
-    onError: (err) => console.error('[BetaManagement] Company fetch error:', err),
     retry: 2,
     staleTime: 60 * 1000,
     enabled: user?.role === 'admin',
   });
 
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Company.update(id, data),
-    onSuccess: () => qc.invalidateQueries(['beta-companies']),
+  const actionMutation = useMutation({
+    mutationFn: ({ company_id, action }) =>
+      base44.functions.invoke('updateBetaAccess', { company_id, action }),
+    onSuccess: (res, { action }) => {
+      if (res.data?.success) {
+        setToast({ type: 'success', message: ACTION_LABELS[action] || 'Action completed' });
+      } else {
+        setToast({ type: 'error', message: res.data?.error || 'Action failed' });
+      }
+      qc.invalidateQueries(['beta-companies']);
+    },
+    onError: (err) => {
+      setToast({ type: 'error', message: err?.message || 'Action failed' });
+    },
     onSettled: () => setLoadingId(null),
   });
 
   const runAction = (company, action) => {
     setLoadingId(`${company.id}-${action}`);
-    const today = new Date();
-    if (action === 'enable') {
-      const end = new Date(today);
-      end.setDate(end.getDate() + 14);
-      updateMutation.mutate({ id: company.id, data: {
-        is_beta_user: true,
-        beta_start_date: today.toISOString().split('T')[0],
-        beta_end_date: end.toISOString().split('T')[0],
-        beta_status: 'active',
-      }});
-    } else if (action === 'extend') {
-      const currentEnd = company.beta_end_date ? parseISO(company.beta_end_date) : today;
-      const base = currentEnd > today ? currentEnd : today;
-      const newEnd = new Date(base);
-      newEnd.setDate(newEnd.getDate() + 7);
-      updateMutation.mutate({ id: company.id, data: {
-        beta_end_date: newEnd.toISOString().split('T')[0],
-        beta_status: 'active',
-        is_beta_user: true,
-      }});
-    } else if (action === 'end') {
-      const yesterday = new Date(today);
-      yesterday.setDate(yesterday.getDate() - 1);
-      updateMutation.mutate({ id: company.id, data: {
-        beta_end_date: yesterday.toISOString().split('T')[0],
-        beta_status: 'expired',
-      }});
-    } else if (action === 'paid') {
-      updateMutation.mutate({ id: company.id, data: {
-        beta_status: 'expired',
-        status: 'active',
-        is_beta_user: false,
-      }});
-    }
+    actionMutation.mutate({ company_id: company.id, action });
   };
 
   const filtered = companies.filter((c) =>
@@ -124,6 +109,23 @@ export default function BetaManagement() {
 
   return (
     <div className="p-4 md:p-6 max-w-6xl mx-auto scrollable-container">
+
+      {/* Toast notification */}
+      {toast && (
+        <div className={cn(
+          'fixed top-5 right-5 z-50 flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg text-sm font-medium transition-all',
+          toast.type === 'success'
+            ? 'bg-green-50 border border-green-200 text-green-800'
+            : 'bg-red-50 border border-red-200 text-red-800'
+        )}>
+          {toast.type === 'success'
+            ? <CheckCircle2 size={15} className="text-green-600 shrink-0" />
+            : <AlertCircle size={15} className="text-red-600 shrink-0" />
+          }
+          {toast.message}
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-start justify-between gap-4 mb-6">
         <div>
