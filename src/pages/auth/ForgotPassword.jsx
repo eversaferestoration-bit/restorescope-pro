@@ -1,35 +1,22 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Droplets, ArrowLeft, CheckCircle } from 'lucide-react';
+import { Droplets, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-const getErrorMessage = (err) => {
-  if (!err) return null;
-  if (typeof err === 'string') return err;
-  if (typeof err === 'object') {
-    const msg = err.message || '';
-    if (msg.toLowerCase().includes('not found') || msg.toLowerCase().includes('no user')) {
-      return 'No account found for this email.';
-    }
-    return msg || 'Something went wrong. Please try again.';
-  }
-  return 'Something went wrong. Please try again.';
-};
-
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
-  const [error, setError] = useState('');
+  const [validationError, setValidationError] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    setValidationError('');
     const normalized = email.trim().toLowerCase();
     if (!EMAIL_REGEX.test(normalized)) {
-      setError('Enter a valid email address.');
+      setValidationError('Enter a valid email address.');
       return;
     }
     setLoading(true);
@@ -57,7 +44,7 @@ export default function ForgotPassword() {
           {sent ? (
             <div className="text-center py-4">
               <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
-                <CheckCircle size={24} className="text-green-600" />
+                <CheckCircle2 size={24} className="text-green-600" />
               </div>
               <h2 className="text-xl font-semibold font-display mb-2">Check your email</h2>
               <p className="text-sm text-muted-foreground mb-6">
@@ -77,9 +64,9 @@ export default function ForgotPassword() {
                 Enter your email and we'll send you a reset link.
               </p>
 
-              {error && (
+              {validationError && (
                 <div className="mb-4 px-3 py-2.5 rounded-lg bg-destructive/10 text-destructive text-sm">
-                  {getErrorMessage(error)}
+                  {validationError}
                 </div>
               )}
 

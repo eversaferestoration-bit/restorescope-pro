@@ -64,7 +64,7 @@ export default function ProtectedRoute({ children }) {
         checkedUserRef.current = user.id;
         setChecked(true);
       });
-  }, [isAuthenticated, user?.id, location.pathname]);
+  }, [isAuthenticated, user?.id]); // intentionally excludes location.pathname — re-diagnosis only needed on user change
 
   useEffect(() => {
     if (!isLoadingAuth && !isLoadingPublicSettings) {

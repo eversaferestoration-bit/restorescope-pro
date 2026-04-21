@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Droplets, FlaskConical, AlertCircle, CheckCircle } from 'lucide-react';
+import { Droplets, FlaskConical, AlertCircle } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { normalizeEmail } from '@/lib/authRepair';
 

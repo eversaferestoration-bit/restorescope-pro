@@ -33,14 +33,15 @@ export default function Login() {
 
   const handleSignIn = () => {
     setEmailError('');
-    const trimmed = email.trim();
+    const trimmed = email.trim().toLowerCase();
 
     if (trimmed && !EMAIL_REGEX.test(trimmed)) {
       setEmailError('Enter a valid email address.');
       return;
     }
 
-    base44.auth.redirectToLogin('/dashboard');
+    // Pass email as hint so the platform pre-fills the login form
+    base44.auth.redirectToLogin('/dashboard', trimmed || undefined);
   };
 
   const googleSVG = (
