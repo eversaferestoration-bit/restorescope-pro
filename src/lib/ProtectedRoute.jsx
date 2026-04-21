@@ -1,8 +1,8 @@
-import { useEffect, useState, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 import { base44 } from '@/api/base44Client';
-import { diagnoseAccountState, repairMissingUserProfile } from '@/lib/authRepair';
+import { normalizeEmail, repairMissingUserProfile } from '@/lib/authRepair';
 
 const INCOMPLETE_STATUSES = [
   'account_created',
@@ -35,61 +35,68 @@ export default function ProtectedRoute({ children }) {
     // Already checked for this user — skip the fetch
     if (checkedUserRef.current === user.id) return;
 
-    const runCheck = async () => {
-      try {
-        const { hasProfile, hasCompany, profile, company } = await diagnoseAccountState(user);
+    const email = normalizeEmail(user.email || '');
+    console.log('[ProtectedRoute] Checking account state for:', email);
 
-        if (hasProfile) {
+    base44.entities.UserProfile.filter({ user_id: user.id, is_deleted: false }, '-created_date', 1)
+      .then(async (profiles) => {
+        console.log('[ProtectedRoute] UserProfile exists:', profiles.length > 0);
+
+        if (profiles.length > 0) {
+          const profile = profiles[0];
           const status = profile.onboarding_status;
           if (INCOMPLETE_STATUSES.includes(status)) {
-            console.log('[ProtectedRoute] Onboarding incomplete, redirecting. Status:', status);
             navigate('/onboarding', { replace: true });
             return;
           }
-          // Profile exists and onboarding done
+
+          if (profile.company_id) {
+            const companies = await base44.entities.Company.filter(
+              { id: profile.company_id, is_deleted: false }, '-created_date', 1
+            ).catch(() => []);
+            console.log('[ProtectedRoute] Company exists:', companies.length > 0);
+            if (companies.length === 0) {
+              console.warn('[ProtectedRoute] Company missing for profile, routing to onboarding');
+              navigate('/onboarding', { replace: true });
+              return;
+            }
+          }
+
           checkedUserRef.current = user.id;
           setChecked(true);
           return;
         }
 
-        // No UserProfile — try to repair if we have a company
-        if (!hasProfile && hasCompany && company) {
-          console.log('[ProtectedRoute] Missing UserProfile — attempting auto-repair');
-          const repaired = await repairMissingUserProfile(user, company);
+        // No UserProfile — try to find a company by created_by email to auto-repair
+        console.warn('[ProtectedRoute] No UserProfile found — attempting repair');
+        const companiesByEmail = await base44.entities.Company.filter(
+          { created_by: email, is_deleted: false }, '-created_date', 1
+        ).catch(() => []);
+        console.log('[ProtectedRoute] Company by email exists:', companiesByEmail.length > 0);
+
+        if (companiesByEmail.length > 0) {
+          const repaired = await repairMissingUserProfile(user, companiesByEmail[0]);
           if (repaired) {
-            console.log('[ProtectedRoute] Repair successful, allowing access');
+            console.log('[ProtectedRoute] UserProfile repaired — proceeding normally');
             checkedUserRef.current = user.id;
             setChecked(true);
             return;
           }
         }
 
-        // No UserProfile and no company (or repair failed) → onboarding
-        if (!hasCompany) {
-          console.log('[ProtectedRoute] No company found, routing to onboarding');
-          navigate('/onboarding', { replace: true });
-          return;
-        }
-
-        // Fallback: allow through
+        console.warn('[ProtectedRoute] No company found — routing to onboarding');
+        navigate('/onboarding', { replace: true });
+      })
+      .catch((err) => {
+        console.warn('[ProtectedRoute] Account check failed (network?):', err?.message);
         checkedUserRef.current = user.id;
         setChecked(true);
-      } catch (e) {
-        console.warn('[ProtectedRoute] Account check error (non-blocking):', e?.message);
-        // Network error — don't block the user
-        checkedUserRef.current = user.id;
-        setChecked(true);
-      }
-    };
-
-    runCheck();
+      });
   }, [isAuthenticated, user?.id, location.pathname]);
 
-  // Redirect unauthenticated users to login
   useEffect(() => {
     if (!isLoadingAuth && !isLoadingPublicSettings) {
       if (authError?.type === 'auth_required' || (!isAuthenticated && !authError)) {
-        console.log('[ProtectedRoute] Not authenticated, redirecting to login');
         base44.auth.redirectToLogin(window.location.pathname + window.location.search);
       }
     }

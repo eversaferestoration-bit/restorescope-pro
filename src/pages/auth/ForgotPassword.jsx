@@ -3,10 +3,18 @@ import { Link } from 'react-router-dom';
 import { Droplets, ArrowLeft, CheckCircle } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 const getErrorMessage = (err) => {
   if (!err) return null;
   if (typeof err === 'string') return err;
-  if (typeof err === 'object') return err.message || 'Something went wrong. Please try again.';
+  if (typeof err === 'object') {
+    const msg = err.message || '';
+    if (msg.toLowerCase().includes('not found') || msg.toLowerCase().includes('no user')) {
+      return 'No account found for this email.';
+    }
+    return msg || 'Something went wrong. Please try again.';
+  }
   return 'Something went wrong. Please try again.';
 };
 
@@ -19,12 +27,21 @@ export default function ForgotPassword() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    if (!EMAIL_REGEX.test(email.trim())) {
+      setError('Enter a valid email address.');
+      return;
+    }
     setLoading(true);
     try {
-      await base44.auth.forgotPassword(email);
+      await base44.auth.forgotPassword(email.trim().toLowerCase());
       setSent(true);
     } catch (err) {
-      setError(err?.message || 'Could not send reset email. Please try again.');
+      const msg = typeof err === 'string' ? err : (err?.message || '');
+      if (msg.toLowerCase().includes('not found') || msg.toLowerCase().includes('no user')) {
+        setError('No account found for this email.');
+      } else {
+        setError('Could not send reset email. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
