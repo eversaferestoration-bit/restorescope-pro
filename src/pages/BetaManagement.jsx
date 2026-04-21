@@ -6,17 +6,6 @@ import { Search, FlaskConical, XCircle, Plus, CalendarPlus, CreditCard, ShieldOf
 import { format, differenceInDays, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 
-function getSafeCompany(raw) {
-  return {
-    ...raw,
-    name: raw.name || '(Unnamed)',
-    email: raw.email || null,
-    is_beta_user: raw.is_beta_user || false,
-    beta_status: raw.beta_status || 'none',
-    beta_start_date: raw.beta_start_date || null,
-    beta_end_date: raw.beta_end_date || null,
-  };
-}
 
 function getBetaStatus(company) {
   if (!company.is_beta_user) return 'none';
@@ -57,23 +46,20 @@ export default function BetaManagement() {
     console.log('[BetaManagement] Page loaded');
   }, []);
 
-  const { data: rawCompanies = [], isLoading, isError } = useQuery({
+  const { data: companies = [], isLoading, isError } = useQuery({
     queryKey: ['beta-companies'],
     queryFn: async () => {
       console.log('[BetaManagement] Company fetch started');
-      const result = await base44.entities.Company.filter({ is_deleted: false }, 'name', 500);
-      console.log(`[BetaManagement] Company fetch success — ${result.length} companies`);
-      return result;
+      const res = await base44.functions.invoke('getBetaCompanies', {});
+      const list = res.data?.companies || [];
+      console.log(`[BetaManagement] Company fetch success — ${list.length} companies`);
+      return list;
     },
     onError: (err) => console.error('[BetaManagement] Company fetch error:', err),
     retry: 2,
     staleTime: 60 * 1000,
+    enabled: user?.role === 'admin',
   });
-
-  // Sanitize every record; skip malformed ones
-  const companies = rawCompanies.map((c) => {
-    try { return getSafeCompany(c); } catch { return null; }
-  }).filter(Boolean);
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => base44.entities.Company.update(id, data),
