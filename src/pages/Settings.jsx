@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Settings as SettingsIcon, ListChecks, Trash2, AlertTriangle, X } from 'lucide-react';
+import { Settings as SettingsIcon, ListChecks, Trash2, AlertTriangle, X, Wrench } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import CompanyBetaPanel from '@/components/admin/CompanyBetaPanel';
+import AccountRepairTool from '@/components/admin/AccountRepairTool';
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -81,6 +82,21 @@ export default function Settings() {
         <div className="mt-8">
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Beta Access Control</h2>
           <CompanyBetaPanel companyId={companyId} />
+        </div>
+      )}
+
+      {/* Account Repair Tool — admin only */}
+      {user?.role === 'admin' && (
+        <div className="mt-8">
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3 flex items-center gap-1.5">
+            <Wrench size={13} /> Account Repair Tool
+          </h2>
+          <div className="bg-card rounded-xl border border-border p-5">
+            <p className="text-xs text-muted-foreground mb-4">
+              Search for partial or broken user accounts by email. Safely repair missing UserProfile records, orphaned companies, and incomplete onboarding — without deleting any data.
+            </p>
+            <AccountRepairTool currentUser={user} />
+          </div>
         </div>
       )}
 

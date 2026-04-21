@@ -2,17 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 import { base44 } from '@/api/base44Client';
-import { normalizeEmail, repairMissingUserProfile } from '@/lib/authRepair';
-
-const INCOMPLETE_STATUSES = [
-  'account_created',
-  'company_started',
-  'company_completed',
-  'role_selected',
-  'pricing_profile_set',
-  // NOTE: 'first_job_started' is intentionally excluded — once the user clicks
-  // "Create my first job" they should be able to use the app freely.
-];
+import { diagnoseAccountState, repairPartialAccount } from '@/lib/authRepair';
 
 export default function ProtectedRoute({ children }) {
   const { isLoadingAuth, isLoadingPublicSettings, authError, isAuthenticated, user } = useAuth();
@@ -27,68 +17,50 @@ export default function ProtectedRoute({ children }) {
       return;
     }
 
+    // Already on onboarding — let it manage itself
     if (location.pathname === '/onboarding') {
       setChecked(true);
       return;
     }
 
-    // Already checked for this user — skip the fetch
+    // Already checked for this user — skip
     if (checkedUserRef.current === user.id) return;
 
-    const email = normalizeEmail(user.email || '');
-    console.log('[ProtectedRoute] Checking account state for:', email);
+    console.log('[ProtectedRoute] Diagnosing account state for user:', user.id);
 
-    base44.entities.UserProfile.filter({ user_id: user.id, is_deleted: false }, '-created_date', 1)
-      .then(async (profiles) => {
-        console.log('[ProtectedRoute] UserProfile exists:', profiles.length > 0);
+    diagnoseAccountState(user)
+      .then(async ({ state }) => {
+        console.log('[ProtectedRoute] Account state:', state);
 
-        if (profiles.length > 0) {
-          const profile = profiles[0];
-          const status = profile.onboarding_status;
-          if (INCOMPLETE_STATUSES.includes(status)) {
-            navigate('/onboarding', { replace: true });
-            return;
-          }
-
-          if (profile.company_id) {
-            const companies = await base44.entities.Company.filter(
-              { id: profile.company_id, is_deleted: false }, '-created_date', 1
-            ).catch(() => []);
-            console.log('[ProtectedRoute] Company exists:', companies.length > 0);
-            if (companies.length === 0) {
-              console.warn('[ProtectedRoute] Company missing for profile, routing to onboarding');
-              navigate('/onboarding', { replace: true });
-              return;
-            }
-          }
-
+        if (state === 'ok') {
           checkedUserRef.current = user.id;
           setChecked(true);
           return;
         }
 
-        // No UserProfile — try to find a company by created_by email to auto-repair
-        console.warn('[ProtectedRoute] No UserProfile found — attempting repair');
-        const companiesByEmail = await base44.entities.Company.filter(
-          { created_by: email, is_deleted: false }, '-created_date', 1
-        ).catch(() => []);
-        console.log('[ProtectedRoute] Company by email exists:', companiesByEmail.length > 0);
-
-        if (companiesByEmail.length > 0) {
-          const repaired = await repairMissingUserProfile(user, companiesByEmail[0]);
-          if (repaired) {
-            console.log('[ProtectedRoute] UserProfile repaired — proceeding normally');
+        if (state === 'no_profile') {
+          const { fixed } = await repairPartialAccount(user);
+          if (fixed) {
+            console.log('[ProtectedRoute] Auto-repaired profile — proceeding');
             checkedUserRef.current = user.id;
             setChecked(true);
-            return;
+          } else {
+            navigate('/onboarding', { replace: true });
           }
+          return;
         }
 
-        console.warn('[ProtectedRoute] No company found — routing to account recovery');
-        navigate('/account-recovery', { replace: true });
+        if (state === 'no_company' || state === 'onboarding_incomplete') {
+          navigate('/onboarding', { replace: true });
+          return;
+        }
+
+        // Unknown state — fail open
+        checkedUserRef.current = user.id;
+        setChecked(true);
       })
       .catch((err) => {
-        console.warn('[ProtectedRoute] Account check failed (network?):', err?.message);
+        console.warn('[ProtectedRoute] Diagnosis failed (network?):', err?.message);
         checkedUserRef.current = user.id;
         setChecked(true);
       });
