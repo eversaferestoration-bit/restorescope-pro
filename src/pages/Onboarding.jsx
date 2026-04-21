@@ -123,8 +123,14 @@ export default function Onboarding() {
               setPricingChoice('recommended');
             }
           }
+        } else {
+          // No profile found — user is in signup but hasn't completed onboarding
+          console.log('[Onboarding] No profile found — starting fresh onboarding');
         }
-      } catch (e) { /* start fresh */ }
+      } catch (e) {
+        console.error('[Onboarding] Resume failed:', e?.message);
+        /* start fresh */
+      }
       finally { setInitializing(false); }
     };
     resume();

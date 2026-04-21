@@ -338,8 +338,10 @@ export default function Dashboard() {
 
         {/* Right col */}
         <div className="space-y-5">
-          <UsageStatsWidget />
-          <RecentActivityWidget />
+          {/* UsageStatsWidget gracefully hides on permission/query errors */}
+          {user && <UsageStatsWidget />}
+          {/* RecentActivityWidget is admin-only and gracefully hides for non-admins */}
+          {user && <RecentActivityWidget />}
         </div>
       </div>
 

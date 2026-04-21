@@ -1,14 +1,24 @@
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
-import { Send, ChevronRight } from 'lucide-react';
+import { Send, ChevronRight, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 
 export default function PendingApprovalsWidget() {
-  const { data: drafts = [], isLoading } = useQuery({
+  const { data: drafts = [], isLoading, error } = useQuery({
     queryKey: ['dashboard-pending-approvals'],
     queryFn: () => base44.entities.EstimateDraft.filter({ status: 'submitted', is_deleted: false }, '-created_date', 10),
   });
+
+  // Gracefully handle permission errors
+  if (error) {
+    return (
+      <div className="bg-card rounded-xl border border-border p-4 flex items-start gap-3">
+        <AlertCircle size={14} className="text-amber-600 shrink-0 mt-0.5" />
+        <p className="text-xs text-muted-foreground">Unable to load pending approvals</p>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-card rounded-xl border border-border">
