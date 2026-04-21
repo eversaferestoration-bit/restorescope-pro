@@ -4,8 +4,6 @@ import { Droplets, FlaskConical, AlertCircle } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { normalizeEmail } from '@/lib/authRepair';
 
-const BETA_INVITE_CODE = 'BETA2025';
-
 // Parse error from URL (platform posts these after failed OAuth flows)
 function getUrlError() {
   const params = new URLSearchParams(window.location.search);
@@ -27,17 +25,23 @@ export default function Signup() {
     if (code) setInviteInput(code.toUpperCase());
   }, []);
 
-  const handleSignup = () => {
+  const handleSignup = async () => {
     setInviteError('');
     const code = inviteInput.trim().toUpperCase();
 
-    if (code && code !== BETA_INVITE_CODE) {
-      setInviteError('Invalid invite code.');
-      return;
-    }
-
-    if (code === BETA_INVITE_CODE) {
-      sessionStorage.setItem('beta_invite_code', BETA_INVITE_CODE);
+    if (code) {
+      // Validate invite code server-side
+      try {
+        const res = await base44.functions.invoke('validateBetaInvite', { code });
+        if (!res.data?.valid) {
+          setInviteError(res.data?.message || 'Invalid invite code.');
+          return;
+        }
+        sessionStorage.setItem('beta_invite_code', code);
+      } catch {
+        setInviteError('Could not validate invite code. Please try again.');
+        return;
+      }
     }
 
     base44.auth.redirectToLogin('/onboarding');
@@ -114,12 +118,7 @@ export default function Signup() {
               placeholder="Enter code if you have one"
               className="w-full h-10 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring transition"
             />
-            {inviteInput && inviteInput.trim().toUpperCase() === BETA_INVITE_CODE && (
-              <div className="flex items-center gap-2 bg-violet-50 border border-violet-200 rounded-lg px-3 py-2 mt-2">
-                <FlaskConical size={14} className="text-violet-600" />
-                <p className="text-xs text-violet-700">Valid beta invite code!</p>
-              </div>
-            )}
+
             {inviteError && <p className="text-xs text-destructive mt-1">{inviteError}</p>}
           </div>
 

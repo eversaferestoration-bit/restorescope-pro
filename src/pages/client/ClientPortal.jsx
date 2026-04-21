@@ -48,7 +48,7 @@ export default function ClientPortal() {
   // Fetch estimates for each job
   const { data: estimates = {}, isLoading: estimatesLoading } = useQuery({
     queryKey: ['client-estimates', jobs.map((j) => j.id).join(',')],
-    queryFn: () => base44.functions.invoke('getClientEstimates', { job_ids: jobs.map((j) => j.id), token: clientToken }),
+    queryFn: () => base44.functions.invoke('getClientEstimates', { job_ids: jobs.map((j) => j.id), client_email: clientEmail, token: clientToken }),
     enabled: jobs.length > 0 && !!clientToken,
     select: (res) => res.data?.estimates || {},
     retry: 1,
