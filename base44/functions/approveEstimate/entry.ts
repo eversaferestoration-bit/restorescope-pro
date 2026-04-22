@@ -24,11 +24,10 @@ Deno.serve(async (req) => {
     return Response.json({ error: 'draft_id and action required' }, { status: 400 });
   }
 
-  const drafts = await base44.asServiceRole.entities.EstimateDraft.filter({ id: draft_id, is_deleted: false });
-  if (!drafts.length) {
+  const draft = await base44.asServiceRole.entities.EstimateDraft.get(draft_id).catch(() => null);
+  if (!draft || draft.is_deleted) {
     return Response.json({ error: 'Draft not found' }, { status: 404 });
   }
-  const draft = drafts[0];
 
   // Company isolation - verify access
   if (user.role !== 'admin') {
@@ -77,7 +76,7 @@ Deno.serve(async (req) => {
     }
 
     // Get next version number
-    const allDrafts = await base44.asServiceRole.entities.EstimateDraft.filter({ job_id: draft.job_id, is_deleted: false });
+    const allDrafts = await base44.asServiceRole.entities.EstimateDraft.filter({ job_id: draft.job_id, is_deleted: false }, '-created_date', 100);
     const nextVersion = Math.max(...allDrafts.map((d) => d.version_number || 1)) + 1;
 
     const newDraft = await base44.asServiceRole.entities.EstimateDraft.create({
@@ -118,21 +117,30 @@ Deno.serve(async (req) => {
     return Response.json({ error: `Cannot ${action} an estimate with status "${draft.status}". Expected "${transition.from}".` }, { status: 422 });
   }
 
+  // Resolve effective role from UserProfile (company-level) if needed
+  let effectiveApproveRole = user.role;
+  if (effectiveApproveRole !== 'admin') {
+    const roleProfiles = await base44.asServiceRole.entities.UserProfile.filter({
+      user_id: user.id, company_id: draft.company_id, is_deleted: false,
+    });
+    if (roleProfiles.length > 0) effectiveApproveRole = roleProfiles[0].role || effectiveApproveRole;
+  }
+
   // Manager-only: approve and lock
   if (['approve', 'lock'].includes(action)) {
-    if (user.role !== 'admin' && user.role !== 'manager') {
-      return Response.json({ 
-        error: 'Forbidden', 
-        message: 'Manager approval required. Only admins or managers can approve estimates.' 
+    if (!['admin', 'manager'].includes(effectiveApproveRole)) {
+      return Response.json({
+        error: 'Forbidden',
+        message: 'Manager approval required. Only admins or managers can approve estimates.',
       }, { status: 403 });
     }
   }
 
   // Prevent technicians from submitting or approving
-  if (user.role === 'technician' && ['submit', 'approve', 'lock', 'reject'].includes(action)) {
-    return Response.json({ 
-      error: 'Forbidden', 
-      message: 'Technicians cannot perform estimate approval actions.' 
+  if (effectiveApproveRole === 'technician' && ['submit', 'approve', 'lock', 'reject'].includes(action)) {
+    return Response.json({
+      error: 'Forbidden',
+      message: 'Technicians cannot perform estimate approval actions.',
     }, { status: 403 });
   }
 

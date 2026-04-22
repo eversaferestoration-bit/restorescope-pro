@@ -269,11 +269,10 @@ Deno.serve(async (req) => {
     return Response.json({ error: 'job_id and room_id required' }, { status: 400 });
   }
 
-  const jobs = await base44.asServiceRole.entities.Job.filter({ id: job_id, is_deleted: false });
-  if (!jobs.length) {
+  const job = await base44.asServiceRole.entities.Job.get(job_id).catch(() => null);
+  if (!job || job.is_deleted) {
     return Response.json({ error: 'Job not found' }, { status: 404 });
   }
-  const job = jobs[0];
 
   // Company isolation - verify access
   if (user.role !== 'admin') {
@@ -287,14 +286,20 @@ Deno.serve(async (req) => {
     }
   }
 
-  // Role validation - technicians cannot generate scope
-  if (user.role === 'technician') {
+  // Role validation — resolve effective role from UserProfile if needed
+  let effectiveScopeRole = user.role;
+  if (effectiveScopeRole !== 'admin') {
+    const roleProfiles = await base44.asServiceRole.entities.UserProfile.filter({
+      user_id: user.id, company_id: job.company_id, is_deleted: false,
+    });
+    if (roleProfiles.length > 0) effectiveScopeRole = roleProfiles[0].role || effectiveScopeRole;
+  }
+  if (effectiveScopeRole === 'technician') {
     return Response.json({ error: 'Forbidden', message: 'Technicians cannot generate scope items.' }, { status: 403 });
   }
 
-  const rooms = await base44.asServiceRole.entities.Room.filter({ id: room_id, job_id, is_deleted: false });
-  if (!rooms.length) return Response.json({ error: 'Room not found' }, { status: 404 });
-  const room = rooms[0];
+  const room = await base44.asServiceRole.entities.Room.get(room_id).catch(() => null);
+  if (!room || room.is_deleted || room.job_id !== job_id) return Response.json({ error: 'Room not found' }, { status: 404 });
 
   // Gather inputs
   const [observations, moisture, env] = await Promise.all([

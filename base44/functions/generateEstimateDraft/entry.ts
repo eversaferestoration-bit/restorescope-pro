@@ -76,11 +76,10 @@ Deno.serve(async (req) => {
   }
 
   // Load job
-  const jobs = await base44.asServiceRole.entities.Job.filter({ id: job_id, is_deleted: false });
-  if (!jobs.length) {
+  const job = await base44.asServiceRole.entities.Job.get(job_id).catch(() => null);
+  if (!job || job.is_deleted) {
     return Response.json({ error: 'Job not found' }, { status: 404 });
   }
-  const job = jobs[0];
 
   // Company isolation - verify access
   if (user.role !== 'admin') {
@@ -94,21 +93,28 @@ Deno.serve(async (req) => {
     }
   }
 
-  // Role validation - only certain roles can generate estimates
+  // Role validation — check UserProfile role (company-level) not just platform role
   const ALLOWED_ROLES = ['admin', 'manager', 'estimator'];
-  if (!ALLOWED_ROLES.includes(user.role)) {
-    return Response.json({ 
-      error: 'Forbidden', 
-      message: `Role '${user.role}' cannot generate estimates.` 
+  let effectiveRole = user.role;
+  if (!ALLOWED_ROLES.includes(effectiveRole)) {
+    const profilesForRole = await base44.asServiceRole.entities.UserProfile.filter({
+      user_id: user.id, company_id: job.company_id, is_deleted: false,
+    });
+    if (profilesForRole.length > 0) effectiveRole = profilesForRole[0].role || effectiveRole;
+  }
+  if (!ALLOWED_ROLES.includes(effectiveRole)) {
+    return Response.json({
+      error: 'Forbidden',
+      message: `Role '${effectiveRole}' cannot generate estimates.`,
     }, { status: 403 });
   }
 
-  // Check subscription (only if company_id is a valid non-empty value)
+  // Check subscription — beta users (is_beta_user=true) bypass this check
   if (job.company_id && job.company_id !== 'default') {
     try {
       const companies = await base44.asServiceRole.entities.Company.filter({ id: job.company_id, is_deleted: false });
       const company = companies[0];
-      if (company && !company.plan_id && !company.subscription_id) {
+      if (company && !company.plan_id && !company.subscription_id && !company.is_beta_user) {
         return Response.json({ error: 'subscription_required', message: 'An active subscription is required to generate estimates.' }, { status: 402 });
       }
     } catch {

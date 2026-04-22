@@ -23,9 +23,11 @@
       "enum": [
         "draft",
         "pending_review",
+        "submitted",
         "approved",
         "rejected",
-        "superseded"
+        "superseded",
+        "locked"
       ],
       "default": "draft"
     },
@@ -35,7 +37,7 @@
     },
     "modifier_total": {
       "type": "number",
-      "default": 1.0
+      "default": 1
     },
     "total": {
       "type": "number",
@@ -106,5 +108,31 @@
   "required": [
     "company_id",
     "job_id"
-  ]
+  ],
+  "rls": {
+    "create": {
+      "data.company_id": "{{user.company_id}}"
+    },
+    "read": {
+      "data.company_id": "{{user.company_id}}"
+    },
+    "update": {
+      "data.company_id": "{{user.company_id}}"
+    },
+    "delete": {
+      "data.company_id": "{{user.company_id}}",
+      "$or": [
+        {
+          "user_condition": {
+            "role": "admin"
+          }
+        },
+        {
+          "user_condition": {
+            "role": "manager"
+          }
+        }
+      ]
+    }
+  }
 }

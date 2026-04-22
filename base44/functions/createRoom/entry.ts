@@ -11,9 +11,8 @@ Deno.serve(async (req) => {
   if (!job_id) return Response.json({ error: 'job_id required' }, { status: 400 });
   if (!name) return Response.json({ error: 'Room name required' }, { status: 400 });
 
-  const jobs = await base44.asServiceRole.entities.Job.filter({ id: job_id, is_deleted: false });
-  if (!jobs.length) return Response.json({ error: 'Job not found' }, { status: 404 });
-  const job = jobs[0];
+  const job = await base44.asServiceRole.entities.Job.get(job_id).catch(() => null);
+  if (!job || job.is_deleted) return Response.json({ error: 'Job not found' }, { status: 404 });
 
   const profiles = await base44.asServiceRole.entities.UserProfile.filter({ user_id: user.id, company_id: job.company_id, is_deleted: false });
   if (!profiles.length && user.role !== 'admin') {
