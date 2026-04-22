@@ -17,6 +17,7 @@ const STATE = {
   CHECKING: 'checking',
   NO_PROFILE_NO_COMPANY: 'no_profile_no_company',
   NO_PROFILE_HAS_COMPANY: 'no_profile_has_company',
+  HAS_PROFILE_NO_COMPANY: 'has_profile_no_company',
   ONBOARDING_INCOMPLETE: 'onboarding_incomplete',
   EXISTING_EMAIL: 'existing_email',
   OK: 'ok',
@@ -49,30 +50,55 @@ export default function AccountRecovery() {
     setError('');
     try {
       const email = normalizeEmail(user?.email || '');
+      console.log('[AccountRecovery] Diagnosing account for user:', user.id, email);
+
       const profiles = await base44.entities.UserProfile.filter({ user_id: user.id, is_deleted: false });
 
       if (profiles.length === 0) {
         // No profile — check for existing company by email
+        console.log('[AccountRecovery] No UserProfile found, checking for company by email');
         const companies = await base44.entities.Company.filter({ created_by: email, is_deleted: false });
         if (companies.length > 0) {
+          console.log('[AccountRecovery] State: NO_PROFILE_HAS_COMPANY');
           setState(STATE.NO_PROFILE_HAS_COMPANY);
         } else {
+          console.log('[AccountRecovery] State: NO_PROFILE_NO_COMPANY');
           setState(STATE.NO_PROFILE_NO_COMPANY);
         }
         return;
       }
 
       const profile = profiles[0];
+      console.log('[AccountRecovery] Profile found:', profile.id, '| company_id:', profile.company_id, '| onboarding_status:', profile.onboarding_status);
+
+      // Profile exists but no company linked — send to company setup
+      if (!profile.company_id) {
+        console.log('[AccountRecovery] State: HAS_PROFILE_NO_COMPANY — routing to company setup');
+        setState(STATE.HAS_PROFILE_NO_COMPANY);
+        return;
+      }
+
+      // Verify the linked company actually exists
+      const companies = await base44.entities.Company.filter({ id: profile.company_id, is_deleted: false });
+      if (companies.length === 0) {
+        console.warn('[AccountRecovery] Linked company not found — routing to company setup');
+        setState(STATE.HAS_PROFILE_NO_COMPANY);
+        return;
+      }
+
       const INCOMPLETE = ['account_created', 'company_started', 'company_completed', 'role_selected', 'pricing_profile_set'];
       if (INCOMPLETE.includes(profile.onboarding_status)) {
+        console.log('[AccountRecovery] State: ONBOARDING_INCOMPLETE');
         setState(STATE.ONBOARDING_INCOMPLETE);
         return;
       }
 
-      // Profile exists and completed — no recovery needed
+      // Profile exists, company exists, onboarding complete
+      console.log('[AccountRecovery] State: OK — redirecting to dashboard');
       setState(STATE.OK);
       navigate('/dashboard', { replace: true });
     } catch (e) {
+      console.error('[AccountRecovery] Diagnose failed:', e?.message);
       setError('Could not check account state. Please try again.');
       setState(STATE.NO_PROFILE_NO_COMPANY);
     }
@@ -115,6 +141,12 @@ export default function AccountRecovery() {
     setRetryCount(0);
     navigate('/onboarding', { replace: true });
   };
+
+  const handleCompanySetup = () => {
+    console.log('[AccountRecovery] "Complete setup" clicked — navigating to /company-setup');
+    navigate('/company-setup', { replace: true });
+  };
+
   const handleSignIn = () => {
     // Only logout if user explicitly chooses to sign back in
     logout();
@@ -215,6 +247,7 @@ export default function AccountRecovery() {
             </>
           )}
 
+          {/* No profile, no company — fresh company setup needed */}
           {state === STATE.NO_PROFILE_NO_COMPANY && (
             <>
               <div className="flex items-start gap-3">
@@ -228,10 +261,45 @@ export default function AccountRecovery() {
               </div>
               {error && <p className="text-sm text-destructive">{error}</p>}
               <button
-                onClick={handleResumeOnboarding}
+                onClick={handleCompanySetup}
                 className="w-full h-10 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition flex items-center justify-center gap-2"
               >
                 <ArrowRight size={15} /> Complete setup
+              </button>
+              <button
+                onClick={handleCompanySetup}
+                className="w-full h-10 rounded-lg border border-border text-sm font-medium hover:bg-muted transition flex items-center justify-center gap-2"
+              >
+                <ArrowRight size={14} /> Go to company setup
+              </button>
+              <p className="text-center text-xs text-muted-foreground">Your session is active.</p>
+            </>
+          )}
+
+          {/* Profile exists but no company linked — route to company setup */}
+          {state === STATE.HAS_PROFILE_NO_COMPANY && (
+            <>
+              <div className="flex items-start gap-3">
+                <AlertCircle size={20} className="text-amber-500 shrink-0 mt-0.5" />
+                <div>
+                  <h2 className="font-semibold font-display text-base">Login succeeded, setup incomplete</h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Your account exists but company setup was never completed. Let's finish setting up your company.
+                  </p>
+                </div>
+              </div>
+              {error && <p className="text-sm text-destructive">{error}</p>}
+              <button
+                onClick={handleCompanySetup}
+                className="w-full h-10 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition flex items-center justify-center gap-2"
+              >
+                <ArrowRight size={15} /> Complete setup
+              </button>
+              <button
+                onClick={handleCompanySetup}
+                className="w-full h-10 rounded-lg border border-border text-sm font-medium hover:bg-muted transition flex items-center justify-center gap-2"
+              >
+                <ArrowRight size={14} /> Go to company setup
               </button>
               <p className="text-center text-xs text-muted-foreground">Your session is active.</p>
             </>
