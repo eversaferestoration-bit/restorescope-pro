@@ -49,8 +49,8 @@ export default function ProtectedRoute({ children }) {
     return <Navigate to="/onboarding" replace />;
   }
 
-  // Fully ready → allow
-  if (accountState === 'ready') {
+  // Fully ready (or unknown transient state) → allow
+  if (accountState === 'ready' || accountState === null) {
     return children;
   }
 

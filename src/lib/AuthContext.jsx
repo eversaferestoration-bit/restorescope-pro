@@ -1,6 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { normalizeEmail } from '@/lib/authRepair';
+import { normalizeEmail, diagnoseAccountState } from '@/lib/authRepair';
 
 const AuthContext = createContext();
 
@@ -18,86 +18,25 @@ export const AuthProvider = ({ children }) => {
     checkUserAuth();
   }, []);
 
-  // Validate required account records exist
+  // Validate required account records — delegates to diagnoseAccountState for email-fallback healing
   const checkAccountState = async (authUser) => {
     if (!authUser) return null;
-    
     try {
-      console.log('[AuthContext] Checking account state for user:', authUser.id);
-
-      // Check UserProfile exists
-      const profiles = await base44.entities.UserProfile.filter({ user_id: authUser.id, is_deleted: false });
-      if (profiles.length === 0) {
-        console.warn('[AuthContext] No UserProfile found — redirecting to account-recovery');
-        setAccountState('incomplete');
-        return 'incomplete';
-      }
-
-      const profile = profiles[0];
-      console.log('[AuthContext] UserProfile found:', profile.id);
-
-      // Check Company exists
-      if (!profile.company_id) {
-        console.warn('[AuthContext] No company_id in profile — setup required');
-        setAccountState('setup_required');
-        return 'setup_required';
-      }
-
-      const companies = await base44.entities.Company.filter({ id: profile.company_id, is_deleted: false });
-      if (companies.length === 0) {
-        console.warn('[AuthContext] Company not found — setup required');
-        setAccountState('setup_required');
-        return 'setup_required';
-      }
-
-      console.log('[AuthContext] Company found:', profile.company_id);
-
-      // Check onboarding status
-      if (profile.onboarding_status && profile.onboarding_status !== 'onboarding_completed') {
-        console.log('[AuthContext] Onboarding incomplete — state:', profile.onboarding_status);
-        setAccountState('onboarding_incomplete');
-        return 'onboarding_incomplete';
-      }
-
-      console.log('[AuthContext] Account state is READY');
-      setAccountState('ready');
-      return 'ready';
+      const { state } = await diagnoseAccountState(authUser);
+      console.log('[AuthContext] Account state:', state);
+      const stateMap = {
+        ok: 'ready',
+        no_profile: 'incomplete',
+        no_company: 'setup_required',
+        onboarding_incomplete: 'onboarding_incomplete',
+      };
+      const mapped = stateMap[state] || 'ready';
+      setAccountState(mapped);
+      return mapped;
     } catch (err) {
       console.error('[AuthContext] Account state check failed:', err?.message || err);
-      // Don't block access on transient errors — treat as ready and let pages handle their own errors
       setAccountState('ready');
       return 'ready';
-    }
-  };
-
-  const repairMissingUserProfile = async (authUser) => {
-    console.log('[AuthContext] Attempting to repair missing UserProfile for user:', authUser.id);
-    try {
-      // Check if company exists for this user
-      const companies = await base44.entities.Company.filter({ created_by: authUser.email, is_deleted: false });
-      let companyId = null;
-
-      if (companies.length > 0) {
-        companyId = companies[0].id;
-        console.log('[AuthContext] Found existing company:', companyId);
-      }
-
-      // Create UserProfile
-      const profile = await base44.entities.UserProfile.create({
-        user_id: authUser.id,
-        company_id: companyId || null,
-        email: authUser.email,
-        role: 'admin',
-        onboarding_status: companyId ? 'onboarding_completed' : 'account_created',
-        current_onboarding_step: 1,
-        completed_steps: [],
-        is_deleted: false,
-      });
-      console.log('[AuthContext] Repaired UserProfile:', profile.id);
-      return profile;
-    } catch (e) {
-      console.error('[AuthContext] Repair failed:', e?.message);
-      return null;
     }
   };
 
@@ -106,23 +45,11 @@ export const AuthProvider = ({ children }) => {
     setAuthError(null);
     try {
       const currentUser = await base44.auth.me();
-      // Log normalized email for debugging
       const normalizedEmail = normalizeEmail(currentUser?.email || '');
       console.log('[AuthContext] User loaded. Email (normalized):', normalizedEmail, '| Role:', currentUser?.role);
       setUser(currentUser);
       setIsAuthenticated(true);
-
-      // Try to repair if profile is missing
-      const profiles = await base44.entities.UserProfile.filter({ user_id: currentUser.id, is_deleted: false }).catch(() => []);
-      if (profiles.length === 0) {
-        console.warn('[AuthContext] No UserProfile found — attempting repair');
-        const repaired = await repairMissingUserProfile(currentUser);
-        if (!repaired) {
-          console.log('[AuthContext] Repair failed — will proceed to auth-check');
-        }
-      }
-
-      // After successful auth, check account state
+      // Check account state (includes repair logic via diagnoseAccountState)
       await checkAccountState(currentUser);
     } catch (error) {
       setUser(null);

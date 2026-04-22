@@ -31,7 +31,7 @@ const STEP_STATUS = {
 
 export default function Onboarding() {
   const navigate = useNavigate();
-  const { user, isLoadingAuth, isAuthenticated } = useAuth();
+  const { user, isLoadingAuth, isAuthenticated, checkUserAuth } = useAuth();
 
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -71,13 +71,6 @@ export default function Onboarding() {
     } catch (e) { /* silent */ }
   }, [userProfileId]);
 
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (!isLoadingAuth && !isAuthenticated) {
-      navigate('/login', { replace: true });
-    }
-  }, [isLoadingAuth, isAuthenticated]);
-
   // Save progress before tab close
   useEffect(() => {
     const handleUnload = () => {
@@ -90,9 +83,19 @@ export default function Onboarding() {
     return () => window.removeEventListener('beforeunload', handleUnload);
   }, [userProfileId, step]);
 
+  // Redirect to login if not authenticated (after auth finishes loading)
+  useEffect(() => {
+    if (!isLoadingAuth && !isAuthenticated) {
+      navigate('/login', { replace: true });
+    }
+  }, [isLoadingAuth, isAuthenticated]);
+
   // Resume on mount
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      if (!isLoadingAuth) setInitializing(false);
+      return;
+    }
     const resume = async () => {
       try {
         const profiles = await base44.entities.UserProfile.filter({ user_id: user.id, is_deleted: false });
@@ -301,8 +304,8 @@ export default function Onboarding() {
     }
   };
 
-  // Step 5: create first job — mark onboarding complete so ProtectedRoute never loops back
-  const handleCreateFirstJob = async () => {
+  // Mark onboarding complete, refresh auth state, then navigate
+  const completeOnboarding = async (destination) => {
     try {
       if (userProfileId) {
         await base44.entities.UserProfile.update(userProfileId, {
@@ -312,22 +315,16 @@ export default function Onboarding() {
         });
       }
     } catch (e) { /* silent */ }
-    navigate('/jobs/new', { replace: true });
+    // Refresh auth so ProtectedRoute sees 'ready' before we navigate
+    await checkUserAuth();
+    navigate(destination, { replace: true });
   };
 
+  // Step 5: create first job
+  const handleCreateFirstJob = () => completeOnboarding('/jobs/new');
+
   // Step 5: skip to dashboard
-  const handleSkip = async () => {
-    try {
-      if (userProfileId) {
-        await base44.entities.UserProfile.update(userProfileId, {
-          onboarding_status: 'onboarding_completed',
-          onboarding_completed_at: new Date().toISOString(),
-          current_onboarding_step: 6,
-        });
-      }
-    } catch (e) { /* silent */ }
-    navigate('/dashboard', { replace: true });
-  };
+  const handleSkip = () => completeOnboarding('/dashboard');
 
   if (initializing) {
     return (

@@ -10,7 +10,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
-import { normalizeEmail, repairMissingUserProfile } from '@/lib/authRepair';
+import { normalizeEmail, repairMissingUserProfile, repairPartialAccount } from '@/lib/authRepair';
 import { Droplets, AlertCircle, RefreshCw, ArrowRight, LogIn } from 'lucide-react';
 
 const STATE = {
@@ -24,7 +24,7 @@ const STATE = {
 };
 
 export default function AccountRecovery() {
-  const { user, logout } = useAuth();
+  const { user, logout, checkUserAuth } = useAuth();
   const navigate = useNavigate();
   const [state, setState] = useState(STATE.CHECKING);
   const [repairing, setRepairing] = useState(false);
@@ -106,30 +106,19 @@ export default function AccountRecovery() {
 
   const handleRepairAndResume = async () => {
     if (retryLocked || retryCount >= 3) return;
-    
     setRepairing(true);
     setError('');
-    const newCount = retryCount + 1;
-    setRetryCount(newCount);
-    
+    setRetryCount((c) => c + 1);
     try {
-      const email = normalizeEmail(user?.email || '');
-      const companies = await base44.entities.Company.filter({ created_by: email, is_deleted: false });
-      if (companies.length > 0) {
-        const repaired = await repairMissingUserProfile(user, companies[0]);
-        if (repaired) {
-          // Clear retry count and go to dashboard
-          setRetryCount(0);
-          setTimeout(() => navigate('/dashboard', { replace: true }), 500);
-          return;
-        }
+      const { fixed, action } = await repairPartialAccount(user);
+      await checkUserAuth();
+      if (fixed || action === 'already_ok') {
+        navigate('/dashboard', { replace: true });
+      } else {
+        navigate('/onboarding', { replace: true });
       }
-      // No company found either — start fresh onboarding
-      setRetryCount(0);
-      setTimeout(() => navigate('/onboarding', { replace: true }), 500);
     } catch (e) {
       setError('Repair failed. Please try again or contact support.');
-      // Lock retry button for 3 seconds after failure
       setRetryLocked(true);
       setTimeout(() => setRetryLocked(false), 3000);
     } finally {
@@ -247,13 +236,13 @@ export default function AccountRecovery() {
             </>
           )}
 
-          {/* No profile, no company — fresh company setup needed */}
-          {state === STATE.NO_PROFILE_NO_COMPANY && (
+          {/* No profile or no company linked — route to company setup */}
+          {(state === STATE.NO_PROFILE_NO_COMPANY || state === STATE.HAS_PROFILE_NO_COMPANY) && (
             <>
               <div className="flex items-start gap-3">
                 <AlertCircle size={20} className="text-amber-500 shrink-0 mt-0.5" />
                 <div>
-                  <h2 className="font-semibold font-display text-base">Login succeeded, setup incomplete</h2>
+                  <h2 className="font-semibold font-display text-base">Setup incomplete</h2>
                   <p className="text-sm text-muted-foreground mt-1">
                     Your account exists but company setup was never completed. Let's finish setting up your company.
                   </p>
@@ -265,41 +254,6 @@ export default function AccountRecovery() {
                 className="w-full h-10 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition flex items-center justify-center gap-2"
               >
                 <ArrowRight size={15} /> Complete setup
-              </button>
-              <button
-                onClick={handleCompanySetup}
-                className="w-full h-10 rounded-lg border border-border text-sm font-medium hover:bg-muted transition flex items-center justify-center gap-2"
-              >
-                <ArrowRight size={14} /> Go to company setup
-              </button>
-              <p className="text-center text-xs text-muted-foreground">Your session is active.</p>
-            </>
-          )}
-
-          {/* Profile exists but no company linked — route to company setup */}
-          {state === STATE.HAS_PROFILE_NO_COMPANY && (
-            <>
-              <div className="flex items-start gap-3">
-                <AlertCircle size={20} className="text-amber-500 shrink-0 mt-0.5" />
-                <div>
-                  <h2 className="font-semibold font-display text-base">Login succeeded, setup incomplete</h2>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Your account exists but company setup was never completed. Let's finish setting up your company.
-                  </p>
-                </div>
-              </div>
-              {error && <p className="text-sm text-destructive">{error}</p>}
-              <button
-                onClick={handleCompanySetup}
-                className="w-full h-10 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition flex items-center justify-center gap-2"
-              >
-                <ArrowRight size={15} /> Complete setup
-              </button>
-              <button
-                onClick={handleCompanySetup}
-                className="w-full h-10 rounded-lg border border-border text-sm font-medium hover:bg-muted transition flex items-center justify-center gap-2"
-              >
-                <ArrowRight size={14} /> Go to company setup
               </button>
               <p className="text-center text-xs text-muted-foreground">Your session is active.</p>
             </>

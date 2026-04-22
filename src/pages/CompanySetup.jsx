@@ -149,8 +149,8 @@ export default function CompanySetup() {
       // Refresh auth context so ProtectedRoute re-evaluates account state
       console.log('[CompanySetup] Refreshing auth session state');
       await checkUserAuth();
-
       console.log('[CompanySetup] Company setup complete — navigating to onboarding');
+      // Always go to onboarding after company setup — onboarding will redirect to dashboard if already complete
       navigate('/onboarding', { replace: true });
     } catch (e) {
       console.error('[CompanySetup] Save failed:', e?.message);
