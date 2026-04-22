@@ -1,10 +1,21 @@
 import { useAuth } from '@/lib/AuthContext';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 
+/**
+ * Protects routes based on auth and account state.
+ *
+ * State transitions:
+ *   not authenticated          → /login
+ *   incomplete (no profile)    → /account-recovery
+ *   setup_required (no company)→ /company-setup
+ *   onboarding_incomplete      → /onboarding  (unless already there)
+ *   ready                      → allow
+ */
 export default function ProtectedRoute({ children }) {
   const { isLoadingAuth, authError, isAuthenticated, accountState, accountStateChecked } = useAuth();
+  const { pathname } = useLocation();
 
-  // Loading auth or checking account state
+  // Still loading
   if (isLoadingAuth || !accountStateChecked) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-background">
@@ -16,36 +27,33 @@ export default function ProtectedRoute({ children }) {
     );
   }
 
-  // Auth error — not authenticated
-  if (authError) {
-    return <Navigate to="/login" replace />;
-  }
-
   // Not authenticated
-  if (!isAuthenticated) {
+  if (authError || !isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
-  // Account incomplete — needs recovery
+  // No profile at all → recovery
   if (accountState === 'incomplete') {
     return <Navigate to="/account-recovery" replace />;
   }
 
-  // Setup required — needs onboarding
+  // Has profile but no company → company setup
   if (accountState === 'setup_required') {
+    return <Navigate to="/company-setup" replace />;
+  }
+
+  // Has profile + company but onboarding not complete → onboarding
+  if (accountState === 'onboarding_incomplete') {
+    // Avoid redirect loop if somehow ProtectedRoute wraps onboarding itself
+    if (pathname === '/onboarding') return children;
     return <Navigate to="/onboarding" replace />;
   }
 
-  // Ready — allow access
+  // Fully ready → allow
   if (accountState === 'ready') {
     return children;
   }
 
-  // Any other state (unknown/null) — redirect to auth-check
-  if (accountState) {
-    return <Navigate to="/auth-check" replace />;
-  }
-
-  // Default: redirect to login for safety
-  return <Navigate to="/login" replace />;
+  // Unknown → recovery
+  return <Navigate to="/account-recovery" replace />;
 }

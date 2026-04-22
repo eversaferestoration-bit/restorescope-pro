@@ -55,8 +55,8 @@ export const AuthProvider = ({ children }) => {
       // Check onboarding status
       if (profile.onboarding_status && profile.onboarding_status !== 'onboarding_completed') {
         console.log('[AuthContext] Onboarding incomplete — state:', profile.onboarding_status);
-        setAccountState('incomplete');
-        return 'incomplete';
+        setAccountState('onboarding_incomplete');
+        return 'onboarding_incomplete';
       }
 
       console.log('[AuthContext] Account state is READY');
@@ -64,8 +64,9 @@ export const AuthProvider = ({ children }) => {
       return 'ready';
     } catch (err) {
       console.error('[AuthContext] Account state check failed:', err?.message || err);
-      setAccountState('incomplete');
-      return 'incomplete';
+      // Don't block access on transient errors — treat as ready and let pages handle their own errors
+      setAccountState('ready');
+      return 'ready';
     }
   };
 

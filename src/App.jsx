@@ -42,6 +42,8 @@ import BetaAdmin from '@/pages/BetaAdmin';
 import BetaManagement from '@/pages/BetaManagement';
 import BetaUsers from '@/pages/BetaUsers';
 import AccountRecovery from '@/pages/AccountRecovery';
+import CompanySetup from '@/pages/CompanySetup';
+import Unauthorized from '@/pages/Unauthorized';
 import Terms from '@/pages/Terms';
 
 
@@ -81,21 +83,18 @@ const AuthenticatedApp = () => {
       {/* Account recovery — public, handles partial signup states */}
       <Route path="/account-recovery" element={<AccountRecovery />} />
 
+      {/* Company setup — accessible without full account state (user has auth but no company yet) */}
+      <Route path="/company-setup" element={<CompanySetup />} />
+
+      {/* Unauthorized */}
+      <Route path="/unauthorized" element={<Unauthorized />} />
+
       {/* Public legal pages */}
       <Route path="/privacy" element={<Privacy />} />
       <Route path="/terms" element={<Terms />} />
 
-      {/* Onboarding — protected but outside app shell */}
-      <Route
-        path="/onboarding"
-        element={
-          <ProtectedRoute>
-            <PageTransition>
-              <Onboarding />
-            </PageTransition>
-          </ProtectedRoute>
-        }
-      />
+      {/* Onboarding — semi-public: requires auth but allows incomplete account state */}
+      <Route path="/onboarding" element={<PageTransition><Onboarding /></PageTransition>} />
 
       {/* Protected app routes with shared layout */}
       <Route
@@ -126,6 +125,7 @@ const AuthenticatedApp = () => {
         <Route path="/beta-users" element={<PageTransition><BetaUsers /></PageTransition>} />
       </Route>
 
+      <Route path="/not-found" element={<PageNotFound />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

@@ -31,7 +31,7 @@ const STEP_STATUS = {
 
 export default function Onboarding() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isLoadingAuth, isAuthenticated } = useAuth();
 
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -70,6 +70,13 @@ export default function Onboarding() {
       showSaved();
     } catch (e) { /* silent */ }
   }, [userProfileId]);
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!isLoadingAuth && !isAuthenticated) {
+      navigate('/login', { replace: true });
+    }
+  }, [isLoadingAuth, isAuthenticated]);
 
   // Save progress before tab close
   useEffect(() => {
