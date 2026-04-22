@@ -86,7 +86,6 @@
   },
   "required": [
     "user_id",
-    "company_id",
     "email"
   ],
   "rls": {
