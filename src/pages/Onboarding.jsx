@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
+
 import { Droplets, CheckCircle2 } from 'lucide-react';
 import OnboardingProgressBar from '@/components/onboarding/OnboardingProgressBar';
 import Step1Welcome from '@/components/onboarding/Step1Welcome';
@@ -31,7 +32,7 @@ const STEP_STATUS = {
 
 export default function Onboarding() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, refreshUserProfile } = useAuth();
 
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -280,31 +281,28 @@ export default function Onboarding() {
     }
   };
 
+  // Mark onboarding complete and refresh context before navigating
+  const completeOnboarding = async () => {
+    if (userProfileId) {
+      await base44.entities.UserProfile.update(userProfileId, {
+        onboarding_status: 'onboarding_completed',
+        onboarding_completed_at: new Date().toISOString(),
+        current_onboarding_step: 6,
+      }).catch(() => {});
+    }
+    // Refresh AuthContext so needsOnboarding flips to false before we navigate
+    await refreshUserProfile().catch(() => {});
+  };
+
   // Step 5: create first job — mark onboarding complete so ProtectedRoute never loops back
   const handleCreateFirstJob = async () => {
-    try {
-      if (userProfileId) {
-        await base44.entities.UserProfile.update(userProfileId, {
-          onboarding_status: 'onboarding_completed',
-          onboarding_completed_at: new Date().toISOString(),
-          current_onboarding_step: 6,
-        });
-      }
-    } catch (e) { /* silent */ }
+    await completeOnboarding();
     navigate('/jobs/new', { replace: true });
   };
 
   // Step 5: skip to dashboard
   const handleSkip = async () => {
-    try {
-      if (userProfileId) {
-        await base44.entities.UserProfile.update(userProfileId, {
-          onboarding_status: 'onboarding_completed',
-          onboarding_completed_at: new Date().toISOString(),
-          current_onboarding_step: 6,
-        });
-      }
-    } catch (e) { /* silent */ }
+    await completeOnboarding();
     navigate('/dashboard', { replace: true });
   };
 
