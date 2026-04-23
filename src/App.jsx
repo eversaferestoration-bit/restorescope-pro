@@ -62,6 +62,8 @@ const AuthenticatedApp = () => {
     return <UserNotRegisteredError />;
   }
 
+  // network_error is handled inside ProtectedRoute per-route — don't block public routes here
+
   return (
     <Routes>
       {/* Public routes */}

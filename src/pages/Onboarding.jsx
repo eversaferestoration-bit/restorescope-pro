@@ -122,8 +122,9 @@ export default function Onboarding() {
             }
           }
         }
-      } catch (e) { /* start fresh */ }
-      finally { setInitializing(false); }
+      } catch (e) {
+        console.error('[Onboarding] Resume failed — starting fresh:', e?.message);
+      } finally { setInitializing(false); }
     };
     resume();
   }, [user?.id]);
