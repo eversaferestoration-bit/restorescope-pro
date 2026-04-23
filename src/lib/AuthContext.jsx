@@ -63,6 +63,8 @@ export const AuthProvider = ({ children }) => {
     try {
       const currentUser = await withRetry(() => base44.auth.me(), 3, 300);
       console.log('[AuthContext] ✅ Session verified:', normalizeEmail(currentUser?.email || ''), '| id:', currentUser?.id);
+      // Reset session start clock on every successful auth (login or page reload)
+      localStorage.setItem('base44_session_start', Date.now().toString());
       setUser(currentUser);
       await loadUserProfile(currentUser, 2);
 
@@ -156,6 +158,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     console.log('[AuthContext] 🚪 Logging out…');
+    localStorage.removeItem('base44_session_start');
     setUser(null);
     setUserProfile(null);
     setAuthError(null);
