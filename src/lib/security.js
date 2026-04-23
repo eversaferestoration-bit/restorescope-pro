@@ -203,26 +203,14 @@ export function validateAction(user, action) {
 }
 
 /**
- * Validate session is not expired
- * @param {Object} user - User object with created_date
- * @throws {Response} 401 if session expired
+ * validateSession — REMOVED.
+ * Previously used user.created_date as session start, which always expired
+ * for accounts older than 8 hours. Session validity is managed by the
+ * platform token (JWT expiry). Do not call this function.
  */
-export function validateSession(user) {
-  if (!user?.created_date) {
-    return; // Can't validate without timestamp
-  }
-  
-  const sessionStart = new Date(user.created_date);
-  const now = new Date();
-  const sessionAge = now - sessionStart;
-  
-  if (sessionAge > SESSION_CONFIG.MAX_AGE_MS) {
-    throw Response.json({ 
-      error: 'Session expired', 
-      type: 'session_expired',
-      message: 'Your session has expired. Please log in again.' 
-    }, { status: 401 });
-  }
+export function validateSession(_user) {
+  // No-op: session validation is handled by the platform token.
+  // Calling base44.auth.me() returning a user IS the session check.
 }
 
 /**
