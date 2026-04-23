@@ -31,37 +31,26 @@ function UsageBar({ label, used, limit, color }) {
 export default function UsageStatsWidget() {
   const { user } = useAuth();
 
-  // Usage stats — only load after auth confirmed
-  const { data: jobs = [], error: jobsError } = useQuery({
+  const { data: jobs = [] } = useQuery({
     queryKey: ['dashboard-usage-jobs'],
     queryFn: () => base44.entities.Job.filter({ is_deleted: false }),
-    enabled: !!user?.company_id,
-    staleTime: 3 * 60 * 1000,
   });
 
-  const { data: photos = [], error: photosError } = useQuery({
+  const { data: photos = [] } = useQuery({
     queryKey: ['dashboard-usage-photos'],
     queryFn: () => base44.entities.Photo.filter({ is_deleted: false }),
-    enabled: !!user?.company_id,
-    staleTime: 3 * 60 * 1000,
   });
 
-  const { data: company, error: companyError } = useQuery({
+  const { data: company } = useQuery({
     queryKey: ['dashboard-company', user?.company_id],
     queryFn: () => base44.entities.Company.filter({ id: user?.company_id, is_deleted: false }).then(r => r[0]),
     enabled: !!user?.company_id,
-    staleTime: 5 * 60 * 1000,
   });
 
   // Count jobs this month
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const monthlyJobs = jobs.filter(j => j.created_date && new Date(j.created_date) >= monthStart).length;
-
-  // Skip rendering if any critical query failed
-  if (jobsError || photosError || companyError) {
-    return null;
-  }
 
   return (
     <div className="bg-card rounded-xl border border-border">

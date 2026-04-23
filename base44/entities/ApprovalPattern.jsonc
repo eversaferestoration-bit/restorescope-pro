@@ -3,13 +3,16 @@
   "type": "object",
   "properties": {
     "region_code": {
-      "type": "string"
+      "type": "string",
+      "description": "Geographic region (anonymized)"
     },
     "loss_type": {
-      "type": "string"
+      "type": "string",
+      "description": "Type of loss"
     },
     "category": {
-      "type": "string"
+      "type": "string",
+      "description": "Scope category"
     },
     "period": {
       "type": "string",
@@ -17,24 +20,29 @@
     },
     "approval_rate": {
       "type": "number",
+      "description": "Percentage approved at first submission",
       "minimum": 0,
       "maximum": 100
     },
     "avg_reduction_percent": {
       "type": "number",
+      "description": "Average cost reduction negotiated",
       "minimum": 0,
       "maximum": 100
     },
     "avg_turnaround_hours": {
-      "type": "number"
+      "type": "number",
+      "description": "Average hours to approval"
     },
     "dispute_rate": {
       "type": "number",
+      "description": "Percentage of estimates disputed",
       "minimum": 0,
       "maximum": 100
     },
     "supplement_success_rate": {
       "type": "number",
+      "description": "Percentage of supplements approved",
       "minimum": 0,
       "maximum": 100
     },
@@ -70,23 +78,5 @@
     "region_code",
     "loss_type",
     "period"
-  ],
-  "rls": {
-    "read": {},
-    "create": {
-      "user_condition": {
-        "role": "admin"
-      }
-    },
-    "update": {
-      "user_condition": {
-        "role": "admin"
-      }
-    },
-    "delete": {
-      "user_condition": {
-        "role": "admin"
-      }
-    }
-  }
+  ]
 }

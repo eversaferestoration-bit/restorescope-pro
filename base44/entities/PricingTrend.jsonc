@@ -3,29 +3,37 @@
   "type": "object",
   "properties": {
     "region_code": {
-      "type": "string"
+      "type": "string",
+      "description": "Geographic region (anonymized)"
     },
     "loss_type": {
-      "type": "string"
+      "type": "string",
+      "description": "Type of loss (water, fire, mold, etc.)"
     },
     "service_type": {
-      "type": "string"
+      "type": "string",
+      "description": "Service type (extraction, drying, remediation)"
     },
     "category": {
-      "type": "string"
+      "type": "string",
+      "description": "Scope category"
     },
     "period": {
       "type": "string",
-      "format": "date-time"
+      "format": "date-time",
+      "description": "Period start date"
     },
     "avg_unit_price": {
-      "type": "number"
+      "type": "number",
+      "description": "Average unit price across jobs"
     },
     "median_unit_price": {
-      "type": "number"
+      "type": "number",
+      "description": "Median unit price"
     },
     "price_stddev": {
-      "type": "number"
+      "type": "number",
+      "description": "Standard deviation of pricing"
     },
     "min_price": {
       "type": "number"
@@ -35,15 +43,18 @@
     },
     "sample_size": {
       "type": "integer",
-      "default": 0
+      "default": 0,
+      "description": "Number of data points"
     },
     "price_momentum": {
-      "type": "number"
+      "type": "number",
+      "description": "Price change vs previous period (-1 to 1)"
     },
     "confidence_score": {
       "type": "number",
       "minimum": 0,
-      "maximum": 1
+      "maximum": 1,
+      "description": "Statistical confidence in data"
     },
     "is_deleted": {
       "type": "boolean",
@@ -55,23 +66,5 @@
     "loss_type",
     "category",
     "period"
-  ],
-  "rls": {
-    "read": {},
-    "create": {
-      "user_condition": {
-        "role": "admin"
-      }
-    },
-    "update": {
-      "user_condition": {
-        "role": "admin"
-      }
-    },
-    "delete": {
-      "user_condition": {
-        "role": "admin"
-      }
-    }
-  }
+  ]
 }

@@ -1,81 +1,30 @@
 /**
  * authRepair.js
  * Utilities for detecting and recovering from broken auth/profile states.
+ * Called post-login by ProtectedRoute to auto-repair missing UserProfile records.
  */
 import { base44 } from '@/api/base44Client';
 
+/**
+ * Normalize an email address: trim whitespace and convert to lowercase.
+ * @param {string} email
+ * @returns {string}
+ */
 export function normalizeEmail(email = '') {
   return email.trim().toLowerCase();
 }
 
 /**
- * Diagnose the account state for an authenticated user.
- * Returns one of:
- *   'ok'                   — fully set up
- *   'no_profile'           — auth user exists but no UserProfile
- *   'no_company'           — UserProfile exists but company missing/deleted
- *   'onboarding_incomplete'— UserProfile exists, company exists, but onboarding not done
- */
-export async function diagnoseAccountState(user) {
-  const email = normalizeEmail(user?.email || '');
-
-  // 1. Check for UserProfile — first by user_id, then fall back to email
-  let profiles = await base44.entities.UserProfile.filter(
-    { user_id: user.id, is_deleted: false }, '-created_date', 1
-  ).catch(() => []);
-
-  // Fallback: profile may exist with matching email but mismatched user_id (e.g. re-auth)
-  if (profiles.length === 0 && email) {
-    profiles = await base44.entities.UserProfile.filter(
-      { email, is_deleted: false }, '-created_date', 1
-    ).catch(() => []);
-    // If found by email, heal the user_id mismatch silently
-    if (profiles.length > 0 && profiles[0].user_id !== user.id) {
-      base44.entities.UserProfile.update(profiles[0].id, { user_id: user.id }).catch(() => {});
-    }
-  }
-
-  if (profiles.length === 0) {
-    return { state: 'no_profile', profile: null, company: null };
-  }
-
-  const profile = profiles[0];
-
-  // 2. Check onboarding completion
-  const INCOMPLETE = [
-    'account_created', 'company_started', 'company_completed',
-    'role_selected', 'pricing_profile_set',
-  ];
-
-  // 3. Check company
-  if (!profile.company_id) {
-    return { state: 'no_company', profile, company: null };
-  }
-
-  // Use get() to fetch company by id directly
-  const companyRecord = await base44.entities.Company.get(profile.company_id).catch(() => null);
-  const companies = companyRecord && !companyRecord.is_deleted ? [companyRecord] : [];
-
-  if (companies.length === 0) {
-    return { state: 'no_company', profile, company: null };
-  }
-
-  const company = companies[0];
-
-  if (INCOMPLETE.includes(profile.onboarding_status)) {
-    return { state: 'onboarding_incomplete', profile, company };
-  }
-
-  return { state: 'ok', profile, company };
-}
-
-/**
- * Repair a missing UserProfile when a company already exists for this user.
- * Safe — never deletes or overwrites existing data.
+ * If a UserProfile is missing but a matching Company exists (by created_by email),
+ * auto-create a minimal UserProfile so the user can proceed without being stuck.
+ *
+ * @param {object} user   - user object from base44.auth.me()
+ * @param {object} company - Company record found by email lookup
+ * @returns {Promise<object|null>} the created UserProfile or null on failure
  */
 export async function repairMissingUserProfile(user, company) {
   const email = normalizeEmail(user?.email || '');
-  console.log('[authRepair] Repairing UserProfile for:', email, '| company:', company?.id);
+  console.log('[authRepair] Repairing missing UserProfile for:', email, '| company:', company?.id);
   try {
     const profile = await base44.entities.UserProfile.create({
       user_id: user.id,
@@ -87,51 +36,10 @@ export async function repairMissingUserProfile(user, company) {
       current_onboarding_step: 6,
       is_deleted: false,
     });
-    console.log('[authRepair] UserProfile repaired:', profile.id);
+    console.log('[authRepair] UserProfile repaired successfully:', profile.id);
     return profile;
   } catch (e) {
-    console.error('[authRepair] Failed to repair UserProfile:', e?.message);
+    console.error('[authRepair] Failed to repair UserProfile:', e?.message || 'unknown error');
     return null;
   }
-}
-
-/**
- * Full repair: given a user, attempt to fix any partial state.
- * Returns { fixed: bool, action: string }
- */
-export async function repairPartialAccount(user) {
-  const email = normalizeEmail(user?.email || '');
-  const { state, profile, company } = await diagnoseAccountState(user);
-
-  if (state === 'ok') return { fixed: true, action: 'already_ok' };
-
-  if (state === 'no_profile') {
-    // Try to find a company created by this user's email
-    const companiesByEmail = await base44.entities.Company.filter(
-      { created_by: email, is_deleted: false }, '-created_date', 1
-    ).catch(() => []);
-
-    if (companiesByEmail.length > 0) {
-      const repaired = await repairMissingUserProfile(user, companiesByEmail[0]);
-      return { fixed: !!repaired, action: 'profile_created' };
-    }
-    // No company — user needs to go through onboarding
-    return { fixed: false, action: 'needs_onboarding' };
-  }
-
-  if (state === 'no_company') {
-    // Profile exists but company is gone — reset onboarding so user rebuilds company
-    await base44.entities.UserProfile.update(profile.id, {
-      onboarding_status: 'account_created',
-      current_onboarding_step: 1,
-      company_id: '',
-    }).catch(() => {});
-    return { fixed: false, action: 'needs_onboarding' };
-  }
-
-  if (state === 'onboarding_incomplete') {
-    return { fixed: false, action: 'needs_onboarding' };
-  }
-
-  return { fixed: false, action: 'unknown' };
 }

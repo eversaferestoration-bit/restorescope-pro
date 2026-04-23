@@ -3,36 +3,15 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 /**
  * Run pre-submission audit on an estimate version
  * Checks documentation, justification, pricing, and risk flags
- * Access: Owner_Admin and Manager only
+ * Blocks submission if critical issues exist
  */
-
-const FORBIDDEN = Response.json(
-  { success: false, message: 'Forbidden', code: 'FORBIDDEN' },
-  { status: 403 }
-);
 
 Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
-
+  
   const user = await base44.auth.me();
   if (!user) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  // Role check — read from auth context, never trust client-supplied values
-  const allowedRoles = ['admin', 'manager'];
-  if (!allowedRoles.includes(user.role)) {
-    // Log denied attempt via service role
-    base44.asServiceRole.entities.AuditLog.create({
-      company_id: user.company_id || '',
-      entity_type: 'function',
-      entity_id: 'runPreSubmissionAudit',
-      action: 'forbidden',
-      actor_email: user.email,
-      actor_id: user.id,
-      description: `Forbidden access attempt to runPreSubmissionAudit by role: ${user.role}`,
-    }).catch(() => {});
-    return FORBIDDEN;
   }
 
   try {
@@ -54,21 +33,6 @@ Deno.serve(async (req) => {
     }
 
     const estimate = estimates[0];
-
-    // Validate company access — ensure estimate belongs to caller's company
-    if (estimate.company_id && user.company_id && estimate.company_id !== user.company_id) {
-      base44.asServiceRole.entities.AuditLog.create({
-        company_id: user.company_id,
-        entity_type: 'function',
-        entity_id: 'runPreSubmissionAudit',
-        action: 'forbidden',
-        actor_email: user.email,
-        actor_id: user.id,
-        description: `Cross-company access attempt to estimate ${estimate_version_id}`,
-      }).catch(() => {});
-      return FORBIDDEN;
-    }
-
     const issues = [];
     let passStatus = true;
 
@@ -105,8 +69,13 @@ Deno.serve(async (req) => {
       let hasUnreasonablePrice = false;
 
       for (const item of estimate.line_items) {
-        if (item.line_total === 0 || item.unit_cost === 0) hasZeroCost = true;
-        if (item.unit_cost && item.unit_cost > 1000 && item.quantity > 0) hasUnreasonablePrice = true;
+        if (item.line_total === 0 || item.unit_cost === 0) {
+          hasZeroCost = true;
+        }
+        // Check for unreasonably high unit costs (> $1000)
+        if (item.unit_cost && item.unit_cost > 1000 && item.quantity > 0) {
+          hasUnreasonablePrice = true;
+        }
       }
 
       if (hasZeroCost) {
@@ -137,7 +106,7 @@ Deno.serve(async (req) => {
 
     if (defenseRecords.length > 0) {
       const defense = defenseRecords[0];
-
+      
       if (defense.defense_score && defense.defense_score < 50) {
         issues.push({
           type: 'risk',
@@ -180,6 +149,7 @@ Deno.serve(async (req) => {
       passStatus = false;
     }
 
+    // Determine if submission is blocked
     const blockSubmission = issues.some(i => i.severity === 'critical');
 
     return Response.json({
@@ -199,6 +169,9 @@ Deno.serve(async (req) => {
     });
 
   } catch (error) {
-    return Response.json({ success: false, error: error.message }, { status: 500 });
+    return Response.json({
+      success: false,
+      error: error.message,
+    }, { status: 500 });
   }
 });

@@ -12,7 +12,8 @@
         "analytics",
         "performance",
         "security"
-      ]
+      ],
+      "description": "Type of validation performed"
     },
     "status": {
       "type": "string",
@@ -21,7 +22,8 @@
         "failed",
         "partial",
         "critical"
-      ]
+      ],
+      "description": "Overall validation status"
     },
     "timestamp": {
       "type": "string",
@@ -139,7 +141,8 @@
     },
     "is_dominance_ready": {
       "type": "boolean",
-      "default": false
+      "default": false,
+      "description": "System certified dominance-ready"
     },
     "certification_notes": {
       "type": "string"
@@ -153,27 +156,5 @@
     "validation_type",
     "status",
     "timestamp"
-  ],
-  "rls": {
-    "read": {
-      "user_condition": {
-        "role": "admin"
-      }
-    },
-    "create": {
-      "user_condition": {
-        "role": "admin"
-      }
-    },
-    "update": {
-      "user_condition": {
-        "role": "admin"
-      }
-    },
-    "delete": {
-      "user_condition": {
-        "role": "admin"
-      }
-    }
-  }
+  ]
 }

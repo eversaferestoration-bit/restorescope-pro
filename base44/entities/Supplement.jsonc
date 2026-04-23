@@ -20,12 +20,92 @@
     "status": {
       "type": "string",
       "enum": [
-        "draft",
-        "pending_review",
+        "pending",
+        "generated",
+        "submitted",
         "approved",
         "rejected"
       ],
-      "default": "draft"
+      "default": "pending"
+    },
+    "missing_scope_items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "estimated_cost": {
+            "type": "number"
+          },
+          "justification": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "underpriced_items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "original_unit_cost": {
+            "type": "number"
+          },
+          "recommended_unit_cost": {
+            "type": "number"
+          },
+          "justification": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "new_damage_items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "number"
+          },
+          "estimated_cost": {
+            "type": "number"
+          },
+          "justification": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "supplement_delta": {
+      "type": "number",
+      "default": 0
+    },
+    "analysis_summary": {
+      "type": "string"
     },
     "created_by": {
       "type": "string"
@@ -42,33 +122,6 @@
   "required": [
     "company_id",
     "job_id",
-    "original_estimate_id",
-    "supplement_estimate_id"
-  ],
-  "rls": {
-    "read": {
-      "data.company_id": "{{user.company_id}}"
-    },
-    "create": {
-      "data.company_id": "{{user.company_id}}"
-    },
-    "update": {
-      "data.company_id": "{{user.company_id}}"
-    },
-    "delete": {
-      "data.company_id": "{{user.company_id}}",
-      "$or": [
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        },
-        {
-          "user_condition": {
-            "role": "manager"
-          }
-        }
-      ]
-    }
-  }
+    "original_estimate_id"
+  ]
 }

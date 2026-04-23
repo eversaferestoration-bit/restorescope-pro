@@ -64,21 +64,6 @@
       "type": "string",
       "format": "date-time"
     },
-    "accepted_terms": {
-      "type": "boolean",
-      "default": false,
-      "description": "User accepted Terms of Service"
-    },
-    "accepted_privacy_policy": {
-      "type": "boolean",
-      "default": false,
-      "description": "User accepted Privacy Policy"
-    },
-    "legal_accepted_at": {
-      "type": "string",
-      "format": "date-time",
-      "description": "Timestamp when legal documents were accepted"
-    },
     "is_deleted": {
       "type": "boolean",
       "default": false
@@ -86,62 +71,7 @@
   },
   "required": [
     "user_id",
+    "company_id",
     "email"
-  ],
-  "rls": {
-    "read": {
-      "$or": [
-        {
-          "data.user_id": "{{user.id}}"
-        },
-        {
-          "$and": [
-            {
-              "data.company_id": "{{user.company_id}}"
-            },
-            {
-              "$or": [
-                {
-                  "user_condition": {
-                    "role": "admin"
-                  }
-                },
-                {
-                  "user_condition": {
-                    "role": "manager"
-                  }
-                }
-              ]
-            }
-          ]
-        }
-      ]
-    },
-    "create": {},
-    "update": {
-      "$or": [
-        {
-          "data.user_id": "{{user.id}}"
-        },
-        {
-          "$and": [
-            {
-              "data.company_id": "{{user.company_id}}"
-            },
-            {
-              "user_condition": {
-                "role": "admin"
-              }
-            }
-          ]
-        }
-      ]
-    },
-    "delete": {
-      "data.company_id": "{{user.company_id}}",
-      "user_condition": {
-        "role": "admin"
-      }
-    }
-  }
+  ]
 }

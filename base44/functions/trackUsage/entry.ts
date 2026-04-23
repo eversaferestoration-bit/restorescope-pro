@@ -3,34 +3,15 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 /**
  * Tracks usage for billing and overage calculations.
  * Called when AI analyses are performed, jobs are created, etc.
- * Access: Owner_Admin only (billing-sensitive writes).
  */
-
-const FORBIDDEN = Response.json(
-  { success: false, message: 'Forbidden', code: 'FORBIDDEN' },
-  { status: 403 }
-);
 
 Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
-
+  
+  // Authentication
   const user = await base44.auth.me();
   if (!user) {
     return Response.json({ error: 'Unauthorized', type: 'auth_required' }, { status: 401 });
-  }
-
-  // Only Owner_Admin may modify usage/billing statistics
-  if (user.role !== 'admin') {
-    base44.asServiceRole.entities.AuditLog.create({
-      company_id: user.company_id || '',
-      entity_type: 'function',
-      entity_id: 'trackUsage',
-      action: 'forbidden',
-      actor_email: user.email,
-      actor_id: user.id,
-      description: `Forbidden access attempt to trackUsage by role: ${user.role}`,
-    }).catch(() => {});
-    return FORBIDDEN;
   }
 
   const body = await req.json();
@@ -40,20 +21,6 @@ Deno.serve(async (req) => {
     return Response.json({ error: 'company_id and usage_type required' }, { status: 400 });
   }
 
-  // Validate same-company access — admin can only track their own company
-  if (user.company_id && company_id !== user.company_id) {
-    base44.asServiceRole.entities.AuditLog.create({
-      company_id: user.company_id,
-      entity_type: 'function',
-      entity_id: 'trackUsage',
-      action: 'forbidden',
-      actor_email: user.email,
-      actor_id: user.id,
-      description: `Cross-company usage tracking attempt for company ${company_id}`,
-    }).catch(() => {});
-    return FORBIDDEN;
-  }
-
   // Get current subscription
   const subscriptions = await base44.asServiceRole.entities.Subscription.filter({
     company_id,
@@ -61,10 +28,11 @@ Deno.serve(async (req) => {
   }, '-created_date', 1);
 
   if (!subscriptions.length) {
-    return Response.json({
-      tracked: true,
+    // No subscription - track as free tier usage
+    return Response.json({ 
+      tracked: true, 
       subscription_required: true,
-      message: 'No active subscription found'
+      message: 'No active subscription found' 
     });
   }
 
@@ -82,11 +50,8 @@ Deno.serve(async (req) => {
 
   // Get or create current usage record
   const now = new Date();
-  const periodStart = subscription.current_period_start
-    ? new Date(subscription.current_period_start)
-    : new Date(now.getFullYear(), now.getMonth(), 1);
-  const periodEnd = subscription.current_period_end
-    || new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  const periodStart = subscription.current_period_start ? new Date(subscription.current_period_start) : new Date(now.getFullYear(), now.getMonth(), 1);
+  const periodEnd = subscription.current_period_end || new Date(now.getFullYear(), now.getMonth() + 1, 0);
 
   let usageRecords = await base44.asServiceRole.entities.UsageRecord.filter({
     subscription_id: subscription.id,
@@ -98,6 +63,7 @@ Deno.serve(async (req) => {
   let usageRecord = usageRecords[0];
 
   if (!usageRecord) {
+    // Create new usage record for this period
     usageRecord = await base44.asServiceRole.entities.UsageRecord.create({
       company_id,
       subscription_id: subscription.id,
@@ -110,16 +76,19 @@ Deno.serve(async (req) => {
     });
   }
 
+  // Update usage based on type
   let overage = 0;
   let overage_charge = 0;
 
   if (usage_type === 'job') {
     const newJobsUsed = (usageRecord.jobs_used || 0) + amount;
     const jobsLimit = usageRecord.jobs_limit || 10;
+    
     await base44.asServiceRole.entities.UsageRecord.update(usageRecord.id, {
       jobs_used: newJobsUsed,
       overage_jobs: Math.max(0, newJobsUsed - jobsLimit),
     });
+
     if (newJobsUsed > jobsLimit) {
       overage = newJobsUsed - jobsLimit;
       overage_charge = overage * (plan?.overage_job_price || 5);
@@ -127,10 +96,12 @@ Deno.serve(async (req) => {
   } else if (usage_type === 'ai_analysis') {
     const newAiUsed = (usageRecord.ai_analyses_used || 0) + amount;
     const aiLimit = usageRecord.ai_analyses_limit || 50;
+    
     await base44.asServiceRole.entities.UsageRecord.update(usageRecord.id, {
       ai_analyses_used: newAiUsed,
       overage_ai: Math.max(0, newAiUsed - aiLimit),
     });
+
     if (newAiUsed > aiLimit) {
       overage = newAiUsed - aiLimit;
       overage_charge = overage * (plan?.overage_ai_price || 2);
@@ -141,14 +112,15 @@ Deno.serve(async (req) => {
     });
   }
 
+  // Calculate total overage charges
   const currentOverageJobs = usageRecord.overage_jobs || 0;
   const currentOverageAi = usageRecord.overage_ai || 0;
-  const totalOverageCharges = (currentOverageJobs * (plan?.overage_job_price || 5)) +
+  const totalOverageCharges = (currentOverageJobs * (plan?.overage_job_price || 5)) + 
                                (currentOverageAi * (plan?.overage_ai_price || 2));
 
   await base44.asServiceRole.entities.UsageRecord.update(usageRecord.id, {
     overage_charges: totalOverageCharges,
-    total_charges: totalOverageCharges,
+    total_charges: totalOverageCharges, // In production, add base subscription price
   });
 
   return Response.json({
@@ -158,8 +130,6 @@ Deno.serve(async (req) => {
     overage_charge,
     total_overage_charges: totalOverageCharges,
     limit_reached: overage > 0,
-    message: overage > 0
-      ? `Limit exceeded. ${overage} overage units ($${overage_charge.toFixed(2)})`
-      : 'Usage tracked successfully',
+    message: overage > 0 ? `Limit exceeded. ${overage} overage units ($${overage_charge.toFixed(2)})` : 'Usage tracked successfully',
   });
 });

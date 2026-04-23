@@ -9,8 +9,14 @@ Deno.serve(async (req) => {
   if (!estimate_version_id) return Response.json({ error: 'estimate_version_id required' }, { status: 400 });
 
   // Load estimate draft
-  const draft = await base44.asServiceRole.entities.EstimateDraft.get(estimate_version_id).catch(() => null);
-  if (!draft || draft.is_deleted) return Response.json({ error: 'Estimate not found' }, { status: 404 });
+  let drafts;
+  try {
+    drafts = await base44.asServiceRole.entities.EstimateDraft.filter({ id: estimate_version_id, is_deleted: false });
+  } catch {
+    return Response.json({ error: 'Estimate not found' }, { status: 404 });
+  }
+  if (!drafts.length) return Response.json({ error: 'Estimate not found' }, { status: 404 });
+  const draft = drafts[0];
 
   // Auth: company membership
   if (user.role !== 'admin') {
@@ -19,8 +25,8 @@ Deno.serve(async (req) => {
   }
 
   // Load supporting data in parallel
-  const [job, scopeItems, photos, moistureReadings, envReadings, observations] = await Promise.all([
-    base44.asServiceRole.entities.Job.get(draft.job_id).catch(() => null),
+  const [jobs, scopeItems, photos, moistureReadings, envReadings, observations] = await Promise.all([
+    base44.asServiceRole.entities.Job.filter({ id: draft.job_id, is_deleted: false }),
     base44.asServiceRole.entities.ScopeItem.filter({ job_id: draft.job_id, is_deleted: false }),
     base44.asServiceRole.entities.Photo.filter({ job_id: draft.job_id, is_deleted: false }),
     base44.asServiceRole.entities.MoistureReading.filter({ job_id: draft.job_id, is_deleted: false }),
@@ -28,7 +34,8 @@ Deno.serve(async (req) => {
     base44.asServiceRole.entities.Observation.filter({ job_id: draft.job_id, is_deleted: false }),
   ]);
 
-  if (!job || job.is_deleted) return Response.json({ error: 'Job not found' }, { status: 404 });
+  if (!jobs.length) return Response.json({ error: 'Job not found' }, { status: 404 });
+  const job = jobs[0];
 
   const confirmedScope = scopeItems.filter(s => s.status === 'confirmed');
   const rejectedScope = scopeItems.filter(s => s.status === 'rejected');

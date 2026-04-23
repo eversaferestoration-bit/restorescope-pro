@@ -1,6 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { normalizeEmail, diagnoseAccountState } from '@/lib/authRepair';
+import { normalizeEmail } from '@/lib/authRepair';
 
 const AuthContext = createContext();
 
@@ -11,46 +11,21 @@ export const AuthProvider = ({ children }) => {
   const [isLoadingPublicSettings, setIsLoadingPublicSettings] = useState(false);
   const [authError, setAuthError] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
-  const [accountState, setAccountState] = useState(null); // 'incomplete', 'setup_required', 'ready'
-  const [accountStateChecked, setAccountStateChecked] = useState(false);
 
   useEffect(() => {
     checkUserAuth();
   }, []);
-
-  // Validate required account records — delegates to diagnoseAccountState for email-fallback healing
-  const checkAccountState = async (authUser) => {
-    if (!authUser) return null;
-    try {
-      const { state } = await diagnoseAccountState(authUser);
-      console.log('[AuthContext] Account state:', state);
-      const stateMap = {
-        ok: 'ready',
-        no_profile: 'incomplete',
-        no_company: 'setup_required',
-        onboarding_incomplete: 'onboarding_incomplete',
-      };
-      const mapped = stateMap[state] || 'ready';
-      setAccountState(mapped);
-      return mapped;
-    } catch (err) {
-      console.error('[AuthContext] Account state check failed:', err?.message || err);
-      setAccountState('ready');
-      return 'ready';
-    }
-  };
 
   const checkUserAuth = async () => {
     setIsLoadingAuth(true);
     setAuthError(null);
     try {
       const currentUser = await base44.auth.me();
+      // Log normalized email for debugging
       const normalizedEmail = normalizeEmail(currentUser?.email || '');
       console.log('[AuthContext] User loaded. Email (normalized):', normalizedEmail, '| Role:', currentUser?.role);
       setUser(currentUser);
       setIsAuthenticated(true);
-      // Check account state (includes repair logic via diagnoseAccountState)
-      await checkAccountState(currentUser);
     } catch (error) {
       setUser(null);
       setIsAuthenticated(false);
@@ -65,7 +40,6 @@ export const AuthProvider = ({ children }) => {
       // For other errors (network, etc.) don't set authError — let the app render normally
     } finally {
       setIsLoadingAuth(false);
-      setAccountStateChecked(true);
       setAuthChecked(true);
     }
   };
@@ -88,8 +62,6 @@ export const AuthProvider = ({ children }) => {
       isLoadingPublicSettings,
       authError,
       authChecked,
-      accountState,
-      accountStateChecked,
       logout,
       navigateToLogin,
       checkUserAuth,

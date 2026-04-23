@@ -37,7 +37,7 @@
       "items": {
         "type": "string"
       },
-      "description": "Allowed roles for this key"
+      "description": "Allowed roles for this key (e.g., ['admin', 'manager'])"
     },
     "rate_limit_override": {
       "type": "integer",
@@ -56,67 +56,5 @@
     "company_id",
     "name",
     "key"
-  ],
-  "rls": {
-    "read": {
-      "data.company_id": "{{user.company_id}}",
-      "$or": [
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        },
-        {
-          "user_condition": {
-            "role": "manager"
-          }
-        }
-      ]
-    },
-    "create": {
-      "data.company_id": "{{user.company_id}}",
-      "$or": [
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        },
-        {
-          "user_condition": {
-            "role": "manager"
-          }
-        }
-      ]
-    },
-    "update": {
-      "data.company_id": "{{user.company_id}}",
-      "$or": [
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        },
-        {
-          "user_condition": {
-            "role": "manager"
-          }
-        }
-      ]
-    },
-    "delete": {
-      "data.company_id": "{{user.company_id}}",
-      "$or": [
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        },
-        {
-          "user_condition": {
-            "role": "manager"
-          }
-        }
-      ]
-    }
-  }
+  ]
 }

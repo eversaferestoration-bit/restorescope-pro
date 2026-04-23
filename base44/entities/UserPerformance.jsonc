@@ -25,21 +25,25 @@
     },
     "estimate_accuracy_percent": {
       "type": "number",
+      "description": "Accuracy of estimates (approved_amount / requested_amount)",
       "minimum": 0,
       "maximum": 100
     },
     "approval_rate_percent": {
       "type": "number",
+      "description": "Percentage of estimates approved on first submission",
       "minimum": 0,
       "maximum": 100
     },
     "supplement_success_percent": {
       "type": "number",
+      "description": "Percentage of supplements that were approved",
       "minimum": 0,
       "maximum": 100
     },
     "avg_turnaround_hours": {
-      "type": "number"
+      "type": "number",
+      "description": "Average hours from estimate creation to approval"
     },
     "estimates_created": {
       "type": "integer",
@@ -80,40 +84,5 @@
     "user_email",
     "period_start",
     "period_end"
-  ],
-  "rls": {
-    "read": {
-      "data.company_id": "{{user.company_id}}",
-      "$or": [
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        },
-        {
-          "user_condition": {
-            "role": "manager"
-          }
-        },
-        {
-          "data.user_id": "{{user.id}}"
-        }
-      ]
-    },
-    "create": {
-      "user_condition": {
-        "role": "admin"
-      }
-    },
-    "update": {
-      "user_condition": {
-        "role": "admin"
-      }
-    },
-    "delete": {
-      "user_condition": {
-        "role": "admin"
-      }
-    }
-  }
+  ]
 }

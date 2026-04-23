@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/lib/AuthContext';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import UpgradePrompt from '@/components/UpgradePrompt';
-import DashboardSafeMode from '@/components/dashboard/DashboardSafeMode';
 import { FolderOpen, Send, Camera, CloudOff, Plus, ChevronRight, AlertCircle, Clock, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -32,18 +31,14 @@ const STATUS_COLORS = {
 };
 
 export default function Dashboard() {
-  const navigate = useNavigate();
   const { user } = useAuth();
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [onboardingStatus, setOnboardingStatus] = useState(null);
   const [companyId, setCompanyId] = useState(null);
-  const [profileError, setProfileError] = useState(null);
-  const [safeMode, setSafeMode] = useState(false);
-  const [userProfileId, setUserProfileId] = useState(null);
   const { isTrial, isExpired, daysLeft } = useTrialStatus();
   const { enterDemo } = useDemo();
 
-  // Pull-to-refresh setup — core query for all users
+  // Pull-to-refresh setup
   const dashboardQuery = useQuery({
     queryKey: ['jobs-dashboard'],
     queryFn: () => base44.entities.Job.filter({ is_deleted: false }, '-created_date', 30),
@@ -54,92 +49,39 @@ export default function Dashboard() {
   const { isRefreshing, onTouchStart, onTouchMove, onTouchEnd } = usePullToRefresh(
     () => dashboardQuery.refetch()
   );
-
-  // Safe UserProfile initialization with repair fallback
+  // Check onboarding completion for next-action banner + checklist
   useEffect(() => {
     if (!user) return;
     base44.entities.UserProfile.filter({ user_id: user.id, is_deleted: false })
       .then((profiles) => {
         if (profiles.length > 0) {
           const profile = profiles[0];
-          setUserProfileId(profile.id);
           setCompanyId(profile.company_id || null);
           const status = profile.onboarding_status;
           if (status && status !== 'onboarding_completed') {
             setOnboardingStatus(status);
           }
-          console.log('[Dashboard] UserProfile initialized:', profile.id, '| Company:', profile.company_id);
-        } else {
-          console.warn('[Dashboard] No UserProfile found for user:', user.id);
-          setProfileError('missing');
         }
       })
-      .catch((err) => {
-        console.error('[Dashboard] UserProfile query failed:', err?.message || err);
-        setProfileError('query_failed');
-        setSafeMode(true);
-      });
+      .catch(() => {});
   }, [user?.id]);
 
   // Re-use the query defined above for pull-to-refresh
-  const { data: jobs = [], isLoading, error: jobsError } = dashboardQuery;
+  const { data: jobs = [], isLoading } = dashboardQuery;
 
-  // Detect critical failures — trigger safe mode
-  useEffect(() => {
-    if (profileError === 'missing') {
-      console.log('[Dashboard] Redirecting to account-recovery due to missing profile');
-      navigate('/account-recovery');
-      return;
-    }
-    if (profileError === 'query_failed') {
-      console.warn('[Dashboard] UserProfile query failed — entering safe mode');
-      setSafeMode(true);
-      return;
-    }
-    // If profile loads but jobs query fails — show safe mode
-    if (userProfileId && jobsError) {
-      console.warn('[Dashboard] Jobs query failed — entering safe mode:', jobsError?.message);
-      setSafeMode(true);
-    }
-  }, [profileError, jobsError, userProfileId, navigate]);
-
-  // Pending approvals — allowed for all users (company-scoped via RLS)
-  // Only enable after full auth check passes
-  const { data: pendingApprovals = [], error: approvalsError } = useQuery({
+  const { data: pendingApprovals = [] } = useQuery({
     queryKey: ['dashboard-pending-approvals-count'],
     queryFn: () => base44.entities.EstimateDraft.filter({ status: 'submitted', is_deleted: false }),
-    enabled: profileError !== 'missing' && profileError !== 'query_failed' && !!userProfileId,
     staleTime: 2 * 60 * 1000,
     gcTime: 5 * 60 * 1000,
   });
 
-  if (approvalsError) console.warn('[Dashboard] Pending approvals query failed:', approvalsError?.message);
-
-  // Sync errors — allowed for all users (company-scoped via RLS)
-  // Only enable after full auth check passes
-  const { data: syncErrors = [], error: syncError } = useQuery({
+  const { data: syncErrors = [] } = useQuery({
     queryKey: ['dashboard-sync-errors-count'],
     queryFn: () => base44.entities.Photo.filter({ sync_status: 'failed', is_deleted: false }),
-    enabled: profileError !== 'missing' && profileError !== 'query_failed' && !!userProfileId,
     staleTime: 2 * 60 * 1000,
     gcTime: 5 * 60 * 1000,
   });
-
-  if (syncError) console.warn('[Dashboard] Sync errors query failed:', syncError?.message);
-
-  // Safe mode — show minimal fallback when data fails to load
-  if (safeMode) {
-    return (
-      <DashboardSafeMode
-        onRetry={() => {
-          setSafeMode(false);
-          dashboardQuery.refetch();
-        }}
-        userProfileId={userProfileId}
-        onboardingStatus={onboardingStatus}
-      />
-    );
-  }
 
   const activeJobs = jobs.filter(j => ['new', 'in_progress'].includes(j.status));
   const emergency = jobs.filter(j => j.emergency_flag && ['new', 'in_progress'].includes(j.status));
@@ -204,14 +146,7 @@ export default function Dashboard() {
       )}
 
       {/* Business metrics — this month */}
-      {jobsError ? (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-start gap-3">
-          <AlertCircle size={16} className="text-amber-600 shrink-0 mt-0.5" />
-          <p className="text-sm text-amber-700">Unable to load business metrics. Please refresh.</p>
-        </div>
-      ) : (
-        <BusinessMetrics />
-      )}
+      <BusinessMetrics />
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -327,32 +262,16 @@ export default function Dashboard() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {approvalsError ? (
-              <div className="bg-card rounded-xl border border-border p-6 flex items-start gap-3">
-                <AlertCircle size={16} className="text-amber-600 shrink-0 mt-0.5" />
-                <p className="text-sm text-muted-foreground">Unable to load pending approvals</p>
-              </div>
-            ) : (
-              <PendingApprovalsWidget />
-            )}
+            <PendingApprovalsWidget />
             <MissingPhotosWidget />
           </div>
-          {syncError ? (
-            <div className="bg-card rounded-xl border border-border p-6 flex items-start gap-3">
-              <AlertCircle size={16} className="text-amber-600 shrink-0 mt-0.5" />
-              <p className="text-sm text-muted-foreground">Unable to load sync errors</p>
-            </div>
-          ) : (
-            <SyncErrorsWidget />
-          )}
+          <SyncErrorsWidget />
         </div>
 
         {/* Right col */}
         <div className="space-y-5">
-          {/* UsageStatsWidget gracefully hides on permission/query errors */}
-          {user && <UsageStatsWidget />}
-          {/* RecentActivityWidget is admin-only and gracefully hides for non-admins */}
-          {user && <RecentActivityWidget />}
+          <UsageStatsWidget />
+          <RecentActivityWidget />
         </div>
       </div>
 

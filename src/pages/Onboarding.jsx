@@ -31,7 +31,7 @@ const STEP_STATUS = {
 
 export default function Onboarding() {
   const navigate = useNavigate();
-  const { user, isLoadingAuth, isAuthenticated, checkUserAuth } = useAuth();
+  const { user } = useAuth();
 
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -83,19 +83,9 @@ export default function Onboarding() {
     return () => window.removeEventListener('beforeunload', handleUnload);
   }, [userProfileId, step]);
 
-  // Redirect to login if not authenticated (after auth finishes loading)
-  useEffect(() => {
-    if (!isLoadingAuth && !isAuthenticated) {
-      navigate('/login', { replace: true });
-    }
-  }, [isLoadingAuth, isAuthenticated]);
-
   // Resume on mount
   useEffect(() => {
-    if (!user) {
-      if (!isLoadingAuth) setInitializing(false);
-      return;
-    }
+    if (!user) return;
     const resume = async () => {
       try {
         const profiles = await base44.entities.UserProfile.filter({ user_id: user.id, is_deleted: false });
@@ -109,9 +99,8 @@ export default function Onboarding() {
             return;
           }
 
-          // Resume at saved step, minimum step 1, maximum step 5
           const savedStep = profile.current_onboarding_step || 1;
-          setStep(Math.min(Math.max(savedStep, 1), 5));
+          setStep(Math.max(savedStep, 1));
           setRole(profile.role || 'admin');
 
           if (profile.company_id) {
@@ -134,14 +123,8 @@ export default function Onboarding() {
               setPricingChoice('recommended');
             }
           }
-        } else {
-          // No profile found — user is in signup but hasn't completed onboarding
-          console.log('[Onboarding] No profile found — starting fresh onboarding');
         }
-      } catch (e) {
-        console.error('[Onboarding] Resume failed:', e?.message);
-        /* start fresh */
-      }
+      } catch (e) { /* start fresh */ }
       finally { setInitializing(false); }
     };
     resume();
@@ -221,9 +204,6 @@ export default function Onboarding() {
           setBetaActivated(true);
         }
 
-        // Pick up legal acceptance stored during signup
-        const legalAcceptedAt = sessionStorage.getItem('legal_accepted_at');
-
         const profile = await base44.entities.UserProfile.create({
           user_id: user.id,
           company_id: cId,
@@ -232,12 +212,8 @@ export default function Onboarding() {
           current_onboarding_step: 3,
           onboarding_status: 'company_completed',
           completed_steps: [1, 2],
-          accepted_terms: !!legalAcceptedAt,
-          accepted_privacy_policy: !!legalAcceptedAt,
-          legal_accepted_at: legalAcceptedAt || undefined,
           is_deleted: false,
         });
-        if (legalAcceptedAt) sessionStorage.removeItem('legal_accepted_at');
         setUserProfileId(profile.id);
         showSaved();
       } else {
@@ -304,8 +280,8 @@ export default function Onboarding() {
     }
   };
 
-  // Mark onboarding complete, refresh auth state, then navigate
-  const completeOnboarding = async (destination) => {
+  // Step 5: create first job — mark onboarding complete so ProtectedRoute never loops back
+  const handleCreateFirstJob = async () => {
     try {
       if (userProfileId) {
         await base44.entities.UserProfile.update(userProfileId, {
@@ -315,16 +291,22 @@ export default function Onboarding() {
         });
       }
     } catch (e) { /* silent */ }
-    // Refresh auth so ProtectedRoute sees 'ready' before we navigate
-    await checkUserAuth();
-    navigate(destination, { replace: true });
+    navigate('/jobs/new', { replace: true });
   };
 
-  // Step 5: create first job
-  const handleCreateFirstJob = () => completeOnboarding('/jobs/new');
-
   // Step 5: skip to dashboard
-  const handleSkip = () => completeOnboarding('/dashboard');
+  const handleSkip = async () => {
+    try {
+      if (userProfileId) {
+        await base44.entities.UserProfile.update(userProfileId, {
+          onboarding_status: 'onboarding_completed',
+          onboarding_completed_at: new Date().toISOString(),
+          current_onboarding_step: 6,
+        });
+      }
+    } catch (e) { /* silent */ }
+    navigate('/dashboard', { replace: true });
+  };
 
   if (initializing) {
     return (

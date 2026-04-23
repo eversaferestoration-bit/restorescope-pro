@@ -1,34 +1,22 @@
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Link } from 'react-router-dom';
-import { Camera, ChevronRight, AlertCircle } from 'lucide-react';
+import { Camera, ChevronRight } from 'lucide-react';
 
 export default function MissingPhotosWidget() {
-  // Get active jobs — only load after user confirmed
-  const { data: jobs = [], isLoading: loadingJobs, error: jobsError } = useQuery({
+  // Get active jobs
+  const { data: jobs = [], isLoading: loadingJobs } = useQuery({
     queryKey: ['dashboard-active-jobs-photos'],
     queryFn: () => base44.entities.Job.filter({ is_deleted: false }, '-created_date', 30),
-    staleTime: 2 * 60 * 1000,
   });
 
   // Get all photos to cross-reference
-  const { data: photos = [], isLoading: loadingPhotos, error: photosError } = useQuery({
+  const { data: photos = [], isLoading: loadingPhotos } = useQuery({
     queryKey: ['dashboard-all-photos'],
     queryFn: () => base44.entities.Photo.filter({ is_deleted: false }, '-created_date', 200),
-    staleTime: 2 * 60 * 1000,
   });
 
   const isLoading = loadingJobs || loadingPhotos;
-
-  // Gracefully handle permission errors
-  if (jobsError || photosError) {
-    return (
-      <div className="bg-card rounded-xl border border-border p-4 flex items-start gap-3">
-        <AlertCircle size={14} className="text-amber-600 shrink-0 mt-0.5" />
-        <p className="text-xs text-muted-foreground">Unable to load missing photos</p>
-      </div>
-    );
-  }
 
   const activeJobs = jobs.filter(j => ['new', 'in_progress'].includes(j.status));
   const photosPerJob = {};

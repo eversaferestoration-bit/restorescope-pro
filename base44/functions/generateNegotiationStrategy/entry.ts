@@ -20,7 +20,9 @@ Deno.serve(async (req) => {
     return Response.json({ error: 'Unauthorized', type: 'auth_required' }, { status: 401 });
   }
 
-
+  if (user.role !== 'admin' && user.role !== 'manager') {
+    return Response.json({ error: 'Forbidden', message: 'Manager or admin access required.' }, { status: 403 });
+  }
 
   const body = await req.json();
   const { estimate_version_id, adjuster_id, carrier_feedback } = body;
@@ -30,31 +32,38 @@ Deno.serve(async (req) => {
   }
 
   // Load estimate
-  const estimate = await base44.asServiceRole.entities.EstimateDraft.get(estimate_version_id).catch(() => null);
-  if (!estimate || estimate.is_deleted) {
+  const estimates = await base44.asServiceRole.entities.EstimateDraft.filter({ 
+    id: estimate_version_id, 
+    is_deleted: false 
+  });
+  
+  if (!estimates.length) {
     return Response.json({ error: 'Estimate not found' }, { status: 404 });
   }
+  
+  const estimate = estimates[0];
 
-  // Company isolation + role check via UserProfile
-  const MANAGER_ROLES = ['admin', 'manager'];
-  if (!MANAGER_ROLES.includes(user.role)) {
-    const profiles = await base44.asServiceRole.entities.UserProfile.filter({
-      user_id: user.id, company_id: estimate.company_id, is_deleted: false,
+  // Company isolation
+  if (user.role !== 'admin') {
+    const profiles = await base44.asServiceRole.entities.UserProfile.filter({ 
+      user_id: user.id, 
+      company_id: estimate.company_id, 
+      is_deleted: false 
     });
     if (!profiles.length) {
       return Response.json({ error: 'Forbidden: not a member of this company.' }, { status: 403 });
     }
-    const profileRole = profiles[0].role || '';
-    if (!MANAGER_ROLES.includes(profileRole)) {
-      return Response.json({ error: 'Forbidden: Manager or admin access required.' }, { status: 403 });
-    }
   }
 
-  // Load job
-  const job = await base44.asServiceRole.entities.Job.get(estimate.job_id).catch(() => null);
-  if (!job || job.is_deleted) {
+  // Load job and related data
+  const jobs = await base44.asServiceRole.entities.Job.filter({ 
+    id: estimate.job_id, 
+    is_deleted: false 
+  });
+  if (!jobs.length) {
     return Response.json({ error: 'Job not found' }, { status: 404 });
   }
+  const job = jobs[0];
 
   // Load adjuster behavior if adjuster_id provided
   let adjusterBehavior = null;

@@ -33,15 +33,14 @@ export default function Login() {
 
   const handleSignIn = () => {
     setEmailError('');
-    const trimmed = email.trim().toLowerCase();
+    const trimmed = email.trim();
 
     if (trimmed && !EMAIL_REGEX.test(trimmed)) {
       setEmailError('Enter a valid email address.');
       return;
     }
 
-    // Pass email as hint so the platform pre-fills the login form
-    base44.auth.redirectToLogin('/dashboard', trimmed || undefined);
+    base44.auth.redirectToLogin('/dashboard');
   };
 
   const googleSVG = (
@@ -92,11 +91,11 @@ export default function Login() {
             )}
           </div>
 
-          {/* Forgot password — shown prominently below email */}
+          {/* Forgot password — shown prominently */}
           <div className="flex justify-end mb-4">
             <Link
               to="/forgot-password"
-              className="text-sm text-primary font-semibold hover:underline"
+              className="text-xs text-primary font-medium hover:underline"
             >
               Forgot your password?
             </Link>

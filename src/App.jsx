@@ -1,8 +1,8 @@
 import { Toaster } from "@/components/ui/toaster";
-import Privacy from '@/pages/Privacy';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClientInstance } from '@/lib/query-client';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
+import { AnimatePresence } from 'framer-motion';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import { DemoProvider } from '@/lib/DemoContext';
@@ -15,7 +15,6 @@ import PageTransition from '@/components/PageTransition';
 import Login from '@/pages/auth/Login';
 import Signup from '@/pages/auth/Signup';
 import ForgotPassword from '@/pages/auth/ForgotPassword';
-import AuthCheck from '@/pages/AuthCheck';
 
 // Client pages
 import ClientLogin from '@/pages/client/ClientLogin';
@@ -41,10 +40,6 @@ import DemoJob from '@/pages/DemoJob';
 import BetaAdmin from '@/pages/BetaAdmin';
 import BetaManagement from '@/pages/BetaManagement';
 import BetaUsers from '@/pages/BetaUsers';
-import AccountRecovery from '@/pages/AccountRecovery';
-import CompanySetup from '@/pages/CompanySetup';
-import Unauthorized from '@/pages/Unauthorized';
-import Terms from '@/pages/Terms';
 
 
 const AuthenticatedApp = () => {
@@ -74,27 +69,22 @@ const AuthenticatedApp = () => {
       <Route path="/login" element={<Login />} />
       <Route path="/signup" element={<Signup />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
-      <Route path="/auth-check" element={<AuthCheck />} />
       
       {/* Client portal routes */}
       <Route path="/client-login" element={<ClientLogin />} />
       <Route path="/client-portal" element={<ClientPortal />} />
 
-      {/* Account recovery — public, handles partial signup states */}
-      <Route path="/account-recovery" element={<AccountRecovery />} />
-
-      {/* Company setup — accessible without full account state (user has auth but no company yet) */}
-      <Route path="/company-setup" element={<CompanySetup />} />
-
-      {/* Unauthorized */}
-      <Route path="/unauthorized" element={<Unauthorized />} />
-
-      {/* Public legal pages */}
-      <Route path="/privacy" element={<Privacy />} />
-      <Route path="/terms" element={<Terms />} />
-
-      {/* Onboarding — semi-public: requires auth but allows incomplete account state */}
-      <Route path="/onboarding" element={<PageTransition><Onboarding /></PageTransition>} />
+      {/* Onboarding — protected but outside app shell */}
+      <Route
+        path="/onboarding"
+        element={
+          <ProtectedRoute>
+            <PageTransition>
+              <Onboarding />
+            </PageTransition>
+          </ProtectedRoute>
+        }
+      />
 
       {/* Protected app routes with shared layout */}
       <Route
@@ -125,7 +115,6 @@ const AuthenticatedApp = () => {
         <Route path="/beta-users" element={<PageTransition><BetaUsers /></PageTransition>} />
       </Route>
 
-      <Route path="/not-found" element={<PageNotFound />} />
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );

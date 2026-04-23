@@ -12,38 +12,47 @@
       "type": "string"
     },
     "requested_amount": {
-      "type": "number"
+      "type": "number",
+      "description": "Total requested in estimate"
     },
     "approved_amount": {
-      "type": "number"
+      "type": "number",
+      "description": "Amount approved by carrier"
     },
     "supplement_amount": {
-      "type": "number"
+      "type": "number",
+      "description": "Additional amount from supplements"
     },
     "final_amount": {
-      "type": "number"
+      "type": "number",
+      "description": "Final approved amount including supplements"
     },
     "win_rate_percent": {
       "type": "number",
+      "description": "Approved/Requested percentage (0-100)",
       "minimum": 0,
       "maximum": 100
     },
     "supplement_count": {
       "type": "integer",
-      "default": 0
+      "default": 0,
+      "description": "Number of supplements filed"
     },
     "supplements_approved": {
       "type": "integer",
-      "default": 0
+      "default": 0,
+      "description": "Number of supplements approved"
     },
     "supplement_success_rate": {
       "type": "number",
+      "description": "Supplements approved / supplements filed percentage",
       "minimum": 0,
       "maximum": 100
     },
     "closed_date": {
       "type": "string",
-      "format": "date-time"
+      "format": "date-time",
+      "description": "Date claim was closed"
     },
     "status": {
       "type": "string",
@@ -66,19 +75,5 @@
     "company_id",
     "job_id",
     "estimate_version_id"
-  ],
-  "rls": {
-    "read": {
-      "data.company_id": "{{user.company_id}}"
-    },
-    "create": {
-      "data.company_id": "{{user.company_id}}"
-    },
-    "update": {
-      "data.company_id": "{{user.company_id}}"
-    },
-    "delete": {
-      "data.company_id": "{{user.company_id}}"
-    }
-  }
+  ]
 }

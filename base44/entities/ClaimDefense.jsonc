@@ -19,74 +19,19 @@
     "risk_flags": {
       "type": "array",
       "items": {
-        "type": "object",
-        "properties": {
-          "category": {
-            "type": "string"
-          },
-          "description": {
-            "type": "string"
-          },
-          "severity": {
-            "type": "string",
-            "enum": [
-              "low",
-              "medium",
-              "high"
-            ]
-          },
-          "line_item_ids": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        }
+        "type": "string"
       }
     },
     "missing_documentation": {
       "type": "array",
       "items": {
-        "type": "object",
-        "properties": {
-          "area": {
-            "type": "string"
-          },
-          "description": {
-            "type": "string"
-          },
-          "impact": {
-            "type": "string",
-            "enum": [
-              "low",
-              "medium",
-              "high"
-            ]
-          }
-        }
+        "type": "string"
       }
     },
     "recommended_actions": {
       "type": "array",
       "items": {
-        "type": "object",
-        "properties": {
-          "priority": {
-            "type": "string",
-            "enum": [
-              "low",
-              "medium",
-              "high",
-              "critical"
-            ]
-          },
-          "action": {
-            "type": "string"
-          },
-          "rationale": {
-            "type": "string"
-          }
-        }
+        "type": "string"
       }
     },
     "carrier_pushback_risk": {
@@ -97,35 +42,14 @@
         "high"
       ]
     },
-    "analysis_summary": {
-      "type": "string"
-    },
     "created_at": {
       "type": "string",
       "format": "date-time"
-    },
-    "is_deleted": {
-      "type": "boolean",
-      "default": false
     }
   },
   "required": [
     "company_id",
     "job_id",
     "estimate_version_id"
-  ],
-  "rls": {
-    "read": {
-      "data.company_id": "{{user.company_id}}"
-    },
-    "create": {
-      "data.company_id": "{{user.company_id}}"
-    },
-    "update": {
-      "data.company_id": "{{user.company_id}}"
-    },
-    "delete": {
-      "data.company_id": "{{user.company_id}}"
-    }
-  }
+  ]
 }

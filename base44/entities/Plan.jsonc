@@ -42,10 +42,12 @@
       }
     },
     "overage_job_price": {
-      "type": "number"
+      "type": "number",
+      "description": "Price per additional job beyond limit"
     },
     "overage_ai_price": {
-      "type": "number"
+      "type": "number",
+      "description": "Price per additional AI analysis beyond limit"
     },
     "premium_analytics": {
       "type": "boolean",
@@ -68,23 +70,5 @@
     "name",
     "code",
     "tier"
-  ],
-  "rls": {
-    "read": {},
-    "create": {
-      "user_condition": {
-        "role": "admin"
-      }
-    },
-    "update": {
-      "user_condition": {
-        "role": "admin"
-      }
-    },
-    "delete": {
-      "user_condition": {
-        "role": "admin"
-      }
-    }
-  }
+  ]
 }

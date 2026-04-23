@@ -1,32 +1,49 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Droplets, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { Droplets, ArrowLeft, CheckCircle } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+const getErrorMessage = (err) => {
+  if (!err) return null;
+  if (typeof err === 'string') return err;
+  if (typeof err === 'object') {
+    const msg = err.message || '';
+    if (msg.toLowerCase().includes('not found') || msg.toLowerCase().includes('no user')) {
+      return 'No account found for this email.';
+    }
+    return msg || 'Something went wrong. Please try again.';
+  }
+  return 'Something went wrong. Please try again.';
+};
+
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
-  const [validationError, setValidationError] = useState('');
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setValidationError('');
-    const normalized = email.trim().toLowerCase();
-    if (!EMAIL_REGEX.test(normalized)) {
-      setValidationError('Enter a valid email address.');
+    setError('');
+    if (!EMAIL_REGEX.test(email.trim())) {
+      setError('Enter a valid email address.');
       return;
     }
     setLoading(true);
     try {
-      await base44.auth.forgotPassword(normalized);
-    } catch {
-      // Intentionally swallow — never reveal whether email exists
+      await base44.auth.forgotPassword(email.trim().toLowerCase());
+      setSent(true);
+    } catch (err) {
+      const msg = typeof err === 'string' ? err : (err?.message || '');
+      if (msg.toLowerCase().includes('not found') || msg.toLowerCase().includes('no user')) {
+        setError('No account found for this email.');
+      } else {
+        setError('Could not send reset email. Please try again.');
+      }
     } finally {
       setLoading(false);
-      setSent(true); // Always show confirmation regardless of outcome
     }
   };
 
@@ -44,11 +61,11 @@ export default function ForgotPassword() {
           {sent ? (
             <div className="text-center py-4">
               <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
-                <CheckCircle2 size={24} className="text-green-600" />
+                <CheckCircle size={24} className="text-green-600" />
               </div>
               <h2 className="text-xl font-semibold font-display mb-2">Check your email</h2>
               <p className="text-sm text-muted-foreground mb-6">
-                If <strong>{email.trim().toLowerCase()}</strong> is registered, a password reset link has been sent. Check your inbox and spam folder.
+                We've sent a password reset link to <strong>{email}</strong>.
               </p>
               <Link
                 to="/login"
@@ -64,9 +81,9 @@ export default function ForgotPassword() {
                 Enter your email and we'll send you a reset link.
               </p>
 
-              {validationError && (
+              {error && (
                 <div className="mb-4 px-3 py-2.5 rounded-lg bg-destructive/10 text-destructive text-sm">
-                  {validationError}
+                  {getErrorMessage(error)}
                 </div>
               )}
 
