@@ -17,6 +17,15 @@ Deno.serve(async (req) => {
     return Response.json({ error: 'Forbidden: Manager or Admin access required' }, { status: 403 });
   }
 
+  // Resolve calling user's company — never query cross-tenant data
+  const callerProfiles = await base44.asServiceRole.entities.UserProfile.filter({
+    user_id: user.id, is_deleted: false,
+  });
+  if (!callerProfiles.length) {
+    return Response.json({ error: 'No company profile found' }, { status: 403 });
+  }
+  const company_id = callerProfiles[0].company_id;
+
   try {
     const body = await req.json();
     const { period_days = 30 } = body;
@@ -24,8 +33,9 @@ Deno.serve(async (req) => {
     const periodEnd = new Date();
     const periodStart = new Date(periodEnd.getTime() - period_days * 24 * 60 * 60 * 1000);
 
-    // Fetch all estimates in period
+    // Scoped to calling user's company only
     const allEstimates = await base44.asServiceRole.entities.EstimateDraft.filter({
+      company_id,
       is_deleted: false,
     });
 
@@ -34,13 +44,15 @@ Deno.serve(async (req) => {
       return createdDate >= periodStart && createdDate <= periodEnd;
     });
 
-    // Fetch all outcomes for accuracy calculation
+    // Scoped to calling user's company only
     const allOutcomes = await base44.asServiceRole.entities.ClaimOutcome.filter({
+      company_id,
       is_deleted: false,
     });
 
-    // Fetch all supplements
+    // Scoped to calling user's company only
     const allSupplements = await base44.asServiceRole.entities.Supplement.filter({
+      company_id,
       is_deleted: false,
     });
 
@@ -165,12 +177,12 @@ Deno.serve(async (req) => {
       if (existing.length > 0) {
         await base44.asServiceRole.entities.UserPerformance.update(existing[0].id, {
           ...metric,
-          company_id: user.company_id || 'default',
+          company_id,
         });
       } else {
         await base44.asServiceRole.entities.UserPerformance.create({
           ...metric,
-          company_id: user.company_id || 'default',
+          company_id,
         });
       }
     }

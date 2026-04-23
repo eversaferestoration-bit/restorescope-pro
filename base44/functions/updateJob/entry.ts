@@ -24,16 +24,13 @@ Deno.serve(async (req) => {
   }
   const job = jobs[0];
 
-  // Company isolation - verify access
-  if (user.role !== 'admin') {
-    const profiles = await base44.asServiceRole.entities.UserProfile.filter({ 
-      user_id: user.id, 
-      company_id: job.company_id, 
-      is_deleted: false 
-    });
-    if (!profiles.length) {
-      return Response.json({ error: 'Forbidden', message: 'Access denied: not a member of this company.' }, { status: 403 });
-    }
+  // Company isolation — enforce regardless of role (admin is NOT cross-tenant)
+  const userProfiles = await base44.asServiceRole.entities.UserProfile.filter({
+    user_id: user.id, is_deleted: false,
+  });
+  const userCompanyId = userProfiles[0]?.company_id;
+  if (!userCompanyId || userCompanyId !== job.company_id) {
+    return Response.json({ error: 'Forbidden', message: 'Access denied: resource belongs to a different company.' }, { status: 403 });
   }
 
   // Role-based field restrictions

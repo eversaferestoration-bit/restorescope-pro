@@ -69,23 +69,20 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Company isolation - verify access (admins have universal access)
-    if (user.role !== 'admin') {
-      const profiles = await base44.asServiceRole.entities.UserProfile.filter({ 
-        user_id: user.id, 
-        company_id, 
-        is_deleted: false 
-      });
-      if (!profiles.length) {
-        return Response.json(
-          {
-            success: false,
-            message: 'You do not have access to this company',
-            code: 'ACCESS_DENIED',
-          },
-          { status: 403 }
-        );
-      }
+    // Company isolation — enforce regardless of role (admin is NOT cross-tenant)
+    const userProfiles = await base44.asServiceRole.entities.UserProfile.filter({
+      user_id: user.id, is_deleted: false,
+    });
+    const userCompanyId = userProfiles[0]?.company_id;
+    if (!userCompanyId || userCompanyId !== company_id) {
+      return Response.json(
+        {
+          success: false,
+          message: 'Access denied: You do not belong to this company.',
+          code: 'ACCESS_DENIED',
+        },
+        { status: 403 }
+      );
     }
 
     const job = await base44.asServiceRole.entities.Job.create({
