@@ -136,8 +136,7 @@ export default function Onboarding() {
   };
 
   // Step 2 → 3: create/update company
-  // Atomic: Company + UserProfile are created together before any other work.
-  // Beta logic runs after linkage is established (fire-and-forget, never blocks).
+  // Atomic: Company + UserProfile are created together. Beta is awaited before advancing.
   const handleStep2Continue = async () => {
     if (!form.company_name.trim()) return;
     setLoading(true);
@@ -170,24 +169,36 @@ export default function Onboarding() {
         const company = await base44.entities.Company.create(companyData);
         cId = company.id;
 
-        // --- Step B: Create UserProfile (atomic with company — do this immediately) ---
-        const profile = await base44.entities.UserProfile.create({
-          user_id: user.id,
-          company_id: cId,
-          email: user.email,
-          role: 'admin',
-          current_onboarding_step: 3,
-          onboarding_status: 'company_completed',
-          completed_steps: [1, 2],
-          is_deleted: false,
-        });
+        // --- Step B: Create UserProfile — if this fails, rollback Company ---
+        let profile;
+        try {
+          profile = await base44.entities.UserProfile.create({
+            user_id: user.id,
+            company_id: cId,
+            email: user.email,
+            role: 'admin',
+            current_onboarding_step: 3,
+            onboarding_status: 'company_completed',
+            completed_steps: [1, 2],
+            is_deleted: false,
+          });
+        } catch (profileErr) {
+          console.error('[Onboarding] UserProfile creation failed — rolling back Company:', profileErr?.message);
+          // Rollback: soft-delete the orphaned company
+          try {
+            await base44.entities.Company.update(cId, { is_deleted: true });
+          } catch (rbErr) {
+            console.error('[Onboarding] Company rollback also failed:', rbErr?.message);
+          }
+          throw profileErr; // re-throw so outer catch shows the user-facing error
+        }
 
         // Both succeeded — commit to local state
         setCompanyId(cId);
         setUserProfileId(profile.id);
         showSaved();
 
-        // --- Step C: Beta logic (fire-and-forget, never blocks onboarding) ---
+        // --- Step C: Beta logic — awaited so company flags exist before step 3 reads data ---
         const applyBeta = async () => {
           try {
             const inviteCode = sessionStorage.getItem('beta_invite_code');
@@ -196,7 +207,7 @@ export default function Onboarding() {
               const start = new Date();
               const end = new Date(start);
               end.setDate(end.getDate() + 14);
-              await base44.asServiceRole.entities.Company.update(cId, {
+              await base44.entities.Company.update(cId, {
                 is_beta_user: true,
                 beta_start_date: start.toISOString().split('T')[0],
                 beta_end_date: end.toISOString().split('T')[0],
@@ -206,12 +217,12 @@ export default function Onboarding() {
               return;
             }
             if (!grantBeta) {
-              const allCompanies = await base44.asServiceRole.entities.Company.filter({ is_deleted: false });
+              const allCompanies = await base44.entities.Company.filter({ is_deleted: false });
               if (allCompanies.length <= 10) {
                 const start = new Date();
                 const end = new Date(start);
                 end.setDate(end.getDate() + 14);
-                await base44.asServiceRole.entities.Company.update(cId, {
+                await base44.entities.Company.update(cId, {
                   is_beta_user: true,
                   beta_start_date: start.toISOString().split('T')[0],
                   beta_end_date: end.toISOString().split('T')[0],
@@ -220,9 +231,13 @@ export default function Onboarding() {
                 setBetaActivated(true);
               }
             }
-          } catch { /* beta logic never blocks onboarding */ }
+          } catch (betaErr) {
+            // Beta failure is non-fatal — log but don't block advancement
+            console.warn('[Onboarding] Beta activation failed (non-fatal):', betaErr?.message);
+          }
         };
-        applyBeta(); // intentionally not awaited
+        // AWAITED — beta fields must be written before step 3 reads company data
+        await applyBeta();
 
       } else {
         // Existing company — just update fields
@@ -238,7 +253,7 @@ export default function Onboarding() {
 
       setStep(3);
     } catch (e) {
-      console.error('[Onboarding] Company creation failed:', e?.message);
+      console.error('[Onboarding] Step 2 failed:', e?.message);
       setError('Could not save company. Please try again.');
     } finally {
       setLoading(false);
@@ -291,30 +306,49 @@ export default function Onboarding() {
     }
   };
 
-  // Mark onboarding complete — persist to DB, then flip context synchronously
-  // so needsOnboarding is false before navigation (no round-trip race).
+  // Mark onboarding complete — DB write MUST succeed before local state flips.
+  // This prevents a partial-failure from leaving needsOnboarding=false in context
+  // while the DB still shows an incomplete status (which would loop the user on reload).
   const completeOnboarding = async () => {
     if (userProfileId) {
+      // Await the DB write — do NOT catch silently; let the caller surface the error.
       await base44.entities.UserProfile.update(userProfileId, {
         onboarding_status: 'onboarding_completed',
         onboarding_completed_at: new Date().toISOString(),
         current_onboarding_step: 6,
-      }).catch(() => {});
+      });
     }
-    // Optimistically flip needsOnboarding to false in context right now
+    // DB write confirmed — now safe to flip local context so ProtectedRoute
+    // sees needsOnboarding=false without waiting for a full re-fetch.
     markOnboardingComplete();
   };
 
   // Step 5: create first job — mark onboarding complete so ProtectedRoute never loops back
   const handleCreateFirstJob = async () => {
-    await completeOnboarding();
-    navigate('/jobs/new', { replace: true });
+    setLoading(true);
+    try {
+      await completeOnboarding();
+      navigate('/jobs/new', { replace: true });
+    } catch (e) {
+      console.error('[Onboarding] completeOnboarding failed (create job):', e?.message);
+      setError('Could not save completion status. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Step 5: skip to dashboard
   const handleSkip = async () => {
-    await completeOnboarding();
-    navigate('/dashboard', { replace: true });
+    setLoading(true);
+    try {
+      await completeOnboarding();
+      navigate('/dashboard', { replace: true });
+    } catch (e) {
+      console.error('[Onboarding] completeOnboarding failed (skip):', e?.message);
+      setError('Could not save completion status. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (initializing) {
@@ -409,6 +443,7 @@ export default function Onboarding() {
                 onBack={() => setStep(4)}
                 onCreateJob={handleCreateFirstJob}
                 onSkip={handleSkip}
+                loading={loading}
               />
             )}
           </div>
