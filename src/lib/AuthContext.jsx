@@ -97,6 +97,14 @@ export const AuthProvider = ({ children }) => {
     return loadUserProfile(user);
   };
 
+  // Optimistically mark onboarding complete in context without a round-trip.
+  // Call this right before navigating away from /onboarding.
+  const markOnboardingComplete = () => {
+    setUserProfile((prev) =>
+      prev ? { ...prev, onboarding_status: 'onboarding_completed' } : prev
+    );
+  };
+
   const logout = () => {
     setUser(null);
     setUserProfile(null);
@@ -123,6 +131,7 @@ export const AuthProvider = ({ children }) => {
       logout,
       checkUserAuth: initialize,
       refreshUserProfile,
+      markOnboardingComplete,
     }}>
       {children}
     </AuthContext.Provider>

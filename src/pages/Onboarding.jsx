@@ -32,7 +32,7 @@ const STEP_STATUS = {
 
 export default function Onboarding() {
   const navigate = useNavigate();
-  const { user, refreshUserProfile } = useAuth();
+  const { user, markOnboardingComplete } = useAuth();
 
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -95,11 +95,8 @@ export default function Onboarding() {
           setUserProfileId(profile.id);
           setCompanyId(profile.company_id);
 
-          if (profile.onboarding_status === 'onboarding_completed') {
-            navigate('/dashboard', { replace: true });
-            return;
-          }
-
+          // If already completed, ProtectedRoute will redirect to /dashboard.
+          // Don't navigate here to avoid racing with the guard.
           const savedStep = profile.current_onboarding_step || 1;
           setStep(Math.max(savedStep, 1));
           setRole(profile.role || 'admin');
@@ -138,14 +135,17 @@ export default function Onboarding() {
   };
 
   // Step 2 → 3: create/update company
+  // Atomic: Company + UserProfile are created together before any other work.
+  // Beta logic runs after linkage is established (fire-and-forget, never blocks).
   const handleStep2Continue = async () => {
     if (!form.company_name.trim()) return;
     setLoading(true);
     setError('');
     try {
       let cId = companyId;
+
       if (!cId) {
-        // Create company
+        // --- Step A: Create Company ---
         const companyData = {
           name: form.company_name.trim(),
           phone: form.phone || undefined,
@@ -156,55 +156,20 @@ export default function Onboarding() {
           created_by: user?.email,
           is_deleted: false,
         };
-
-        // Add beta fields if admin manually selected the toggle
         if (grantBeta) {
-          const startDate = new Date();
-          const endDate = new Date(startDate);
-          endDate.setDate(endDate.getDate() + 14);
+          const start = new Date();
+          const end = new Date(start);
+          end.setDate(end.getDate() + 14);
           companyData.is_beta_user = true;
-          companyData.beta_start_date = startDate.toISOString().split('T')[0];
-          companyData.beta_end_date = endDate.toISOString().split('T')[0];
+          companyData.beta_start_date = start.toISOString().split('T')[0];
+          companyData.beta_end_date = end.toISOString().split('T')[0];
           companyData.beta_status = 'active';
         }
 
         const company = await base44.entities.Company.create(companyData);
         cId = company.id;
-        setCompanyId(cId);
 
-        // Auto-activate beta for first 10 companies (if not already set by admin)
-        if (!grantBeta) {
-          const allCompanies = await base44.asServiceRole.entities.Company.filter({ is_deleted: false });
-          if (allCompanies.length <= 10) {
-            const startDate = new Date();
-            const endDate = new Date(startDate);
-            endDate.setDate(endDate.getDate() + 14);
-            await base44.asServiceRole.entities.Company.update(cId, {
-              is_beta_user: true,
-              beta_start_date: startDate.toISOString().split('T')[0],
-              beta_end_date: endDate.toISOString().split('T')[0],
-              beta_status: 'active',
-            });
-            setBetaActivated(true);
-          }
-        }
-
-        // Apply beta access if invite code was stored during signup
-        const inviteCode = sessionStorage.getItem('beta_invite_code');
-        if (inviteCode === 'BETA2025') {
-          const startDate = new Date();
-          const endDate = new Date(startDate);
-          endDate.setDate(endDate.getDate() + 14);
-          await base44.asServiceRole.entities.Company.update(cId, {
-            is_beta_user: true,
-            beta_start_date: startDate.toISOString().split('T')[0],
-            beta_end_date: endDate.toISOString().split('T')[0],
-            beta_status: 'active',
-          });
-          sessionStorage.removeItem('beta_invite_code');
-          setBetaActivated(true);
-        }
-
+        // --- Step B: Create UserProfile (atomic with company — do this immediately) ---
         const profile = await base44.entities.UserProfile.create({
           user_id: user.id,
           company_id: cId,
@@ -215,9 +180,51 @@ export default function Onboarding() {
           completed_steps: [1, 2],
           is_deleted: false,
         });
+
+        // Both succeeded — commit to local state
+        setCompanyId(cId);
         setUserProfileId(profile.id);
         showSaved();
+
+        // --- Step C: Beta logic (fire-and-forget, never blocks onboarding) ---
+        const applyBeta = async () => {
+          try {
+            const inviteCode = sessionStorage.getItem('beta_invite_code');
+            if (inviteCode === 'BETA2025') {
+              sessionStorage.removeItem('beta_invite_code');
+              const start = new Date();
+              const end = new Date(start);
+              end.setDate(end.getDate() + 14);
+              await base44.asServiceRole.entities.Company.update(cId, {
+                is_beta_user: true,
+                beta_start_date: start.toISOString().split('T')[0],
+                beta_end_date: end.toISOString().split('T')[0],
+                beta_status: 'active',
+              });
+              setBetaActivated(true);
+              return;
+            }
+            if (!grantBeta) {
+              const allCompanies = await base44.asServiceRole.entities.Company.filter({ is_deleted: false });
+              if (allCompanies.length <= 10) {
+                const start = new Date();
+                const end = new Date(start);
+                end.setDate(end.getDate() + 14);
+                await base44.asServiceRole.entities.Company.update(cId, {
+                  is_beta_user: true,
+                  beta_start_date: start.toISOString().split('T')[0],
+                  beta_end_date: end.toISOString().split('T')[0],
+                  beta_status: 'active',
+                });
+                setBetaActivated(true);
+              }
+            }
+          } catch { /* beta logic never blocks onboarding */ }
+        };
+        applyBeta(); // intentionally not awaited
+
       } else {
+        // Existing company — just update fields
         await base44.entities.Company.update(cId, {
           name: form.company_name.trim(),
           phone: form.phone || undefined,
@@ -227,8 +234,10 @@ export default function Onboarding() {
         });
         await autosave(3, 'company_completed');
       }
+
       setStep(3);
     } catch (e) {
+      console.error('[Onboarding] Company creation failed:', e?.message);
       setError('Could not save company. Please try again.');
     } finally {
       setLoading(false);
@@ -281,7 +290,8 @@ export default function Onboarding() {
     }
   };
 
-  // Mark onboarding complete and refresh context before navigating
+  // Mark onboarding complete — persist to DB, then flip context synchronously
+  // so needsOnboarding is false before navigation (no round-trip race).
   const completeOnboarding = async () => {
     if (userProfileId) {
       await base44.entities.UserProfile.update(userProfileId, {
@@ -290,8 +300,8 @@ export default function Onboarding() {
         current_onboarding_step: 6,
       }).catch(() => {});
     }
-    // Refresh AuthContext so needsOnboarding flips to false before we navigate
-    await refreshUserProfile().catch(() => {});
+    // Optimistically flip needsOnboarding to false in context right now
+    markOnboardingComplete();
   };
 
   // Step 5: create first job — mark onboarding complete so ProtectedRoute never loops back
