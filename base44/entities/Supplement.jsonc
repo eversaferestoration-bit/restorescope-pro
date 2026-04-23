@@ -20,92 +20,12 @@
     "status": {
       "type": "string",
       "enum": [
-        "pending",
-        "generated",
-        "submitted",
+        "draft",
+        "pending_review",
         "approved",
         "rejected"
       ],
-      "default": "pending"
-    },
-    "missing_scope_items": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "category": {
-            "type": "string"
-          },
-          "description": {
-            "type": "string"
-          },
-          "unit": {
-            "type": "string"
-          },
-          "quantity": {
-            "type": "number"
-          },
-          "estimated_cost": {
-            "type": "number"
-          },
-          "justification": {
-            "type": "string"
-          }
-        }
-      }
-    },
-    "underpriced_items": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "description": {
-            "type": "string"
-          },
-          "original_unit_cost": {
-            "type": "number"
-          },
-          "recommended_unit_cost": {
-            "type": "number"
-          },
-          "justification": {
-            "type": "string"
-          }
-        }
-      }
-    },
-    "new_damage_items": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "category": {
-            "type": "string"
-          },
-          "description": {
-            "type": "string"
-          },
-          "unit": {
-            "type": "string"
-          },
-          "quantity": {
-            "type": "number"
-          },
-          "estimated_cost": {
-            "type": "number"
-          },
-          "justification": {
-            "type": "string"
-          }
-        }
-      }
-    },
-    "supplement_delta": {
-      "type": "number",
-      "default": 0
-    },
-    "analysis_summary": {
-      "type": "string"
+      "default": "draft"
     },
     "created_by": {
       "type": "string"
@@ -122,6 +42,19 @@
   "required": [
     "company_id",
     "job_id",
-    "original_estimate_id"
-  ]
+    "original_estimate_id",
+    "supplement_estimate_id"
+  ],
+  "rls": {
+    "create": true,
+    "read": {
+      "company_id": "{{user_company_id}}"
+    },
+    "update": {
+      "company_id": "{{user_company_id}}"
+    },
+    "delete": {
+      "company_id": "{{user_company_id}}"
+    }
+  }
 }
