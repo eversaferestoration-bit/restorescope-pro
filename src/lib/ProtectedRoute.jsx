@@ -1,65 +1,75 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 import { base44 } from '@/api/base44Client';
+
+// Public paths that should never trigger a login redirect
+const PUBLIC_PATHS = ['/login', '/signup', '/forgot-password', '/client-login', '/client-portal'];
 
 /**
  * ProtectedRoute — pure synchronous guard.
  * All async resolution (session, profile, retries) happens in AuthContext.
  *
  * Guard order:
- *   1. isLoadingAuth        → show spinner
- *   2. network_error        → show retry screen (NEVER redirect to login)
- *   3. !user + auth_required → redirect to login (explicit session rejection only)
- *   4. !user (no error)     → redirect to login (no session at all)
- *   5. needsOnboarding      → redirect to /onboarding (NEVER login)
- *   6. !needsOnboarding on /onboarding → redirect to /dashboard
- *   7. otherwise            → render children
+ *   1. isLoadingAuth              → show spinner (never redirect)
+ *   2. network_error              → show retry screen (NEVER redirect to login)
+ *   3. !user, explicitly rejected → redirect to login once (deduped)
+ *   4. needsOnboarding            → redirect to /onboarding (NEVER login)
+ *   5. !needsOnboarding on /onboarding → redirect to /dashboard
+ *   6. otherwise                  → render children
  */
 export default function ProtectedRoute({ children }) {
   const { isLoadingAuth, isAuthenticated, user, authError, needsOnboarding } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
+  const navigate    = useNavigate();
+  const location    = useLocation();
+  const redirecting = useRef(false); // prevent duplicate redirects
 
   const isOnboarding = location.pathname === '/onboarding';
+  const isPublic     = PUBLIC_PATHS.includes(location.pathname);
 
   useEffect(() => {
     if (isLoadingAuth) return;
+    if (redirecting.current) return;
 
-    // Network error — do NOT redirect to login. AuthContext will surface the retry UI.
+    // Network error — hold position, never redirect
     if (authError?.type === 'network_error') {
-      console.log('[ProtectedRoute] ⚠️ Network error — holding position, not redirecting to login');
+      console.log('[ProtectedRoute] ⚠️ Network error — holding position at:', location.pathname);
       return;
     }
 
-    // Not authenticated — only redirect to login on explicit session failure
+    // Not authenticated — redirect to login once
     if (!isAuthenticated || !user) {
-      console.log('[ProtectedRoute] 🔒 No session → redirecting to login from:', location.pathname);
-      base44.auth.redirectToLogin(window.location.pathname + window.location.search);
+      if (!isPublic) {
+        redirecting.current = true;
+        console.log('[ProtectedRoute] 🔒 No valid session → redirectToLogin from:', location.pathname);
+        base44.auth.redirectToLogin(window.location.pathname + window.location.search);
+      }
       return;
     }
 
-    // Authenticated but needs onboarding — always /onboarding, never login
+    // Reset redirect lock now that we're authenticated
+    redirecting.current = false;
+
+    // Authenticated but needs onboarding — go to /onboarding (never login)
     if (needsOnboarding && !isOnboarding) {
-      console.log('[ProtectedRoute] 🧭 needsOnboarding=true → redirecting to /onboarding from:', location.pathname);
+      console.log('[ProtectedRoute] 🧭 needsOnboarding → /onboarding (from:', location.pathname + ')');
       navigate('/onboarding', { replace: true });
       return;
     }
 
-    // Fully set up user visiting /onboarding → send to dashboard
+    // Fully set up user on /onboarding → send to dashboard
     if (!needsOnboarding && isOnboarding) {
-      console.log('[ProtectedRoute] ✅ Already onboarded → redirecting to /dashboard');
+      console.log('[ProtectedRoute] ✅ Already onboarded → /dashboard');
       navigate('/dashboard', { replace: true });
     }
   }, [isLoadingAuth, isAuthenticated, user, authError, needsOnboarding, location.pathname]);
 
-  // --- Render decisions (synchronous) ---
+  // ── Render decisions ──
 
   if (isLoadingAuth) {
     return <AuthLoadingScreen message="Verifying session…" />;
   }
 
-  // Network error — show retry instead of blank screen or login redirect
   if (authError?.type === 'network_error') {
     return <NetworkErrorScreen />;
   }
@@ -68,7 +78,6 @@ export default function ProtectedRoute({ children }) {
     return null;
   }
 
-  // Needs onboarding — allow /onboarding to render; hold spinner on other protected routes
   if (needsOnboarding && !isOnboarding) {
     return <AuthLoadingScreen message="Setting up your workspace…" />;
   }

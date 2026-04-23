@@ -12,8 +12,9 @@ const INCOMPLETE_STATUSES = [
   'pricing_profile_set',
 ];
 
-// Retry an async fn up to `attempts` times with exponential backoff
-async function withRetry(fn, attempts = 3, delayMs = 400) {
+// Retry an async fn up to `attempts` times with exponential backoff.
+// Never retries on 401/403 — those are definitive auth rejections.
+async function withRetry(fn, attempts = 3, delayMs = 300) {
   let lastErr;
   for (let i = 0; i < attempts; i++) {
     try {
@@ -21,20 +22,24 @@ async function withRetry(fn, attempts = 3, delayMs = 400) {
     } catch (e) {
       lastErr = e;
       const status = e?.status || e?.response?.status;
-      // Don't retry on explicit auth failures — they are final
       if (status === 401 || status === 403) throw e;
-      console.warn(`[AuthContext] Attempt ${i + 1} failed:`, e?.message || e);
+      console.warn(`[AuthContext] Attempt ${i + 1}/${attempts} failed:`, e?.message || e);
       if (i < attempts - 1) await new Promise(r => setTimeout(r, delayMs * (i + 1)));
     }
   }
   throw lastErr;
 }
 
+// Detect if the current URL contains a fresh access_token (just returned from login)
+function hasFreshTokenInUrl() {
+  return new URLSearchParams(window.location.search).has('access_token');
+}
+
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+  const [user, setUser]               = useState(null);
   const [userProfile, setUserProfile] = useState(null);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
-  const [authError, setAuthError] = useState(null);
+  const [authError, setAuthError]     = useState(null);
   const initDone = useRef(false);
 
   useEffect(() => {
@@ -48,44 +53,48 @@ export const AuthProvider = ({ children }) => {
     setAuthError(null);
     console.log('[AuthContext] 🔄 Initializing auth…');
 
-    try {
-      // 1. Verify session — retry up to 3x on network errors
-      const currentUser = await withRetry(() => base44.auth.me());
-      console.log('[AuthContext] ✅ Session verified:', normalizeEmail(currentUser?.email || ''));
-      setUser(currentUser);
+    // If a fresh token just landed in the URL, give app-params.js a tick
+    // to store it in localStorage before the SDK reads it.
+    if (hasFreshTokenInUrl()) {
+      console.log('[AuthContext] 🪙 Fresh access_token detected in URL — waiting for storage…');
+      await new Promise(r => setTimeout(r, 50));
+    }
 
-      // 2. Load UserProfile — retry up to 2x
+    try {
+      const currentUser = await withRetry(() => base44.auth.me(), 3, 300);
+      console.log('[AuthContext] ✅ Session verified:', normalizeEmail(currentUser?.email || ''), '| id:', currentUser?.id);
+      setUser(currentUser);
       await loadUserProfile(currentUser, 2);
 
     } catch (error) {
-      const status = error?.status || error?.response?.status;
-      const reason = error?.data?.extra_data?.reason || error?.response?.data?.extra_data?.reason;
-      console.error('[AuthContext] ❌ Auth init failed | status:', status, '| reason:', reason || error?.message);
+      const status  = error?.status || error?.response?.status;
+      const reason  = error?.data?.extra_data?.reason || error?.response?.data?.extra_data?.reason;
+      const message = error?.message || String(error);
+      console.error('[AuthContext] ❌ Auth init failed | status:', status, '| reason:', reason || message);
 
       setUser(null);
       setUserProfile(null);
 
       if (reason === 'user_not_registered') {
-        console.log('[AuthContext] → Setting error: user_not_registered');
+        console.log('[AuthContext] → error type: user_not_registered');
         setAuthError({ type: 'user_not_registered' });
       } else if (status === 401 || status === 403) {
-        // Only set auth_required for explicit session rejections
-        console.log('[AuthContext] → Setting error: auth_required (explicit 401/403)');
+        console.log('[AuthContext] → error type: auth_required (explicit 401/403)');
         setAuthError({ type: 'auth_required' });
       } else {
-        // Network blip or unknown error — don't redirect to login, show retry UI
-        console.warn('[AuthContext] → Network/unknown error, NOT redirecting to login');
-        setAuthError({ type: 'network_error', message: error?.message });
+        // Network blip / timeout — do NOT redirect to login
+        console.warn('[AuthContext] → error type: network_error — will NOT redirect to login');
+        setAuthError({ type: 'network_error', message });
       }
     } finally {
       setIsLoadingAuth(false);
-      console.log('[AuthContext] 🏁 Auth initialization complete');
+      console.log('[AuthContext] 🏁 Auth init complete | user:', !!user);
     }
   };
 
   const loadUserProfile = async (currentUser, retries = 1) => {
     const email = normalizeEmail(currentUser?.email || '');
-    console.log('[AuthContext] 🔍 Loading UserProfile for:', email);
+    console.log('[AuthContext] 🔍 Loading UserProfile for user_id:', currentUser?.id, '| email:', email);
 
     const doLoad = async () => {
       const profiles = await base44.entities.UserProfile.filter(
@@ -93,9 +102,10 @@ export const AuthProvider = ({ children }) => {
       );
 
       if (profiles.length > 0) {
-        console.log('[AuthContext] ✅ UserProfile loaded | status:', profiles[0].onboarding_status, '| company_id:', profiles[0].company_id);
-        setUserProfile(profiles[0]);
-        return profiles[0];
+        const p = profiles[0];
+        console.log('[AuthContext] ✅ UserProfile found | id:', p.id, '| status:', p.onboarding_status, '| company_id:', p.company_id);
+        setUserProfile(p);
+        return p;
       }
 
       // No profile — attempt auto-repair via company lookup
@@ -108,17 +118,16 @@ export const AuthProvider = ({ children }) => {
       });
 
       if (companiesByEmail.length > 0) {
-        console.log('[AuthContext] 🔧 Found orphaned company, repairing profile…');
+        console.log('[AuthContext] 🔧 Found orphaned company, repairing UserProfile…');
         const repaired = await repairMissingUserProfile(currentUser, companiesByEmail[0]);
         if (repaired) {
-          console.log('[AuthContext] ✅ Profile repair successful → onboarding_completed');
+          console.log('[AuthContext] ✅ Profile repair successful | id:', repaired.id);
           setUserProfile(repaired);
           return repaired;
         }
       }
 
-      // No profile, no repairable company → needs onboarding
-      console.log('[AuthContext] ℹ️ No profile & no company → user needs onboarding');
+      console.log('[AuthContext] ℹ️ No profile & no company → needsOnboarding = true');
       setUserProfile(null);
       return null;
     };
@@ -138,9 +147,8 @@ export const AuthProvider = ({ children }) => {
     return loadUserProfile(user, 2);
   };
 
-  // Optimistically mark onboarding complete — avoids round-trip race with ProtectedRoute
   const markOnboardingComplete = () => {
-    console.log('[AuthContext] ✅ markOnboardingComplete() — flipping needsOnboarding to false');
+    console.log('[AuthContext] ✅ markOnboardingComplete() — needsOnboarding → false');
     setUserProfile((prev) =>
       prev ? { ...prev, onboarding_status: 'onboarding_completed' } : prev
     );
@@ -154,14 +162,11 @@ export const AuthProvider = ({ children }) => {
     base44.auth.logout('/');
   };
 
-  // Derived flags
   const isAuthenticated = !!user;
   const needsOnboarding = isAuthenticated && (
     !userProfile ||
     INCOMPLETE_STATUSES.includes(userProfile?.onboarding_status)
   );
-
-  console.log('[AuthContext] 📊 State snapshot | authenticated:', isAuthenticated, '| needsOnboarding:', needsOnboarding, '| loading:', isLoadingAuth, '| error:', authError?.type || 'none');
 
   return (
     <AuthContext.Provider value={{
