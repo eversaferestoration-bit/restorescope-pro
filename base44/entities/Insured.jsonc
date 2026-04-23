@@ -24,6 +24,20 @@
     "notes": {
       "type": "string"
     },
+    "password_hash": {
+      "type": "string",
+      "description": "bcrypt hash of the client portal password. Never returned to frontend."
+    },
+    "portal_login_attempts": {
+      "type": "integer",
+      "default": 0,
+      "description": "Failed login attempts counter for rate limiting"
+    },
+    "portal_locked_until": {
+      "type": "string",
+      "format": "date-time",
+      "description": "If set, login is blocked until this timestamp"
+    },
     "is_deleted": {
       "type": "boolean",
       "default": false

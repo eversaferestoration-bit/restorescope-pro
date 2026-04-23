@@ -24,25 +24,40 @@ export default function ClientPortal() {
   const [clientToken, setClientToken] = useState('');
 
   useEffect(() => {
-    const email = localStorage.getItem('client_email');
     const token = localStorage.getItem('client_token');
+    const email = localStorage.getItem('client_email');
 
-    if (!email || !token) {
+    if (!token) {
       navigate('/client-login');
       return;
     }
 
-    setClientEmail(email);
     setClientToken(token);
+    setClientEmail(email || '');
   }, [navigate]);
+
+  // Redirect to login on auth errors (expired/invalid token)
+  const handleAuthError = (res) => {
+    const code = res?.data?.code;
+    if (code === 'TOKEN_EXPIRED' || code === 'INVALID_TOKEN' || code === 'MISSING_TOKEN') {
+      localStorage.removeItem('client_token');
+      localStorage.removeItem('client_email');
+      navigate('/client-login');
+      return null;
+    }
+    return res.data?.jobs || res.data?.estimates || null;
+  };
 
   // Fetch jobs for this client
   const { data: jobs = [], isLoading: jobsLoading } = useQuery({
-    queryKey: ['client-jobs', clientEmail],
-    queryFn: () => base44.functions.invoke('getClientJobs', { client_email: clientEmail, token: clientToken }),
-    enabled: !!clientEmail && !!clientToken,
-    select: (res) => res.data?.jobs || [],
-    retry: 1,
+    queryKey: ['client-jobs', clientToken],
+    queryFn: () => base44.functions.invoke('getClientJobs', { token: clientToken }),
+    enabled: !!clientToken,
+    select: (res) => {
+      if (!res.data?.success) return handleAuthError(res) ?? [];
+      return res.data?.jobs || [];
+    },
+    retry: false,
   });
 
   // Fetch estimates for each job
@@ -50,13 +65,16 @@ export default function ClientPortal() {
     queryKey: ['client-estimates', jobs.map((j) => j.id).join(',')],
     queryFn: () => base44.functions.invoke('getClientEstimates', { job_ids: jobs.map((j) => j.id), token: clientToken }),
     enabled: jobs.length > 0 && !!clientToken,
-    select: (res) => res.data?.estimates || {},
-    retry: 1,
+    select: (res) => {
+      if (!res.data?.success) return handleAuthError(res) ?? {};
+      return res.data?.estimates || {};
+    },
+    retry: false,
   });
 
   const handleLogout = () => {
-    localStorage.removeItem('client_email');
     localStorage.removeItem('client_token');
+    localStorage.removeItem('client_email');
     navigate('/client-login');
   };
 
