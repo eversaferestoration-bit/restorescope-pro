@@ -65,9 +65,9 @@ const AuthenticatedApp = () => {
     return <UserNotRegisteredError />;
   }
 
-  // ── GATE 2b: Explicit auth failure (401/403) — let ProtectedRoute handle redirect
-  // auth_required means the session is definitively invalid; fall through to routes
-  // so ProtectedRoute's useEffect can call redirectToLogin cleanly.
+  // ── GATE 2b: auth_required (401/403) — session definitively invalid.
+  // Fall through to routes so ProtectedRoute's useEffect fires redirectToLogin.
+  // Do NOT block here — we need the Router context for the effect to work.
 
   // ── GATE 3: Auth is resolved — determine destination and render routes.
   // Public auth pages redirect authenticated users away immediately (no flash).
