@@ -5,6 +5,7 @@ import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-d
 import { AnimatePresence } from 'framer-motion';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
+import AuthDebugOverlay from '@/components/debug/AuthDebugOverlay';
 import { DemoProvider } from '@/lib/DemoContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import ProtectedRoute from '@/lib/ProtectedRoute';
@@ -63,6 +64,10 @@ const AuthenticatedApp = () => {
   if (authError?.type === 'user_not_registered') {
     return <UserNotRegisteredError />;
   }
+
+  // ── GATE 2b: Explicit auth failure (401/403) — let ProtectedRoute handle redirect
+  // auth_required means the session is definitively invalid; fall through to routes
+  // so ProtectedRoute's useEffect can call redirectToLogin cleanly.
 
   // ── GATE 3: Auth is resolved — determine destination and render routes.
   // Public auth pages redirect authenticated users away immediately (no flash).
@@ -144,6 +149,7 @@ function App() {
       <QueryClientProvider client={queryClientInstance}>
         <Router>
           <AuthenticatedApp />
+          <AuthDebugOverlay />
         </Router>
         <Toaster />
       </QueryClientProvider>

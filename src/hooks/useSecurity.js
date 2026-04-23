@@ -74,11 +74,18 @@ export function useSessionTimeout() {
 }
 
 /**
- * Hook to detect role changes and force logout
+ * Hook to detect role changes and force logout.
+ * Only runs on an interval — never on mount — to avoid ejecting
+ * a user whose session is still initializing.
  */
 export function useRoleIntegrity() {
   const { user, logout } = useAuth();
-  const originalRole = useRef(user?.role);
+  const originalRole = useRef(null);
+
+  // Capture role once we have a confirmed user
+  useEffect(() => {
+    if (user?.role) originalRole.current = user.role;
+  }, [user?.role]);
 
   useEffect(() => {
     if (!user) return;
@@ -87,24 +94,25 @@ export function useRoleIntegrity() {
       try {
         const freshUser = await base44.auth.me();
         if (!freshUser) {
-          logout(true);
+          // Server says no session — log out cleanly (no argument)
+          logout();
           return;
         }
-
-        // Role changed - force logout for security
-        if (freshUser.role !== originalRole.current) {
+        // Role changed — force re-login for security
+        if (originalRole.current && freshUser.role !== originalRole.current) {
           toast.warning('Your access permissions have changed. Please log in again.');
-          logout(true);
+          logout();
         }
       } catch (error) {
-        console.error('Role integrity check failed:', error);
+        // Network error during check — do NOT log out, just log it
+        console.warn('[useSecurity] Role integrity check failed (non-fatal):', error?.message);
       }
     };
 
-    // Check every 2 minutes
+    // Delay first check by 2 minutes — never fires on mount
     const interval = setInterval(checkRoleIntegrity, 2 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [user, logout]);
+  }, [user?.id]); // only re-register when user identity changes, not on every logout ref change
 }
 
 /**

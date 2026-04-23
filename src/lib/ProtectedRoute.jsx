@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 import { base44 } from '@/api/base44Client';
@@ -6,32 +7,41 @@ import { base44 } from '@/api/base44Client';
  * ProtectedRoute — synchronous render-time guard.
  *
  * Decision tree (evaluated only after isLoadingAuth=false):
- *   1. isLoadingAuth          → show spinner (gate is still open)
- *   2. network_error          → show retry screen (never redirect)
- *   3. !isAuthenticated       → redirect to platform login
- *   4. needsOnboarding        → <Navigate to="/onboarding" />
- *   5. authenticated+onboarded on /onboarding → <Navigate to="/dashboard" />
- *   6. otherwise              → render children
+ *   1. isLoadingAuth=true        → spinner (never redirect)
+ *   2. network_error             → retry screen (never redirect)
+ *   3. !isAuthenticated          → useEffect fires redirectToLogin (render shows spinner)
+ *   4. needsOnboarding           → <Navigate to="/onboarding" />
+ *   5. onboarded on /onboarding  → <Navigate to="/dashboard" />
+ *   6. otherwise                 → render children
  */
 export default function ProtectedRoute({ children }) {
   const { isLoadingAuth, isAuthenticated, user, authError, needsOnboarding, checkUserAuth } = useAuth();
   const location = useLocation();
 
-  // Gate 1 — auth resolution not yet complete
+  // Redirect to login in an effect (not during render) to avoid React render-phase side effects
+  useEffect(() => {
+    if (isLoadingAuth) return;
+    if (authError?.type === 'network_error') return;
+    if (!isAuthenticated || !user) {
+      const returnTo = location.pathname + location.search;
+      console.log('[ProtectedRoute] 🔒 No session → redirectToLogin | returnTo:', returnTo);
+      base44.auth.redirectToLogin(returnTo);
+    }
+  }, [isLoadingAuth, isAuthenticated, user, authError, location.pathname]);
+
+  // Gate 1 — still resolving
   if (isLoadingAuth) {
     return <LoadingScreen message="Verifying session…" />;
   }
 
-  // Gate 2 — network error (don't redirect — session may be valid)
+  // Gate 2 — network error
   if (authError?.type === 'network_error') {
     return <NetworkErrorScreen onRetry={checkUserAuth} />;
   }
 
-  // Gate 3 — no session → send to platform login
+  // Gate 3 — no session (show spinner while effect fires redirect)
   if (!isAuthenticated || !user) {
-    const returnTo = location.pathname + location.search;
-    console.log('[ProtectedRoute] 🔒 No session → redirectToLogin, returnTo:', returnTo);
-    base44.auth.redirectToLogin(returnTo);
+    console.log('[ProtectedRoute] 🔒 No session — showing spinner while redirecting…');
     return <LoadingScreen message="Redirecting to sign in…" />;
   }
 
@@ -41,7 +51,7 @@ export default function ProtectedRoute({ children }) {
     return <Navigate to="/onboarding" replace />;
   }
 
-  // Gate 5 — onboarding already complete but sitting on /onboarding
+  // Gate 5 — already onboarded but on /onboarding
   if (!needsOnboarding && location.pathname === '/onboarding') {
     console.log('[ProtectedRoute] ✅ Onboarding complete → /dashboard');
     return <Navigate to="/dashboard" replace />;

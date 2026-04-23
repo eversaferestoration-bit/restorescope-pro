@@ -39,6 +39,16 @@ const getAppParams = () => {
 		storage.removeItem('base44_access_token');
 		storage.removeItem('token');
 	}
+
+	// Check for a fresh token in the URL BEFORE removeFromUrl strips it.
+	// Signal AuthContext to wait a tick for the SDK to pick it up.
+	if (!isNode) {
+		const urlParams = new URLSearchParams(window.location.search);
+		if (urlParams.has('access_token')) {
+			try { sessionStorage.setItem('base44_fresh_token_load', 'true'); } catch {}
+		}
+	}
+
 	return {
 		appId: getAppParamValue("app_id", { defaultValue: import.meta.env.VITE_BASE44_APP_ID }),
 		token: getAppParamValue("access_token", { removeFromUrl: true }),
