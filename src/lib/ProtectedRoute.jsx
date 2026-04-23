@@ -10,112 +10,121 @@ const INCOMPLETE_STATUSES = [
   'company_completed',
   'role_selected',
   'pricing_profile_set',
-  // NOTE: 'first_job_started' is intentionally excluded — once the user clicks
-  // "Create my first job" they should be able to use the app freely.
 ];
 
+// Module-level cache so the profile check survives route changes within the same session
+let sessionCheckedUserId = null;
+
 export default function ProtectedRoute({ children }) {
-  const { isLoadingAuth, isLoadingPublicSettings, authError, isAuthenticated, user } = useAuth();
+  const { isLoadingAuth, authError, isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [checked, setChecked] = useState(false);
-  const checkedUserRef = useRef(null);
+  const [profileChecked, setProfileChecked] = useState(() => {
+    // If we already checked this user in a prior mount, skip immediately
+    return !!(user && sessionCheckedUserId === user?.id);
+  });
 
   useEffect(() => {
+    // Wait until auth is resolved
+    if (isLoadingAuth) return;
+
+    // Not authenticated — redirect to login (only after auth is fully resolved)
     if (!isAuthenticated || !user) {
-      setChecked(true);
+      if (authError?.type === 'auth_required' || !isAuthenticated) {
+        base44.auth.redirectToLogin(window.location.pathname + window.location.search);
+      }
       return;
     }
 
+    // Already on onboarding — skip profile check, let onboarding manage itself
     if (location.pathname === '/onboarding') {
-      setChecked(true);
+      setProfileChecked(true);
       return;
     }
 
-    // Already checked for this user — skip the fetch
-    if (checkedUserRef.current === user.id) return;
+    // Already checked this user in this session — skip the DB round-trip
+    if (sessionCheckedUserId === user.id) {
+      setProfileChecked(true);
+      return;
+    }
 
     const email = normalizeEmail(user.email || '');
-    console.log('[ProtectedRoute] Checking account state for:', email);
+    console.log('[ProtectedRoute] Profile check for:', email);
 
     base44.entities.UserProfile.filter({ user_id: user.id, is_deleted: false }, '-created_date', 1)
       .then(async (profiles) => {
-        console.log('[ProtectedRoute] UserProfile exists:', profiles.length > 0);
-
         if (profiles.length > 0) {
           const profile = profiles[0];
-          const status = profile.onboarding_status;
-          if (INCOMPLETE_STATUSES.includes(status)) {
+          if (INCOMPLETE_STATUSES.includes(profile.onboarding_status)) {
+            console.log('[ProtectedRoute] Onboarding incomplete — routing');
             navigate('/onboarding', { replace: true });
             return;
           }
-
+          // Verify company still exists
           if (profile.company_id) {
             const companies = await base44.entities.Company.filter(
               { id: profile.company_id, is_deleted: false }, '-created_date', 1
             ).catch(() => []);
-            console.log('[ProtectedRoute] Company exists:', companies.length > 0);
             if (companies.length === 0) {
-              console.warn('[ProtectedRoute] Company missing for profile, routing to onboarding');
               navigate('/onboarding', { replace: true });
               return;
             }
           }
-
-          checkedUserRef.current = user.id;
-          setChecked(true);
+          sessionCheckedUserId = user.id;
+          setProfileChecked(true);
           return;
         }
 
-        // No UserProfile — try to find a company by created_by email to auto-repair
-        console.warn('[ProtectedRoute] No UserProfile found — attempting repair');
+        // No profile — try to auto-repair via company lookup
+        console.warn('[ProtectedRoute] No UserProfile — attempting repair for:', email);
         const companiesByEmail = await base44.entities.Company.filter(
           { created_by: email, is_deleted: false }, '-created_date', 1
         ).catch(() => []);
-        console.log('[ProtectedRoute] Company by email exists:', companiesByEmail.length > 0);
 
         if (companiesByEmail.length > 0) {
           const repaired = await repairMissingUserProfile(user, companiesByEmail[0]);
           if (repaired) {
-            console.log('[ProtectedRoute] UserProfile repaired — proceeding normally');
-            checkedUserRef.current = user.id;
-            setChecked(true);
+            sessionCheckedUserId = user.id;
+            setProfileChecked(true);
             return;
           }
         }
 
-        console.warn('[ProtectedRoute] No company found — routing to onboarding');
         navigate('/onboarding', { replace: true });
       })
       .catch((err) => {
-        console.warn('[ProtectedRoute] Account check failed (network?):', err?.message);
-        checkedUserRef.current = user.id;
-        setChecked(true);
+        // Network error — fail open so the user isn't stuck
+        console.warn('[ProtectedRoute] Profile check failed (network?):', err?.message);
+        sessionCheckedUserId = user.id;
+        setProfileChecked(true);
       });
-  }, [isAuthenticated, user?.id, location.pathname]);
+  }, [isLoadingAuth, isAuthenticated, user?.id, location.pathname]);
 
-  useEffect(() => {
-    if (!isLoadingAuth && !isLoadingPublicSettings) {
-      if (authError?.type === 'auth_required' || (!isAuthenticated && !authError)) {
-        base44.auth.redirectToLogin(window.location.pathname + window.location.search);
-      }
-    }
-  }, [isLoadingAuth, isLoadingPublicSettings, authError, isAuthenticated]);
-
-  if (isLoadingAuth || isLoadingPublicSettings || (isAuthenticated && !checked && location.pathname !== '/onboarding')) {
-    return (
-      <div className="fixed inset-0 flex items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-[3px] border-primary/20 border-t-primary rounded-full animate-spin" />
-          <span className="text-sm text-muted-foreground">Loading…</span>
-        </div>
-      </div>
-    );
+  // Block rendering until the platform session is verified
+  if (isLoadingAuth) {
+    return <AuthLoadingScreen />;
   }
 
-  if (authError?.type === 'auth_required' || (!isAuthenticated && !authError)) {
+  // Auth resolved but not authenticated — return null (redirect is firing in useEffect)
+  if (!isAuthenticated || !user) {
     return null;
   }
 
+  // Authenticated but profile check not yet done (skip spinner on onboarding path)
+  if (!profileChecked && location.pathname !== '/onboarding') {
+    return <AuthLoadingScreen />;
+  }
+
   return children;
+}
+
+function AuthLoadingScreen() {
+  return (
+    <div className="fixed inset-0 flex items-center justify-center bg-background">
+      <div className="flex flex-col items-center gap-3">
+        <div className="w-8 h-8 border-[3px] border-primary/20 border-t-primary rounded-full animate-spin" />
+        <span className="text-sm text-muted-foreground">Loading…</span>
+      </div>
+    </div>
+  );
 }

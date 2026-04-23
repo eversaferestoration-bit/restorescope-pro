@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { normalizeEmail } from '@/lib/authRepair';
 
@@ -7,12 +7,16 @@ const AuthContext = createContext();
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  // Start as loading — nothing renders until session is verified
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
-  const [isLoadingPublicSettings, setIsLoadingPublicSettings] = useState(false);
   const [authError, setAuthError] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
+  const initDone = useRef(false);
 
   useEffect(() => {
+    // Only run once — guard against StrictMode double-invoke
+    if (initDone.current) return;
+    initDone.current = true;
     checkUserAuth();
   }, []);
 
@@ -21,9 +25,8 @@ export const AuthProvider = ({ children }) => {
     setAuthError(null);
     try {
       const currentUser = await base44.auth.me();
-      // Log normalized email for debugging
       const normalizedEmail = normalizeEmail(currentUser?.email || '');
-      console.log('[AuthContext] User loaded. Email (normalized):', normalizedEmail, '| Role:', currentUser?.role);
+      console.log('[AuthContext] Session verified. Email:', normalizedEmail, '| Role:', currentUser?.role);
       setUser(currentUser);
       setIsAuthenticated(true);
     } catch (error) {
@@ -32,12 +35,14 @@ export const AuthProvider = ({ children }) => {
       const status = error?.status || error?.response?.status;
       const reason = error?.data?.extra_data?.reason || error?.response?.data?.extra_data?.reason;
       console.log('[AuthContext] Auth check failed. Status:', status, '| Reason:', reason || error?.message);
-      if (status === 401 || status === 403) {
-        setAuthError({ type: 'auth_required', message: 'Authentication required' });
-      } else if (reason === 'user_not_registered') {
+
+      if (reason === 'user_not_registered') {
         setAuthError({ type: 'user_not_registered', message: 'User not registered for this app' });
+      } else if (status === 401 || status === 403) {
+        // Not logged in — not an error per se, just unauthenticated
+        setAuthError({ type: 'auth_required', message: 'Authentication required' });
       }
-      // For other errors (network, etc.) don't set authError — let the app render normally
+      // For network/unknown errors don't set authError — fail open
     } finally {
       setIsLoadingAuth(false);
       setAuthChecked(true);
@@ -47,6 +52,7 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     setUser(null);
     setIsAuthenticated(false);
+    setAuthError(null);
     base44.auth.logout('/');
   };
 
@@ -58,8 +64,9 @@ export const AuthProvider = ({ children }) => {
     <AuthContext.Provider value={{
       user,
       isAuthenticated,
+      // Never expose a "public settings" loading state — keep it simple
       isLoadingAuth,
-      isLoadingPublicSettings,
+      isLoadingPublicSettings: false,
       authError,
       authChecked,
       logout,
@@ -73,8 +80,6 @@ export const AuthProvider = ({ children }) => {
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 };

@@ -43,9 +43,11 @@ import BetaUsers from '@/pages/BetaUsers';
 
 
 const AuthenticatedApp = () => {
-  const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
+  const { isLoadingAuth, authError } = useAuth();
 
-  if (isLoadingPublicSettings || isLoadingAuth) {
+  // Block ALL route rendering until the session is verified —
+  // this is the single global authLoading gate.
+  if (isLoadingAuth) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3">
@@ -56,11 +58,8 @@ const AuthenticatedApp = () => {
     );
   }
 
-  if (authError) {
-    if (authError.type === 'user_not_registered') {
-      return <UserNotRegisteredError />;
-    }
-    // auth_required is handled by ProtectedRoute
+  if (authError?.type === 'user_not_registered') {
+    return <UserNotRegisteredError />;
   }
 
   return (
