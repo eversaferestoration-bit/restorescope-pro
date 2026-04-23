@@ -1,81 +1,50 @@
-import { useEffect, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 import { base44 } from '@/api/base44Client';
 
 /**
- * ProtectedRoute
+ * ProtectedRoute — synchronous render-time guard.
  *
- * By the time this renders, AuthenticatedApp has already guaranteed:
- *   - isLoadingAuth === false
- *   - authError !== 'user_not_registered'
- *
- * This guard only handles:
- *   1. Network error → show retry screen (never redirect)
- *   2. No valid session → call redirectToLogin once (deduped)
- *   3. Needs onboarding → navigate to /onboarding
- *   4. Already onboarded on /onboarding → navigate to /dashboard
- *   5. Otherwise → render children
+ * Decision tree (evaluated only after isLoadingAuth=false):
+ *   1. isLoadingAuth          → show spinner (gate is still open)
+ *   2. network_error          → show retry screen (never redirect)
+ *   3. !isAuthenticated       → redirect to platform login
+ *   4. needsOnboarding        → <Navigate to="/onboarding" />
+ *   5. authenticated+onboarded on /onboarding → <Navigate to="/dashboard" />
+ *   6. otherwise              → render children
  */
 export default function ProtectedRoute({ children }) {
   const { isLoadingAuth, isAuthenticated, user, authError, needsOnboarding, checkUserAuth } = useAuth();
-  const navigate    = useNavigate();
-  const location    = useLocation();
-  const redirecting = useRef(false);
+  const location = useLocation();
 
-  const isOnboarding = location.pathname === '/onboarding';
-
-  useEffect(() => {
-    // Never act while loading — AuthenticatedApp holds the gate, but be defensive
-    if (isLoadingAuth) return;
-    // Don't double-fire
-    if (redirecting.current) return;
-    // Network error — hold position, let the retry screen handle it
-    if (authError?.type === 'network_error') return;
-
-    if (!isAuthenticated || !user) {
-      redirecting.current = true;
-      const returnTo = window.location.pathname + window.location.search;
-      console.log('[ProtectedRoute] 🔒 No session → redirectToLogin, returnTo:', returnTo);
-      base44.auth.redirectToLogin(returnTo);
-      return;
-    }
-
-    // Authenticated — reset redirect lock
-    redirecting.current = false;
-
-    if (needsOnboarding && !isOnboarding) {
-      console.log('[ProtectedRoute] 🧭 needsOnboarding → /onboarding');
-      navigate('/onboarding', { replace: true });
-      return;
-    }
-
-    if (!needsOnboarding && isOnboarding) {
-      console.log('[ProtectedRoute] ✅ Onboarding complete → /dashboard');
-      navigate('/dashboard', { replace: true });
-    }
-  }, [isLoadingAuth, isAuthenticated, user, authError, needsOnboarding, location.pathname]);
-
-  // ── Render ──
-
-  // Still loading (defensive — should be blocked upstream)
+  // Gate 1 — auth resolution not yet complete
   if (isLoadingAuth) {
     return <LoadingScreen message="Verifying session…" />;
   }
 
-  // Network error — show retry, never redirect
+  // Gate 2 — network error (don't redirect — session may be valid)
   if (authError?.type === 'network_error') {
     return <NetworkErrorScreen onRetry={checkUserAuth} />;
   }
 
-  // Not authenticated — render nothing while redirect fires
+  // Gate 3 — no session → send to platform login
   if (!isAuthenticated || !user) {
-    return null;
+    const returnTo = location.pathname + location.search;
+    console.log('[ProtectedRoute] 🔒 No session → redirectToLogin, returnTo:', returnTo);
+    base44.auth.redirectToLogin(returnTo);
+    return <LoadingScreen message="Redirecting to sign in…" />;
   }
 
-  // Needs onboarding but not there yet — render nothing while navigate fires
-  if (needsOnboarding && !isOnboarding) {
-    return null;
+  // Gate 4 — authenticated but onboarding incomplete
+  if (needsOnboarding && location.pathname !== '/onboarding') {
+    console.log('[ProtectedRoute] 🧭 needsOnboarding → /onboarding');
+    return <Navigate to="/onboarding" replace />;
+  }
+
+  // Gate 5 — onboarding already complete but sitting on /onboarding
+  if (!needsOnboarding && location.pathname === '/onboarding') {
+    console.log('[ProtectedRoute] ✅ Onboarding complete → /dashboard');
+    return <Navigate to="/dashboard" replace />;
   }
 
   return children;

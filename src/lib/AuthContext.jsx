@@ -38,6 +38,8 @@ function hasFreshTokenInUrl() {
 export const AuthProvider = ({ children }) => {
   const [user, setUser]               = useState(null);
   const [userProfile, setUserProfile] = useState(null);
+  // isLoadingAuth stays true until BOTH user AND userProfile are resolved.
+  // Guards must never act on state while this is true.
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const [authError, setAuthError]     = useState(null);
   const initDone = useRef(false);
@@ -63,10 +65,17 @@ export const AuthProvider = ({ children }) => {
     try {
       const currentUser = await withRetry(() => base44.auth.me(), 3, 300);
       console.log('[AuthContext] ✅ Session verified:', normalizeEmail(currentUser?.email || ''), '| id:', currentUser?.id);
-      // Reset session start clock on every successful auth (login or page reload)
       localStorage.setItem('base44_session_start', Date.now().toString());
+
+      // Load profile before committing any state — guards won't fire until
+      // setIsLoadingAuth(false) below, so we can resolve everything atomically.
+      const profile = await loadUserProfile(currentUser, 2);
+
+      // Commit user + profile together, then drop the loading gate.
       setUser(currentUser);
-      await loadUserProfile(currentUser, 2);
+      setUserProfile(profile);
+      setIsLoadingAuth(false);
+      console.log('[AuthContext] 🏁 Auth ready | user:', currentUser?.id, '| profile:', profile?.id, '| onboarding:', profile?.onboarding_status);
 
     } catch (error) {
       const status  = error?.status || error?.response?.status;
@@ -84,16 +93,16 @@ export const AuthProvider = ({ children }) => {
         console.log('[AuthContext] → error type: auth_required (explicit 401/403)');
         setAuthError({ type: 'auth_required' });
       } else {
-        // Network blip / timeout — do NOT redirect to login
         console.warn('[AuthContext] → error type: network_error — will NOT redirect to login');
         setAuthError({ type: 'network_error', message });
       }
-    } finally {
+
       setIsLoadingAuth(false);
-      console.log('[AuthContext] 🏁 Auth init complete | user:', !!user);
     }
   };
 
+  // Pure data-fetcher — returns profile or null, does NOT call setUserProfile.
+  // Callers are responsible for committing the result to state.
   const loadUserProfile = async (currentUser, retries = 1) => {
     const email = normalizeEmail(currentUser?.email || '');
     console.log('[AuthContext] 🔍 Loading UserProfile for user_id:', currentUser?.id, '| email:', email);
@@ -106,7 +115,6 @@ export const AuthProvider = ({ children }) => {
       if (profiles.length > 0) {
         const p = profiles[0];
         console.log('[AuthContext] ✅ UserProfile found | id:', p.id, '| status:', p.onboarding_status, '| company_id:', p.company_id);
-        setUserProfile(p);
         return p;
       }
 
@@ -124,13 +132,11 @@ export const AuthProvider = ({ children }) => {
         const repaired = await repairMissingUserProfile(currentUser, companiesByEmail[0]);
         if (repaired) {
           console.log('[AuthContext] ✅ Profile repair successful | id:', repaired.id);
-          setUserProfile(repaired);
           return repaired;
         }
       }
 
       console.log('[AuthContext] ℹ️ No profile & no company → needsOnboarding = true');
-      setUserProfile(null);
       return null;
     };
 
@@ -138,7 +144,6 @@ export const AuthProvider = ({ children }) => {
       return await withRetry(doLoad, retries);
     } catch (e) {
       console.warn('[AuthContext] ⚠️ Profile load failed after retries — failing open (→ onboarding):', e?.message);
-      setUserProfile(null);
       return null;
     }
   };
@@ -146,7 +151,9 @@ export const AuthProvider = ({ children }) => {
   const refreshUserProfile = async () => {
     if (!user) return;
     console.log('[AuthContext] 🔄 Refreshing UserProfile…');
-    return loadUserProfile(user, 2);
+    const profile = await loadUserProfile(user, 2);
+    setUserProfile(profile);
+    return profile;
   };
 
   const markOnboardingComplete = () => {
