@@ -8,6 +8,7 @@ import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import { DemoProvider } from '@/lib/DemoContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import ProtectedRoute from '@/lib/ProtectedRoute';
+
 import AppLayout from '@/components/layout/AppLayout';
 import PageTransition from '@/components/PageTransition';
 
@@ -43,10 +44,10 @@ import BetaUsers from '@/pages/BetaUsers';
 
 
 const AuthenticatedApp = () => {
-  const { isLoadingAuth, authError } = useAuth();
+  const { isLoadingAuth, isAuthenticated, authError, needsOnboarding } = useAuth();
 
-  // Block ALL route rendering until the session is verified —
-  // this is the single global authLoading gate.
+  // ── GATE 1: Auth is still resolving — render NOTHING until we know the session state.
+  // This is the single global lock. No route, no redirect fires before this clears.
   if (isLoadingAuth) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-background">
@@ -58,20 +59,35 @@ const AuthenticatedApp = () => {
     );
   }
 
+  // ── GATE 2: User record exists but is not registered in this app
   if (authError?.type === 'user_not_registered') {
     return <UserNotRegisteredError />;
   }
 
-  // network_error is handled inside ProtectedRoute per-route — don't block public routes here
-
+  // ── GATE 3: Auth is resolved — determine destination and render routes.
+  // Public auth pages redirect authenticated users away immediately (no flash).
   return (
     <Routes>
-      {/* Public routes */}
-      <Route path="/login" element={<Login />} />
-      <Route path="/signup" element={<Signup />} />
+      {/* Public routes — redirect to correct destination if already authenticated */}
+      <Route
+        path="/login"
+        element={
+          isAuthenticated
+            ? <Navigate to={needsOnboarding ? '/onboarding' : '/dashboard'} replace />
+            : <Login />
+        }
+      />
+      <Route
+        path="/signup"
+        element={
+          isAuthenticated
+            ? <Navigate to={needsOnboarding ? '/onboarding' : '/dashboard'} replace />
+            : <Signup />
+        }
+      />
       <Route path="/forgot-password" element={<ForgotPassword />} />
-      
-      {/* Client portal routes */}
+
+      {/* Client portal routes — standalone, no app auth */}
       <Route path="/client-login" element={<ClientLogin />} />
       <Route path="/client-portal" element={<ClientPortal />} />
 
