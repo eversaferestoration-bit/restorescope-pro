@@ -35,11 +35,18 @@ export default function Login() {
     setEmailError('');
     const trimmed = email.trim();
 
-    if (trimmed && !EMAIL_REGEX.test(trimmed)) {
+    if (!trimmed) {
+      setEmailError('Enter your email address.');
+      return;
+    }
+
+    if (!EMAIL_REGEX.test(trimmed)) {
       setEmailError('Enter a valid email address.');
       return;
     }
 
+    console.log('[Login] 🚀 Login start | email:', trimmed);
+    console.log('[Login] ➡️ Redirecting to platform login | returnTo: /dashboard');
     base44.auth.redirectToLogin('/dashboard');
   };
 

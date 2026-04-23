@@ -56,16 +56,20 @@ export const AuthProvider = ({ children }) => {
   const initDone = useRef(false);
 
   useEffect(() => {
-    if (initDone.current) return;
+    // Guard lives OUTSIDE initialize() so it cannot be overridden from inside.
+    // Manual re-init via checkUserAuth resets initDone first, then calls initialize.
+    if (initDone.current) {
+      console.log('[AuthContext] 🛑 Skipping duplicate init — already running or complete');
+      return;
+    }
     initDone.current = true;
+    console.log('[AuthContext] 🚀 Auth init triggered from useEffect');
     initialize();
   }, []);
 
   const initialize = async () => {
     setIsLoadingAuth(true);
     setAuthError(null);
-    // Reset initDone so manual re-init (checkUserAuth) always runs
-    initDone.current = true;
     console.log('[AuthContext] 🔄 Initializing auth | pathname:', window.location.pathname, '| freshToken:', sessionStorage.getItem('base44_fresh_token_load'));
 
     // If app-params just wrote a fresh token this page load, wait a tick
@@ -232,7 +236,12 @@ export const AuthProvider = ({ children }) => {
       authError,
       needsOnboarding,
       logout,
-      checkUserAuth: initialize,
+      checkUserAuth: () => {
+        // Reset the guard so initialize() is allowed to run again
+        initDone.current = false;
+        console.log('[AuthContext] 🔁 Manual re-init requested — resetting guard');
+        initialize();
+      },
       refreshUserProfile,
       markOnboardingComplete,
     }}>
