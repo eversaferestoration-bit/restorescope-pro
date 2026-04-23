@@ -16,26 +16,35 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Cannot delete another user account' }, { status: 403 });
     }
 
-    // Soft-delete user profile
-    const profiles = await base44.asServiceRole.entities.UserProfile.filter({ user_id, is_deleted: false });
+    // 1. Soft-delete only the UserProfile record for this user.
+    //    Company, Job, Photo, EstimateDraft, and all other company-owned records
+    //    are intentionally preserved — they belong to the company, not the user.
+    const profiles = await base44.asServiceRole.entities.UserProfile.filter(
+      { user_id, is_deleted: false }
+    );
+
     for (const profile of profiles) {
-      await base44.asServiceRole.entities.UserProfile.update(profile.id, { is_deleted: true });
+      await base44.asServiceRole.entities.UserProfile.update(profile.id, {
+        is_deleted: true,
+        status: 'deactivated',
+      });
     }
 
-    // Soft-delete all user's created records (jobs, photos, estimates, etc.)
-    const entities = ['Job', 'Photo', 'EstimateDraft', 'Room', 'ScopeItem', 'Observation', 'AuditLog'];
-    for (const entity of entities) {
-      try {
-        const records = await base44.asServiceRole.entities[entity].filter({ created_by: user.email, is_deleted: false }, '', 1000);
-        for (const record of records) {
-          await base44.asServiceRole.entities[entity].update(record.id, { is_deleted: true });
-        }
-      } catch {
-        // Entity may not exist or have created_by field — continue
-      }
+    // 2. If this user was the sole creator of a Company, mark the company as
+    //    having no active owner — but do NOT delete it or any of its records.
+    //    An admin can reassign ownership manually if needed.
+    const ownedCompanies = await base44.asServiceRole.entities.Company.filter(
+      { created_by: user.email, is_deleted: false }
+    );
+
+    for (const company of ownedCompanies) {
+      // Only flag, never delete. Records remain fully intact.
+      await base44.asServiceRole.entities.Company.update(company.id, {
+        status: 'owner_deactivated',
+      });
     }
 
-    return Response.json({ success: true, message: 'Account deleted successfully' });
+    return Response.json({ success: true, message: 'Account deactivated successfully. Company data preserved.' });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }
