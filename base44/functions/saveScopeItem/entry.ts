@@ -29,9 +29,11 @@ Deno.serve(async (req) => {
     if (!jobs.length) return Response.json({ error: 'Job not found' }, { status: 404 });
     const job = jobs[0];
 
-    if (user.role !== 'admin') {
-      const profiles = await base44.asServiceRole.entities.UserProfile.filter({ user_id: user.id, company_id: job.company_id, is_deleted: false });
-      if (!profiles.length) return Response.json({ error: 'Forbidden' }, { status: 403 });
+    // Strict company isolation — no role bypasses cross-tenant access
+    const userProfiles = await base44.asServiceRole.entities.UserProfile.filter({ user_id: user.id, is_deleted: false });
+    const userCompanyId = userProfiles[0]?.company_id;
+    if (!userCompanyId || userCompanyId !== job.company_id) {
+      return Response.json({ error: 'Forbidden', message: 'Access denied: resource belongs to a different company.' }, { status: 403 });
     }
 
     const item = await base44.asServiceRole.entities.ScopeItem.create({
@@ -69,9 +71,11 @@ Deno.serve(async (req) => {
     if (!items.length) return Response.json({ error: 'Item not found' }, { status: 404 });
     const existing = items[0];
 
-    if (user.role !== 'admin') {
-      const profiles = await base44.asServiceRole.entities.UserProfile.filter({ user_id: user.id, company_id: existing.company_id, is_deleted: false });
-      if (!profiles.length) return Response.json({ error: 'Forbidden' }, { status: 403 });
+    // Strict company isolation — no role bypasses cross-tenant access
+    const userProfiles2 = await base44.asServiceRole.entities.UserProfile.filter({ user_id: user.id, is_deleted: false });
+    const userCompanyId2 = userProfiles2[0]?.company_id;
+    if (!userCompanyId2 || userCompanyId2 !== existing.company_id) {
+      return Response.json({ error: 'Forbidden', message: 'Access denied: resource belongs to a different company.' }, { status: 403 });
     }
 
     const updateData = { status };

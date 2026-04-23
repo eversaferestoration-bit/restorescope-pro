@@ -9,10 +9,20 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { invite_code, company_id } = await req.json();
+    const { invite_code } = await req.json();
 
-    if (!invite_code || !company_id) {
-      return Response.json({ error: 'invite_code and company_id are required' }, { status: 400 });
+    if (!invite_code) {
+      return Response.json({ error: 'invite_code is required' }, { status: 400 });
+    }
+
+    // CF-08: Derive company_id from authenticated user — never trust request body
+    const userProfiles = await base44.asServiceRole.entities.UserProfile.filter({
+      user_id: user.id,
+      is_deleted: false,
+    });
+    const company_id = userProfiles[0]?.company_id;
+    if (!company_id) {
+      return Response.json({ error: 'No company found for this user' }, { status: 403 });
     }
 
     // Find the invite

@@ -14,10 +14,11 @@ Deno.serve(async (req) => {
   if (!drafts.length) return Response.json({ error: 'Draft not found' }, { status: 404 });
   const draft = drafts[0];
 
-  // Verify company membership
-  if (user.role !== 'admin') {
-    const profiles = await base44.asServiceRole.entities.UserProfile.filter({ user_id: user.id, company_id: draft.company_id, is_deleted: false });
-    if (!profiles.length) return Response.json({ error: 'Forbidden' }, { status: 403 });
+  // Strict company isolation — no role bypasses cross-tenant access
+  const userProfiles = await base44.asServiceRole.entities.UserProfile.filter({ user_id: user.id, is_deleted: false });
+  const userCompanyId = userProfiles[0]?.company_id;
+  if (!userCompanyId || userCompanyId !== draft.company_id) {
+    return Response.json({ error: 'Forbidden', message: 'Access denied: resource belongs to a different company.' }, { status: 403 });
   }
 
   if (draft.status !== 'draft') {

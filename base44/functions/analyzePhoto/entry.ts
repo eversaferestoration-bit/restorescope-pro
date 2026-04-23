@@ -37,14 +37,24 @@ Deno.serve(async (req) => {
   if (!file_url) return Response.json({ error: 'file_url required' }, { status: 400 });
   if (!job_id) return Response.json({ error: 'job_id required' }, { status: 400 });
 
-  // Verify job access
+  // Verify job exists
   const jobs = await base44.asServiceRole.entities.Job.filter({ id: job_id, is_deleted: false });
   if (!jobs.length) return Response.json({ error: 'Job not found' }, { status: 404 });
   const job = jobs[0];
 
-  const profiles = await base44.asServiceRole.entities.UserProfile.filter({ user_id: user.id, company_id: job.company_id, is_deleted: false });
-  if (!profiles.length && user.role !== 'admin') {
-    return Response.json({ error: 'Forbidden' }, { status: 403 });
+  // Strict company isolation — no role bypasses cross-tenant access
+  const userProfiles = await base44.asServiceRole.entities.UserProfile.filter({ user_id: user.id, is_deleted: false });
+  const userCompanyId = userProfiles[0]?.company_id;
+  if (!userCompanyId || userCompanyId !== job.company_id) {
+    return Response.json({ error: 'Forbidden', message: 'Access denied: resource belongs to a different company.' }, { status: 403 });
+  }
+
+  // CF-15: Verify photo belongs to this job (if photo_id provided)
+  if (photo_id) {
+    const photos = await base44.asServiceRole.entities.Photo.filter({ id: photo_id, job_id, is_deleted: false });
+    if (!photos.length) {
+      return Response.json({ error: 'Forbidden', message: 'Photo does not belong to the specified job.' }, { status: 403 });
+    }
   }
 
   // Call LLM with vision
