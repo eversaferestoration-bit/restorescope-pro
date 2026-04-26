@@ -1,11 +1,9 @@
-import { Toaster } from "@/components/ui/toaster";
+import { Toaster } from '@/components/ui/toaster';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClientInstance } from '@/lib/query-client';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
-import { AnimatePresence } from 'framer-motion';
-import PageNotFound from './lib/PageNotFound';
+import PageNotFound from '@/lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
-import AuthDebugOverlay from '@/components/debug/AuthDebugOverlay';
 import { DemoProvider } from '@/lib/DemoContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import ProtectedRoute from '@/lib/ProtectedRoute';
@@ -13,16 +11,13 @@ import ProtectedRoute from '@/lib/ProtectedRoute';
 import AppLayout from '@/components/layout/AppLayout';
 import PageTransition from '@/components/PageTransition';
 
-// Auth pages
 import Login from '@/pages/auth/Login';
 import Signup from '@/pages/auth/Signup';
 import ForgotPassword from '@/pages/auth/ForgotPassword';
 
-// Client pages
 import ClientLogin from '@/pages/client/ClientLogin';
 import ClientPortal from '@/pages/client/ClientPortal';
 
-// App pages
 import Onboarding from '@/pages/Onboarding';
 import Dashboard from '@/pages/Dashboard';
 import Jobs from '@/pages/Jobs';
@@ -43,37 +38,30 @@ import BetaAdmin from '@/pages/BetaAdmin';
 import BetaManagement from '@/pages/BetaManagement';
 import BetaUsers from '@/pages/BetaUsers';
 
+function FullScreenLoader({ message = 'Loading RestoreScope Pro...' }) {
+  return (
+    <div className="fixed inset-0 flex items-center justify-center bg-background">
+      <div className="flex flex-col items-center gap-3">
+        <div className="w-8 h-8 border-[3px] border-primary/20 border-t-primary rounded-full animate-spin" />
+        <span className="text-sm text-muted-foreground">{message}</span>
+      </div>
+    </div>
+  );
+}
 
-const AuthenticatedApp = () => {
+function AuthenticatedRoutes() {
   const { isLoadingAuth, isAuthenticated, authError, needsOnboarding } = useAuth();
 
-  // ── GATE 1: Auth is still resolving — render NOTHING until we know the session state.
-  // This is the single global lock. No route, no redirect fires before this clears.
   if (isLoadingAuth) {
-    return (
-      <div className="fixed inset-0 flex items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
-          <span className="text-sm text-muted-foreground">Loading…</span>
-        </div>
-      </div>
-    );
+    return <FullScreenLoader />;
   }
 
-  // ── GATE 2: User record exists but is not registered in this app
   if (authError?.type === 'user_not_registered') {
     return <UserNotRegisteredError />;
   }
 
-  // ── GATE 2b: auth_required (401/403) — session definitively invalid.
-  // Fall through to routes so ProtectedRoute's useEffect fires redirectToLogin.
-  // Do NOT block here — we need the Router context for the effect to work.
-
-  // ── GATE 3: Auth is resolved — determine destination and render routes.
-  // Public auth pages redirect authenticated users away immediately (no flash).
   return (
     <Routes>
-      {/* Public routes — redirect to correct destination if already authenticated */}
       <Route
         path="/login"
         element={
@@ -92,11 +80,9 @@ const AuthenticatedApp = () => {
       />
       <Route path="/forgot-password" element={<ForgotPassword />} />
 
-      {/* Client portal routes — standalone, no app auth */}
       <Route path="/client-login" element={<ClientLogin />} />
       <Route path="/client-portal" element={<ClientPortal />} />
 
-      {/* Onboarding — protected but outside app shell */}
       <Route
         path="/onboarding"
         element={
@@ -108,7 +94,6 @@ const AuthenticatedApp = () => {
         }
       />
 
-      {/* Protected app routes with shared layout */}
       <Route
         element={
           <ProtectedRoute>
@@ -140,22 +125,19 @@ const AuthenticatedApp = () => {
       <Route path="*" element={<PageNotFound />} />
     </Routes>
   );
-};
+}
 
-function App() {
+export default function App() {
   return (
     <AuthProvider>
       <DemoProvider>
-      <QueryClientProvider client={queryClientInstance}>
-        <Router>
-          <AuthenticatedApp />
-          <AuthDebugOverlay />
-        </Router>
-        <Toaster />
-      </QueryClientProvider>
+        <QueryClientProvider client={queryClientInstance}>
+          <Router>
+            <AuthenticatedRoutes />
+          </Router>
+          <Toaster />
+        </QueryClientProvider>
       </DemoProvider>
     </AuthProvider>
   );
 }
-
-export default App;
