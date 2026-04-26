@@ -3,14 +3,18 @@ import { appParams } from '@/lib/app-params';
 
 const { appId, token, functionsVersion, appBaseUrl } = appParams;
 
-console.log('[base44Client] Initializing SDK | appId:', appId, '| hasToken:', !!token, '| tokenPrefix:', token?.slice(0, 10) || 'none');
+if (!appId) {
+  console.warn('[base44Client] Missing VITE_BASE44_APP_ID. Add it to .env.');
+}
 
-//Create a client with authentication required
+if (!appBaseUrl) {
+  console.warn('[base44Client] Missing VITE_BASE44_APP_BASE_URL. Add it to .env.');
+}
+
 export const base44 = createClient({
   appId,
   token,
   functionsVersion,
-  serverUrl: '',
+  appBaseUrl,
   requiresAuth: false,
-  appBaseUrl
 });
