@@ -87,7 +87,10 @@ function AuthenticatedRoutes() {
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/client-login" element={<ClientLogin />} />
       <Route path="/client-portal" element={<ClientPortal />} />
-
+      <Route path="/company" element={<div>Company Profile Page</div>} />
+      <Route path="/notifications" element={<div>Notifications Page</div>} />
+      <Route path="/security" element={<div>Security Page</div>} />
+      <Route path="/integrations" element={<div>Integrations Page</div>} />
       <Route
         path="/onboarding"
         element={
