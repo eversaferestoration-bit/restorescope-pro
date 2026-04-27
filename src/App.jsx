@@ -53,7 +53,7 @@ function AuthenticatedRoutes() {
   const { isLoadingAuth, isAuthenticated, authError, needsOnboarding } = useAuth();
 
   if (isLoadingAuth) {
-    return <FullScreenLoader />;
+    return <FullScreenLoader message="Verifying session..." />;
   }
 
   if (authError?.type === 'user_not_registered') {
@@ -65,32 +65,39 @@ function AuthenticatedRoutes() {
       <Route
         path="/login"
         element={
-          isAuthenticated
-            ? <Navigate to={needsOnboarding ? '/onboarding' : '/dashboard'} replace />
-            : <Login />
+          isAuthenticated ? (
+            <Navigate to={needsOnboarding ? '/onboarding' : '/dashboard'} replace />
+          ) : (
+            <Login />
+          )
         }
       />
+
       <Route
         path="/signup"
         element={
-          isAuthenticated
-            ? <Navigate to={needsOnboarding ? '/onboarding' : '/dashboard'} replace />
-            : <Signup />
+          isAuthenticated ? (
+            <Navigate to={needsOnboarding ? '/onboarding' : '/dashboard'} replace />
+          ) : (
+            <Signup />
+          )
         }
       />
-      <Route path="/forgot-password" element={<ForgotPassword />} />
 
+      <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/client-login" element={<ClientLogin />} />
       <Route path="/client-portal" element={<ClientPortal />} />
 
       <Route
         path="/onboarding"
         element={
-          <ProtectedRoute>
+          isAuthenticated ? (
             <PageTransition>
               <Onboarding />
             </PageTransition>
-          </ProtectedRoute>
+          ) : (
+            <Navigate to="/login" replace />
+          )
         }
       />
 
@@ -102,24 +109,173 @@ function AuthenticatedRoutes() {
         }
       >
         <Route index element={<Navigate to="/dashboard" replace />} />
-        <Route path="/dashboard" element={<PageTransition><Dashboard /></PageTransition>} />
-        <Route path="/jobs" element={<PageTransition><Jobs /></PageTransition>} />
-        <Route path="/jobs/new" element={<PageTransition><NewJob /></PageTransition>} />
-        <Route path="/jobs/:jobId" element={<PageTransition><JobDetail /></PageTransition>} />
-        <Route path="/settings" element={<PageTransition><Settings /></PageTransition>} />
-        <Route path="/billing" element={<PageTransition><Billing /></PageTransition>} />
-        <Route path="/users" element={<PageTransition><Users /></PageTransition>} />
-        <Route path="/templates" element={<PageTransition><Templates /></PageTransition>} />
-        <Route path="/pricing-profiles" element={<PageTransition><PricingProfiles /></PageTransition>} />
-        <Route path="/audit-log" element={<PageTransition><AuditLog /></PageTransition>} />
-        <Route path="/analytics" element={<PageTransition><Analytics /></PageTransition>} />
-        <Route path="/team-performance" element={<PageTransition><TeamPerformance /></PageTransition>} />
-        <Route path="/dominance-validation" element={<PageTransition><DominanceValidation /></PageTransition>} />
-        <Route path="/enterprise" element={<PageTransition><EnterpriseSettings /></PageTransition>} />
-        <Route path="/demo" element={<PageTransition><DemoJob /></PageTransition>} />
-        <Route path="/beta-admin" element={<PageTransition><BetaAdmin /></PageTransition>} />
-        <Route path="/beta-management" element={<PageTransition><BetaManagement /></PageTransition>} />
-        <Route path="/beta-users" element={<PageTransition><BetaUsers /></PageTransition>} />
+
+        <Route
+          path="/dashboard"
+          element={
+            <PageTransition>
+              <Dashboard />
+            </PageTransition>
+          }
+        />
+
+        <Route
+          path="/jobs"
+          element={
+            <PageTransition>
+              <Jobs />
+            </PageTransition>
+          }
+        />
+
+        <Route
+          path="/jobs/new"
+          element={
+            <PageTransition>
+              <NewJob />
+            </PageTransition>
+          }
+        />
+
+        <Route
+          path="/jobs/:jobId"
+          element={
+            <PageTransition>
+              <JobDetail />
+            </PageTransition>
+          }
+        />
+
+        <Route
+          path="/settings"
+          element={
+            <PageTransition>
+              <Settings />
+            </PageTransition>
+          }
+        />
+
+        <Route
+          path="/billing"
+          element={
+            <PageTransition>
+              <Billing />
+            </PageTransition>
+          }
+        />
+
+        <Route
+          path="/users"
+          element={
+            <PageTransition>
+              <Users />
+            </PageTransition>
+          }
+        />
+
+        <Route
+          path="/templates"
+          element={
+            <PageTransition>
+              <Templates />
+            </PageTransition>
+          }
+        />
+
+        <Route
+          path="/pricing-profiles"
+          element={
+            <PageTransition>
+              <PricingProfiles />
+            </PageTransition>
+          }
+        />
+
+        <Route
+          path="/audit-log"
+          element={
+            <PageTransition>
+              <AuditLog />
+            </PageTransition>
+          }
+        />
+
+        <Route
+          path="/analytics"
+          element={
+            <PageTransition>
+              <Analytics />
+            </PageTransition>
+          }
+        />
+
+        <Route
+          path="/team-performance"
+          element={
+            <PageTransition>
+              <TeamPerformance />
+            </PageTransition>
+          }
+        />
+
+        <Route
+          path="/dominance-validation"
+          element={
+            <PageTransition>
+              <DominanceValidation />
+            </PageTransition>
+          }
+        />
+
+        <Route
+          path="/enterprise"
+          element={
+            <PageTransition>
+              <EnterpriseSettings />
+            </PageTransition>
+          }
+        />
+
+        <Route
+          path="/enterprise-settings"
+          element={<Navigate to="/enterprise" replace />}
+        />
+
+        <Route
+          path="/demo"
+          element={
+            <PageTransition>
+              <DemoJob />
+            </PageTransition>
+          }
+        />
+
+        <Route
+          path="/beta-admin"
+          element={
+            <PageTransition>
+              <BetaAdmin />
+            </PageTransition>
+          }
+        />
+
+        <Route
+          path="/beta-management"
+          element={
+            <PageTransition>
+              <BetaManagement />
+            </PageTransition>
+          }
+        />
+
+        <Route
+          path="/beta-users"
+          element={
+            <PageTransition>
+              <BetaUsers />
+            </PageTransition>
+          }
+        />
       </Route>
 
       <Route path="*" element={<PageNotFound />} />
