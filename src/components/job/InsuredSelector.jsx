@@ -1,117 +1,280 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Search, Plus, Check, User } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 
 export default function InsuredSelector({ value, onChange }) {
-  const { user } = useAuth();
-  const qc = useQueryClient();
+  const { user, userProfile } = useAuth();
+  const queryClient = useQueryClient();
+
+  const companyId = userProfile?.company_id || user?.company_id || '';
+
   const [search, setSearch] = useState('');
   const [adding, setAdding] = useState(false);
-  const [newForm, setNewForm] = useState({ full_name: '', email: '', phone: '' });
-
-  const { data: insureds = [] } = useQuery({
-    queryKey: ['insureds', user?.company_id],
-    queryFn: () => base44.entities.Insured.filter({ is_deleted: false }, 'full_name', 100),
-    staleTime: 5 * 60 * 1000,
+  const [error, setError] = useState('');
+  const [newForm, setNewForm] = useState({
+    full_name: '',
+    email: '',
+    phone: '',
   });
 
+  const {
+    data: insureds = [],
+    isLoading,
+    refetch,
+  } = useQuery({
+    queryKey: ['insureds', companyId],
+    enabled: !!companyId,
+    queryFn: async () => {
+      return await base44.entities.Insured.filter(
+        {
+          company_id: companyId,
+          is_deleted: false,
+        },
+        'full_name',
+        100
+      );
+    },
+    staleTime: 30 * 1000,
+  });
+
+  const selected = useMemo(() => {
+    if (!value) return null;
+
+    return insureds.find((insured) => insured.id === value.id) || value;
+  }, [insureds, value]);
+
+  const filtered = useMemo(() => {
+    const term = search.trim().toLowerCase();
+
+    if (!term) return insureds;
+
+    return insureds.filter((insured) => {
+      const name = String(insured.full_name || '').toLowerCase();
+      const email = String(insured.email || '').toLowerCase();
+      const phone = String(insured.phone || '').toLowerCase();
+
+      return name.includes(term) || email.includes(term) || phone.includes(term);
+    });
+  }, [insureds, search]);
+
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.Insured.create(data),
-    onSuccess: (created) => {
-      qc.invalidateQueries(['insureds']);
+    mutationFn: async (payload) => {
+      return await base44.entities.Insured.create(payload);
+    },
+    onSuccess: async (created) => {
       onChange(created);
       setAdding(false);
-      setNewForm({ full_name: '', email: '', phone: '' });
+      setSearch('');
+      setError('');
+      setNewForm({
+        full_name: '',
+        email: '',
+        phone: '',
+      });
+
+      await queryClient.invalidateQueries({ queryKey: ['insureds', companyId] });
+      await refetch();
+    },
+    onError: (err) => {
+      console.error('[InsuredSelector] Failed to create insured:', err);
+      setError('Could not save insured. Check Insured entity permissions and required fields.');
     },
   });
 
-  const filtered = insureds.filter((i) =>
-    !search || i.full_name?.toLowerCase().includes(search.toLowerCase()) || i.email?.toLowerCase().includes(search.toLowerCase())
-  );
+  const handleCreate = () => {
+    setError('');
 
-  const selected = insureds.find((i) => i.id === value?.id);
+    const fullName = newForm.full_name.trim();
+    const email = newForm.email.trim();
+    const phone = newForm.phone.trim();
+
+    if (!companyId) {
+      setError('Missing company profile. Complete onboarding or check your UserProfile company_id.');
+      return;
+    }
+
+    if (!fullName) {
+      setError('Full name is required.');
+      return;
+    }
+
+    createMutation.mutate({
+      company_id: companyId,
+      full_name: fullName,
+      email,
+      phone,
+      is_deleted: false,
+    });
+  };
 
   return (
     <div className="space-y-2">
-      {/* Selected badge */}
       {selected && (
         <div className="flex items-center justify-between bg-accent rounded-lg px-3 py-2">
           <div className="flex items-center gap-2">
             <Check size={14} className="text-primary" />
             <div>
               <p className="text-sm font-medium">{selected.full_name}</p>
-              {selected.email && <p className="text-xs text-muted-foreground">{selected.email}</p>}
+              {selected.email && (
+                <p className="text-xs text-muted-foreground">{selected.email}</p>
+              )}
+              {selected.phone && (
+                <p className="text-xs text-muted-foreground">{selected.phone}</p>
+              )}
             </div>
           </div>
-          <button onClick={() => onChange(null)} className="text-xs text-muted-foreground hover:text-destructive transition">Remove</button>
+
+          <button
+            type="button"
+            onClick={() => onChange(null)}
+            className="text-xs text-muted-foreground hover:text-destructive transition"
+          >
+            Remove
+          </button>
         </div>
       )}
 
       {!selected && (
         <>
           <div className="relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Search
+              size={14}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+            />
+
             <input
               className="w-full h-9 pl-8 pr-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               placeholder="Search insured…"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(event) => setSearch(event.target.value)}
             />
           </div>
 
-          {(search || filtered.length > 0) && !adding && (
+          {!adding && (
             <div className="border border-border rounded-lg overflow-hidden max-h-48 overflow-y-auto">
-              {filtered.map((i) => (
-                <button
-                  key={i.id}
-                  type="button"
-                  onClick={() => { onChange(i); setSearch(''); }}
-                  className="w-full flex items-center gap-2 px-3 py-2.5 hover:bg-muted text-left transition border-b border-border last:border-0"
-                >
-                  <User size={14} className="text-muted-foreground shrink-0" />
-                  <div>
-                    <p className="text-sm font-medium">{i.full_name}</p>
-                    {i.email && <p className="text-xs text-muted-foreground">{i.email}</p>}
-                  </div>
-                </button>
-              ))}
-              {filtered.length === 0 && (
-                <p className="text-xs text-muted-foreground px-3 py-2">No results.</p>
+              {isLoading && (
+                <p className="text-xs text-muted-foreground px-3 py-2">
+                  Loading insureds…
+                </p>
+              )}
+
+              {!isLoading &&
+                filtered.map((insured) => (
+                  <button
+                    key={insured.id}
+                    type="button"
+                    onClick={() => {
+                      onChange(insured);
+                      setSearch('');
+                      setError('');
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2.5 hover:bg-muted text-left transition border-b border-border last:border-0"
+                  >
+                    <User size={14} className="text-muted-foreground shrink-0" />
+
+                    <div>
+                      <p className="text-sm font-medium">{insured.full_name}</p>
+                      {insured.email && (
+                        <p className="text-xs text-muted-foreground">{insured.email}</p>
+                      )}
+                      {insured.phone && (
+                        <p className="text-xs text-muted-foreground">{insured.phone}</p>
+                      )}
+                    </div>
+                  </button>
+                ))}
+
+              {!isLoading && filtered.length === 0 && (
+                <p className="text-xs text-muted-foreground px-3 py-2">
+                  No insureds found.
+                </p>
               )}
             </div>
           )}
 
-          {insureds.length === 0 && !adding && (
-            <p className="text-xs text-muted-foreground">No insureds found. Add one below.</p>
+          {error && (
+            <div className="px-3 py-2 rounded-lg bg-destructive/10 border border-destructive/20 text-xs text-destructive">
+              {error}
+            </div>
           )}
+
           <button
             type="button"
-            onClick={() => setAdding(!adding)}
-            className={insureds.length === 0 && !adding
-              ? "inline-flex items-center gap-1.5 px-3 h-8 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition"
-              : "inline-flex items-center gap-1.5 text-xs text-primary font-medium hover:underline"
+            onClick={() => {
+              setAdding((current) => !current);
+              setError('');
+            }}
+            className={
+              insureds.length === 0 && !adding
+                ? 'inline-flex items-center gap-1.5 px-3 h-8 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition'
+                : 'inline-flex items-center gap-1.5 text-xs text-primary font-medium hover:underline'
             }
           >
-            <Plus size={13} /> Add new insured
+            <Plus size={13} />
+            {adding ? 'Cancel new insured' : 'Add new insured'}
           </button>
 
           {adding && (
             <div className="bg-muted/50 rounded-lg p-3 space-y-2 border border-border">
               <p className="text-xs font-semibold">New Insured</p>
-              <input className="w-full h-9 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" placeholder="Full name *" value={newForm.full_name} onChange={(e) => setNewForm((f) => ({ ...f, full_name: e.target.value }))} />
-              <input className="w-full h-9 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" placeholder="Email" value={newForm.email} onChange={(e) => setNewForm((f) => ({ ...f, email: e.target.value }))} />
-              <input className="w-full h-9 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring" placeholder="Phone" value={newForm.phone} onChange={(e) => setNewForm((f) => ({ ...f, phone: e.target.value }))} />
+
+              <input
+                className="w-full h-9 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                placeholder="Full name *"
+                value={newForm.full_name}
+                onChange={(event) =>
+                  setNewForm((current) => ({
+                    ...current,
+                    full_name: event.target.value,
+                  }))
+                }
+              />
+
+              <input
+                className="w-full h-9 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                placeholder="Email"
+                value={newForm.email}
+                onChange={(event) =>
+                  setNewForm((current) => ({
+                    ...current,
+                    email: event.target.value,
+                  }))
+                }
+              />
+
+              <input
+                className="w-full h-9 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                placeholder="Phone"
+                value={newForm.phone}
+                onChange={(event) =>
+                  setNewForm((current) => ({
+                    ...current,
+                    phone: event.target.value,
+                  }))
+                }
+              />
+
               <div className="flex gap-2 justify-end">
-                <button type="button" onClick={() => setAdding(false)} className="text-xs px-3 h-8 rounded-lg border hover:bg-muted transition">Cancel</button>
                 <button
                   type="button"
-                  disabled={!newForm.full_name || createMutation.isPending}
-                  onClick={() => createMutation.mutate({ ...newForm, company_id: user?.company_id || '', is_deleted: false })}
+                  onClick={() => {
+                    setAdding(false);
+                    setError('');
+                  }}
+                  className="text-xs px-3 h-8 rounded-lg border hover:bg-muted transition"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  disabled={!newForm.full_name.trim() || createMutation.isPending}
+                  onClick={handleCreate}
                   className="text-xs px-3 h-8 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition disabled:opacity-60"
                 >
-                  {createMutation.isPending ? 'Saving…' : 'Save'}
+                  {createMutation.isPending ? 'Saving…' : 'Save Insured'}
                 </button>
               </div>
             </div>
