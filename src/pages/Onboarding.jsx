@@ -1,351 +1,477 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { base44 } from '@/api/base44Client';
-import { useAuth } from '@/lib/AuthContext';
+import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { base44 } from "@/api/base44Client";
+import { useAuth } from "@/lib/AuthContext";
 
-import { Droplets, CheckCircle2 } from 'lucide-react';
-import OnboardingProgressBar from '@/components/onboarding/OnboardingProgressBar';
-import Step1Welcome from '@/components/onboarding/Step1Welcome';
-import Step2Company from '@/components/onboarding/Step2Company';
-import Step3Role from '@/components/onboarding/Step3Role';
-import Step4Pricing from '@/components/onboarding/Step4Pricing';
-import Step5FirstJob from '@/components/onboarding/Step5FirstJob';
+import { Droplets, CheckCircle2 } from "lucide-react";
+import OnboardingProgressBar from "@/components/onboarding/OnboardingProgressBar";
+import Step1Welcome from "@/components/onboarding/Step1Welcome";
+import Step2Company from "@/components/onboarding/Step2Company";
+import Step3Role from "@/components/onboarding/Step3Role";
+import Step4Pricing from "@/components/onboarding/Step4Pricing";
+import Step5FirstJob from "@/components/onboarding/Step5FirstJob";
 
 const DEFAULT_PRICING_LINE_ITEMS = [
-  { category: 'extraction', description: 'Water extraction', unit: 'sqft', unit_cost: 0.35 },
-  { category: 'drying', description: 'Structural drying (per day)', unit: 'day', unit_cost: 125 },
-  { category: 'containment', description: 'Containment setup', unit: 'lf', unit_cost: 4.5 },
-  { category: 'demolition', description: 'Drywall removal', unit: 'sqft', unit_cost: 1.75 },
-  { category: 'cleaning', description: 'Antimicrobial treatment', unit: 'sqft', unit_cost: 0.55 },
-  { category: 'hepa', description: 'HEPA air scrubber (per day)', unit: 'day', unit_cost: 85 },
-  { category: 'documentation', description: 'Moisture documentation', unit: 'hr', unit_cost: 65 },
+  { category: "extraction", description: "Water extraction", unit: "sqft", unit_cost: 0.35 },
+  { category: "drying", description: "Structural drying", unit: "day", unit_cost: 125 },
+  { category: "containment", description: "Containment setup", unit: "lf", unit_cost: 4.5 },
+  { category: "demolition", description: "Drywall removal", unit: "sqft", unit_cost: 1.75 },
+  { category: "cleaning", description: "Antimicrobial treatment", unit: "sqft", unit_cost: 0.55 },
+  { category: "hepa", description: "HEPA air scrubber", unit: "day", unit_cost: 85 },
+  { category: "documentation", description: "Moisture documentation", unit: "hr", unit_cost: 65 },
 ];
-
-// Maps internal step number to onboarding_status value
-const STEP_STATUS = {
-  1: 'account_created',
-  2: 'company_started',
-  3: 'company_completed',
-  4: 'role_selected',
-  5: 'pricing_profile_set',
-};
 
 export default function Onboarding() {
   const navigate = useNavigate();
-  const { user, markOnboardingComplete } = useAuth();
+  const auth = useAuth();
+  const user = auth?.user;
+  const markOnboardingComplete =
+    typeof auth?.markOnboardingComplete === "function"
+      ? auth.markOnboardingComplete
+      : () => {};
 
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [initializing, setInitializing] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [savedToast, setSavedToast] = useState(false);
   const [betaActivated, setBetaActivated] = useState(false);
 
   const [form, setForm] = useState({
-    company_name: '',
-    phone: '',
-    email: '',
-    service_area: '',
-    logo_url: '',
+    company_name: "",
+    phone: "",
+    email: "",
+    service_area: "",
+    logo_url: "",
   });
-  const [role, setRole] = useState('admin');
-  const [pricingChoice, setPricingChoice] = useState('');
+
+  const [role, setRole] = useState("admin");
+  const [pricingChoice, setPricingChoice] = useState("");
   const [grantBeta, setGrantBeta] = useState(false);
   const [companyId, setCompanyId] = useState(null);
   const [userProfileId, setUserProfileId] = useState(null);
 
-  // Show autosave toast briefly
   const showSaved = () => {
     setSavedToast(true);
-    setTimeout(() => setSavedToast(false), 2500);
+    window.setTimeout(() => setSavedToast(false), 2500);
   };
 
-  // Autosave step to UserProfile
-  const autosave = useCallback(async (stepNum, statusKey) => {
-    if (!userProfileId) return;
+  const getUserEmail = () => user?.email || form.email || "";
+  const getUserId = () => user?.id || user?.email || "";
+
+  const safeFilter = async (entity, filter) => {
     try {
-      await base44.entities.UserProfile.update(userProfileId, {
+      const result = await entity.filter(filter);
+      return Array.isArray(result) ? result : [];
+    } catch (err) {
+      console.warn("[Onboarding] Filter failed:", err?.message || err);
+      return [];
+    }
+  };
+
+  const safeUpdate = async (entity, id, data) => {
+    if (!id) return null;
+    try {
+      return await entity.update(id, data);
+    } catch (err) {
+      console.warn("[Onboarding] Update failed:", err?.message || err);
+      return null;
+    }
+  };
+
+  const autosave = useCallback(
+    async (stepNum, statusKey) => {
+      if (!userProfileId) return;
+
+      const saved = await safeUpdate(base44.entities.UserProfile, userProfileId, {
         current_onboarding_step: stepNum,
         onboarding_status: statusKey,
       });
-      showSaved();
-    } catch (e) { /* silent */ }
-  }, [userProfileId]);
 
-  // Save progress before tab close
+      if (saved) showSaved();
+    },
+    [userProfileId]
+  );
+
   useEffect(() => {
-    const handleUnload = () => {
-      if (userProfileId && step > 1 && step < 5) {
-        navigator.sendBeacon && navigator.sendBeacon('/api/noop'); // trigger unload
-        // Best-effort: autosave won't await here, but state is already persisted from previous saves
+    let mounted = true;
+
+    async function resumeOnboarding() {
+      if (!user) {
+        if (mounted) setInitializing(false);
+        return;
       }
-    };
-    window.addEventListener('beforeunload', handleUnload);
-    return () => window.removeEventListener('beforeunload', handleUnload);
-  }, [userProfileId, step]);
 
-  // Resume on mount
-  useEffect(() => {
-    if (!user) return;
-    const resume = async () => {
       try {
-        const profiles = await base44.entities.UserProfile.filter({ user_id: user.id, is_deleted: false });
-        if (profiles.length > 0) {
-          const profile = profiles[0];
-          setUserProfileId(profile.id);
-          setCompanyId(profile.company_id);
+        const userId = getUserId();
+        const email = getUserEmail();
 
-          // If already completed, ProtectedRoute will redirect to /dashboard.
-          // Don't navigate here to avoid racing with the guard.
-          const savedStep = profile.current_onboarding_step || 1;
-          setStep(Math.max(savedStep, 1));
-          setRole(profile.role || 'admin');
+        let profiles = [];
 
-          if (profile.company_id) {
-            const [companies, pricingProfiles] = await Promise.all([
-              base44.entities.Company.filter({ id: profile.company_id, is_deleted: false }),
-              base44.entities.PricingProfile.filter({ company_id: profile.company_id, is_deleted: false }),
-            ]);
-            if (companies.length > 0) {
-              const co = companies[0];
-              setForm({
-                company_name: co.name || '',
-                phone: co.phone || '',
-                email: co.email || user?.email || '',
-                service_area: co.city || '',
-                logo_url: co.logo_url || '',
-              });
-            }
-            // Pre-fill pricing choice if profile already exists (resume case)
-            if (pricingProfiles.length > 0) {
-              setPricingChoice('recommended');
-            }
-          }
-        }
-      } catch (e) {
-        console.error('[Onboarding] Resume failed — starting fresh:', e?.message);
-      } finally { setInitializing(false); }
-    };
-    resume();
-  }, [user?.id]);
-
-  // Step 1 → 2
-  const handleStep1Continue = () => {
-    setStep(2);
-    // No profile exists yet at step 1 — autosave happens when company is created in step 2
-  };
-
-  // Step 2 → 3: create/update company
-  // Atomic: Company + UserProfile are created together. Beta is awaited before advancing.
-  const handleStep2Continue = async () => {
-    if (!form.company_name.trim()) return;
-    setLoading(true);
-    setError('');
-    try {
-      let cId = companyId;
-
-      if (!cId) {
-        // --- Step A: Create Company ---
-        const companyData = {
-          name: form.company_name.trim(),
-          phone: form.phone || undefined,
-          email: form.email || user?.email,
-          city: form.service_area || undefined,
-          logo_url: form.logo_url || undefined,
-          status: 'active',
-          created_by: user?.email,
-          is_deleted: false,
-        };
-        if (grantBeta) {
-          const start = new Date();
-          const end = new Date(start);
-          end.setDate(end.getDate() + 14);
-          companyData.is_beta_user = true;
-          companyData.beta_start_date = start.toISOString().split('T')[0];
-          companyData.beta_end_date = end.toISOString().split('T')[0];
-          companyData.beta_status = 'active';
-        }
-
-        const company = await base44.entities.Company.create(companyData);
-        cId = company.id;
-
-        // --- Step B: Create UserProfile — if this fails, rollback Company ---
-        let profile;
-        try {
-          profile = await base44.entities.UserProfile.create({
-            user_id: user.id,
-            company_id: cId,
-            email: user.email,
-            role: 'admin',
-            current_onboarding_step: 3,
-            onboarding_status: 'company_completed',
-            completed_steps: [1, 2],
+        if (userId) {
+          profiles = await safeFilter(base44.entities.UserProfile, {
+            user_id: userId,
             is_deleted: false,
           });
-        } catch (profileErr) {
-          console.error('[Onboarding] UserProfile creation failed — rolling back Company:', profileErr?.message);
-          // Rollback: soft-delete the orphaned company
-          try {
-            await base44.entities.Company.update(cId, { is_deleted: true });
-          } catch (rbErr) {
-            console.error('[Onboarding] Company rollback also failed:', rbErr?.message);
-          }
-          throw profileErr; // re-throw so outer catch shows the user-facing error
         }
 
-        // Both succeeded — commit to local state
-        setCompanyId(cId);
-        setUserProfileId(profile.id);
-        showSaved();
+        if (profiles.length === 0 && email) {
+          profiles = await safeFilter(base44.entities.UserProfile, {
+            email,
+            is_deleted: false,
+          });
+        }
 
-        // --- Step C: Beta logic — awaited so company flags exist before step 3 reads data ---
-        const applyBeta = async () => {
-          try {
-            const inviteCode = sessionStorage.getItem('beta_invite_code');
-            if (inviteCode === 'BETA2025') {
-              sessionStorage.removeItem('beta_invite_code');
-              const start = new Date();
-              const end = new Date(start);
-              end.setDate(end.getDate() + 14);
-              await base44.entities.Company.update(cId, {
-                is_beta_user: true,
-                beta_start_date: start.toISOString().split('T')[0],
-                beta_end_date: end.toISOString().split('T')[0],
-                beta_status: 'active',
+        if (!mounted) return;
+
+        if (profiles.length > 0) {
+          const profile = profiles[0];
+
+          setUserProfileId(profile.id || null);
+          setCompanyId(profile.company_id || null);
+          setRole(profile.role || "admin");
+
+          const savedStep = Number(profile.current_onboarding_step || 1);
+          setStep(savedStep >= 1 && savedStep <= 5 ? savedStep : 1);
+
+          if (profile.company_id) {
+            const companies = await safeFilter(base44.entities.Company, {
+              id: profile.company_id,
+              is_deleted: false,
+            });
+
+            const pricingProfiles = await safeFilter(base44.entities.PricingProfile, {
+              company_id: profile.company_id,
+              is_deleted: false,
+            });
+
+            if (!mounted) return;
+
+            if (companies.length > 0) {
+              const company = companies[0];
+
+              setForm({
+                company_name: company.name || "",
+                phone: company.phone || "",
+                email: company.email || email || "",
+                service_area: company.city || company.service_area || "",
+                logo_url: company.logo_url || "",
               });
-              setBetaActivated(true);
-              return;
             }
-            if (!grantBeta) {
-              const allCompanies = await base44.entities.Company.filter({ is_deleted: false });
-              if (allCompanies.length <= 10) {
-                const start = new Date();
-                const end = new Date(start);
-                end.setDate(end.getDate() + 14);
-                await base44.entities.Company.update(cId, {
-                  is_beta_user: true,
-                  beta_start_date: start.toISOString().split('T')[0],
-                  beta_end_date: end.toISOString().split('T')[0],
-                  beta_status: 'active',
-                });
-                setBetaActivated(true);
-              }
-            }
-          } catch (betaErr) {
-            // Beta failure is non-fatal — log but don't block advancement
-            console.warn('[Onboarding] Beta activation failed (non-fatal):', betaErr?.message);
-          }
-        };
-        // AWAITED — beta fields must be written before step 3 reads company data
-        await applyBeta();
 
-      } else {
-        // Existing company — just update fields
-        await base44.entities.Company.update(cId, {
-          name: form.company_name.trim(),
-          phone: form.phone || undefined,
-          email: form.email || undefined,
-          city: form.service_area || undefined,
-          logo_url: form.logo_url || undefined,
+            if (pricingProfiles.length > 0) {
+              setPricingChoice("recommended");
+            }
+          }
+        } else {
+          setForm((prev) => ({
+            ...prev,
+            email: prev.email || email || "",
+          }));
+        }
+      } catch (err) {
+        console.error("[Onboarding] Resume failed:", err?.message || err);
+      } finally {
+        if (mounted) setInitializing(false);
+      }
+    }
+
+    resumeOnboarding();
+
+    return () => {
+      mounted = false;
+    };
+  }, [user?.id, user?.email]);
+
+  const activateBetaIfNeeded = async (cId) => {
+    try {
+      const inviteCode = sessionStorage.getItem("beta_invite_code");
+      const shouldUseInvite = inviteCode === "BETA2025";
+
+      let shouldActivate = grantBeta || shouldUseInvite;
+
+      if (!shouldActivate) {
+        const allCompanies = await safeFilter(base44.entities.Company, {
+          is_deleted: false,
         });
-        await autosave(3, 'company_completed');
+
+        shouldActivate = allCompanies.length <= 10;
       }
 
+      if (!shouldActivate) return;
+
+      const start = new Date();
+      const end = new Date(start);
+      end.setDate(end.getDate() + 14);
+
+      await safeUpdate(base44.entities.Company, cId, {
+        is_beta_user: true,
+        beta_start_date: start.toISOString().split("T")[0],
+        beta_end_date: end.toISOString().split("T")[0],
+        beta_status: "active",
+      });
+
+      if (shouldUseInvite) {
+        sessionStorage.removeItem("beta_invite_code");
+      }
+
+      setBetaActivated(true);
+    } catch (err) {
+      console.warn("[Onboarding] Beta activation failed:", err?.message || err);
+    }
+  };
+
+  const ensureCompanyAndProfile = async () => {
+    const email = getUserEmail();
+    const userId = getUserId();
+
+    if (!userId && !email) {
+      throw new Error("Missing authenticated user.");
+    }
+
+    let cId = companyId;
+    let pId = userProfileId;
+
+    if (!cId) {
+      const company = await base44.entities.Company.create({
+        name: form.company_name.trim(),
+        phone: form.phone || "",
+        email: form.email || email || "",
+        city: form.service_area || "",
+        service_area: form.service_area || "",
+        logo_url: form.logo_url || "",
+        status: "active",
+        created_by: email || userId,
+        is_deleted: false,
+      });
+
+      cId = company.id;
+      setCompanyId(cId);
+    } else {
+      await base44.entities.Company.update(cId, {
+        name: form.company_name.trim(),
+        phone: form.phone || "",
+        email: form.email || email || "",
+        city: form.service_area || "",
+        service_area: form.service_area || "",
+        logo_url: form.logo_url || "",
+        status: "active",
+        is_deleted: false,
+      });
+    }
+
+    if (!pId) {
+      const existingProfilesByUser = userId
+        ? await safeFilter(base44.entities.UserProfile, {
+            user_id: userId,
+            is_deleted: false,
+          })
+        : [];
+
+      const existingProfilesByEmail =
+        existingProfilesByUser.length === 0 && email
+          ? await safeFilter(base44.entities.UserProfile, {
+              email,
+              is_deleted: false,
+            })
+          : [];
+
+      const existingProfile = existingProfilesByUser[0] || existingProfilesByEmail[0];
+
+      if (existingProfile?.id) {
+        pId = existingProfile.id;
+        setUserProfileId(pId);
+
+        await base44.entities.UserProfile.update(pId, {
+          user_id: existingProfile.user_id || userId,
+          company_id: cId,
+          email: existingProfile.email || email,
+          role: existingProfile.role || "admin",
+          current_onboarding_step: 3,
+          onboarding_status: "company_completed",
+          is_deleted: false,
+        });
+      } else {
+        const profile = await base44.entities.UserProfile.create({
+          user_id: userId,
+          company_id: cId,
+          email,
+          role: "admin",
+          current_onboarding_step: 3,
+          onboarding_status: "company_completed",
+          completed_steps: [1, 2],
+          is_deleted: false,
+        });
+
+        pId = profile.id;
+        setUserProfileId(pId);
+      }
+    } else {
+      await base44.entities.UserProfile.update(pId, {
+        company_id: cId,
+        email,
+        current_onboarding_step: 3,
+        onboarding_status: "company_completed",
+        is_deleted: false,
+      });
+    }
+
+    return { cId, pId };
+  };
+
+  const handleStep1Continue = () => {
+    setError("");
+    setStep(2);
+  };
+
+  const handleStep2Continue = async () => {
+    if (!form.company_name.trim()) {
+      setError("Company name is required.");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+
+    try {
+      const { cId } = await ensureCompanyAndProfile();
+      await activateBetaIfNeeded(cId);
+      showSaved();
       setStep(3);
-    } catch (e) {
-      console.error('[Onboarding] Step 2 failed:', e?.message);
-      setError('Could not save company. Please try again.');
+    } catch (err) {
+      console.error("[Onboarding] Step 2 failed:", err?.message || err);
+      setError("Could not save company. Check required fields and permissions.");
     } finally {
       setLoading(false);
     }
   };
 
-  // Step 3 → 4: save role
   const handleStep3Continue = async () => {
     setLoading(true);
+    setError("");
+
     try {
       if (userProfileId) {
         await base44.entities.UserProfile.update(userProfileId, {
           role,
           current_onboarding_step: 4,
-          onboarding_status: 'role_selected',
+          onboarding_status: "role_selected",
         });
+
         showSaved();
       }
+
       setStep(4);
-    } catch (e) {
+    } catch (err) {
+      console.warn("[Onboarding] Role save failed:", err?.message || err);
       setStep(4);
     } finally {
       setLoading(false);
     }
   };
 
-  // Step 4 → 5: create pricing profile
   const handleStep4Continue = async () => {
     setLoading(true);
+    setError("");
+
     try {
-      if (pricingChoice === 'recommended' && companyId) {
-        const existing = await base44.entities.PricingProfile.filter({ company_id: companyId, is_deleted: false });
+      if (pricingChoice === "recommended" && companyId) {
+        const existing = await safeFilter(base44.entities.PricingProfile, {
+          company_id: companyId,
+          is_deleted: false,
+        });
+
         if (existing.length === 0) {
           await base44.entities.PricingProfile.create({
             company_id: companyId,
-            name: 'Recommended Defaults',
-            description: 'Industry-standard restoration pricing',
+            name: "Water & Mold Mitigation Defaults",
+            description: "Default water mitigation and mold remediation pricing profile.",
             is_default: true,
             line_items: DEFAULT_PRICING_LINE_ITEMS,
             is_deleted: false,
           });
         }
       }
-      await autosave(5, 'pricing_profile_set');
+
+      await autosave(5, "pricing_profile_set");
       setStep(5);
-    } catch (e) {
+    } catch (err) {
+      console.warn("[Onboarding] Pricing save failed:", err?.message || err);
       setStep(5);
     } finally {
       setLoading(false);
     }
   };
 
-  // Mark onboarding complete — DB write MUST succeed before local state flips.
-  // This prevents a partial-failure from leaving needsOnboarding=false in context
-  // while the DB still shows an incomplete status (which would loop the user on reload).
   const completeOnboarding = async () => {
-    if (userProfileId) {
-      // Await the DB write — do NOT catch silently; let the caller surface the error.
-      await base44.entities.UserProfile.update(userProfileId, {
-        onboarding_status: 'onboarding_completed',
+    const email = getUserEmail();
+    const userId = getUserId();
+
+    let pId = userProfileId;
+
+    if (!pId) {
+      const profilesByUser = userId
+        ? await safeFilter(base44.entities.UserProfile, {
+            user_id: userId,
+            is_deleted: false,
+          })
+        : [];
+
+      const profilesByEmail =
+        profilesByUser.length === 0 && email
+          ? await safeFilter(base44.entities.UserProfile, {
+              email,
+              is_deleted: false,
+            })
+          : [];
+
+      const profile = profilesByUser[0] || profilesByEmail[0];
+
+      if (profile?.id) {
+        pId = profile.id;
+        setUserProfileId(pId);
+      }
+    }
+
+    if (pId) {
+      await base44.entities.UserProfile.update(pId, {
+        onboarding_status: "onboarding_completed",
         onboarding_completed_at: new Date().toISOString(),
         current_onboarding_step: 6,
+        is_deleted: false,
       });
+    } else {
+      console.warn("[Onboarding] No UserProfile found. Continuing without profile completion write.");
     }
-    // DB write confirmed — now safe to flip local context so ProtectedRoute
-    // sees needsOnboarding=false without waiting for a full re-fetch.
+
     markOnboardingComplete();
   };
 
-  // Step 5: create first job — mark onboarding complete so ProtectedRoute never loops back
   const handleCreateFirstJob = async () => {
     setLoading(true);
+    setError("");
+
     try {
       await completeOnboarding();
-      navigate('/jobs/new', { replace: true });
-    } catch (e) {
-      console.error('[Onboarding] completeOnboarding failed (create job):', e?.message);
-      setError('Could not save completion status. Please try again.');
+      navigate("/jobs/new", { replace: true });
+    } catch (err) {
+      console.error("[Onboarding] Create first job failed:", err?.message || err);
+      setError("Could not save completion status. Check UserProfile permissions.");
     } finally {
       setLoading(false);
     }
   };
 
-  // Step 5: skip to dashboard
   const handleSkip = async () => {
     setLoading(true);
+    setError("");
+
     try {
       await completeOnboarding();
-      navigate('/dashboard', { replace: true });
-    } catch (e) {
-      console.error('[Onboarding] completeOnboarding failed (skip):', e?.message);
-      setError('Could not save completion status. Please try again.');
+      navigate("/dashboard", { replace: true });
+    } catch (err) {
+      console.error("[Onboarding] Skip failed:", err?.message || err);
+      setError("Could not save completion status. Check UserProfile permissions.");
     } finally {
       setLoading(false);
     }
@@ -359,14 +485,11 @@ export default function Onboarding() {
     );
   }
 
-  // Steps 2–4 show progress bar (step 1 = welcome, step 5 = final CTA)
   const showProgress = step >= 2 && step <= 4;
-  // Map outer step (1–5) to progress bar step (1–4 maps to 4 real steps)
-  const progressStep = step - 1; // 2→1, 3→2, 4→3, 5→4
+  const progressStep = step - 1;
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Brand header */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-card/60">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
@@ -374,26 +497,35 @@ export default function Onboarding() {
           </div>
           <span className="text-sm font-bold font-display">RestoreScope Pro</span>
         </div>
+
         {step > 1 && step < 5 && (
-          <span className="text-xs text-muted-foreground">
-            Step {step - 1} of 4
-          </span>
+          <span className="text-xs text-muted-foreground">Step {step - 1} of 4</span>
         )}
       </div>
 
-      {/* Autosave toast */}
-      <div className={`fixed top-4 right-4 z-50 flex items-center gap-2 px-3 py-2 bg-card border border-border rounded-lg shadow-md text-xs font-medium text-green-700 transition-all duration-300 ${savedToast ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 pointer-events-none'}`}>
-        <CheckCircle2 size={13} className="text-green-600" /> Progress saved
+      <div
+        className={`fixed top-4 right-4 z-50 flex items-center gap-2 px-3 py-2 bg-card border border-border rounded-lg shadow-md text-xs font-medium text-green-700 transition-all duration-300 ${
+          savedToast
+            ? "opacity-100 translate-y-0"
+            : "opacity-0 -translate-y-2 pointer-events-none"
+        }`}
+      >
+        <CheckCircle2 size={13} className="text-green-600" />
+        Progress saved
       </div>
 
-      {/* Beta activated toast */}
-      <div className={`fixed top-16 right-4 z-50 flex items-center gap-2 px-3 py-2 bg-violet-50 border border-violet-300 rounded-lg shadow-md text-xs font-semibold text-violet-800 transition-all duration-500 ${betaActivated ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 pointer-events-none'}`}>
-        🧪 Beta access activated!
+      <div
+        className={`fixed top-16 right-4 z-50 flex items-center gap-2 px-3 py-2 bg-violet-50 border border-violet-300 rounded-lg shadow-md text-xs font-semibold text-violet-800 transition-all duration-500 ${
+          betaActivated
+            ? "opacity-100 translate-y-0"
+            : "opacity-0 -translate-y-2 pointer-events-none"
+        }`}
+      >
+        Beta access activated
       </div>
 
       <div className="flex-1 flex flex-col items-center justify-center px-4 py-6 sm:py-8">
         <div className="w-full max-w-[420px]">
-
           {showProgress && (
             <OnboardingProgressBar currentStep={progressStep} totalSteps={4} />
           )}
@@ -406,8 +538,12 @@ export default function Onboarding() {
 
           <div className="bg-card rounded-2xl border border-border shadow-sm p-5 sm:p-6">
             {step === 1 && (
-              <Step1Welcome userName={user?.full_name} onContinue={handleStep1Continue} />
+              <Step1Welcome
+                userName={user?.full_name || user?.name || user?.email}
+                onContinue={handleStep1Continue}
+              />
             )}
+
             {step === 2 && (
               <Step2Company
                 form={form}
@@ -417,9 +553,10 @@ export default function Onboarding() {
                 loading={loading}
                 grantBeta={grantBeta}
                 setGrantBeta={setGrantBeta}
-                isAdmin={user?.role === 'admin'}
+                isAdmin={user?.role === "admin"}
               />
             )}
+
             {step === 3 && (
               <Step3Role
                 selectedRole={role}
@@ -429,6 +566,7 @@ export default function Onboarding() {
                 loading={loading}
               />
             )}
+
             {step === 4 && (
               <Step4Pricing
                 pricingChoice={pricingChoice}
@@ -438,6 +576,7 @@ export default function Onboarding() {
                 loading={loading}
               />
             )}
+
             {step === 5 && (
               <Step5FirstJob
                 onBack={() => setStep(4)}
