@@ -20,175 +20,195 @@ export default function Settings() {
     service_area: "St. Louis, MO and surrounding areas; Alton, IL and surrounding areas",
   });
 
-  const [notificationForm, setNotificationForm] = useState({
+  const [settingsForm, setSettingsForm] = useState({
+    require_login: true,
+    company_data_only: true,
+    audit_logging_enabled: true,
+    soft_delete_only: true,
+
+    stripe_enabled: false,
+    resend_enabled: false,
+    openai_enabled: false,
+    gmail_enabled: false,
+
     email_notifications: true,
     job_updates: true,
     estimate_updates: true,
     payment_updates: true,
   });
 
-  const [securityForm, setSecurityForm] = useState({
-    require_login: true,
-    company_data_only: true,
-    audit_logging: true,
-    soft_delete_only: true,
-  });
-
-  const [integrationForm, setIntegrationForm] = useState({
-    stripe_enabled: false,
-    resend_enabled: false,
-    openai_enabled: false,
-    gmail_enabled: false,
-  });
-
   const showMessage = (text) => {
     setMessage(text);
-    setTimeout(() => setMessage(""), 3000);
+    setTimeout(() => setMessage(""), 3500);
   };
 
-  useEffect(() => {
-    async function loadCompany() {
-      if (!userProfile?.company_id) return;
+  const loadCompany = async () => {
+    try {
+      let cId = companyId || userProfile?.company_id || "";
 
-      try {
+      if (!cId && user?.email) {
         const companies = await base44.entities.Company.filter({
-          id: userProfile.company_id,
+          created_by: user.email,
           is_deleted: false,
         });
 
         if (companies?.length > 0) {
-          const company = companies[0];
-          setCompanyId(company.id);
-
-          setCompanyForm({
-            name: company.name || "Eversafe Restoration",
-            phone: company.phone || "636-219-9302",
-            email: company.email || "eversaferestoration@gmail.com",
-            website: company.website || "https://eversafepro.com",
-            city: company.city || "St. Louis",
-            state: company.state || "MO",
-            service_area:
-              company.service_area ||
-              "St. Louis, MO and surrounding areas; Alton, IL and surrounding areas",
-          });
+          cId = companies[0].id;
         }
-      } catch (error) {
-        console.warn("[Settings] Company load failed:", error?.message || error);
       }
+
+      if (!cId) return;
+
+      const companies = await base44.entities.Company.filter({
+        id: cId,
+        is_deleted: false,
+      });
+
+      if (!companies?.length) return;
+
+      const company = companies[0];
+
+      setCompanyId(company.id);
+
+      setCompanyForm({
+        name: company.name || "Eversafe Restoration",
+        phone: company.phone || "636-219-9302",
+        email: company.email || user?.email || "eversaferestoration@gmail.com",
+        website: company.website || "https://eversafepro.com",
+        city: company.city || "St. Louis",
+        state: company.state || "MO",
+        service_area:
+          company.service_area ||
+          "St. Louis, MO and surrounding areas; Alton, IL and surrounding areas",
+      });
+
+      setSettingsForm({
+        require_login: company.require_login ?? true,
+        company_data_only: company.company_data_only ?? true,
+        audit_logging_enabled: company.audit_logging_enabled ?? true,
+        soft_delete_only: company.soft_delete_only ?? true,
+
+        stripe_enabled: company.stripe_enabled ?? false,
+        resend_enabled: company.resend_enabled ?? false,
+        openai_enabled: company.openai_enabled ?? false,
+        gmail_enabled: company.gmail_enabled ?? false,
+
+        email_notifications: company.email_notifications ?? true,
+        job_updates: company.job_updates ?? true,
+        estimate_updates: company.estimate_updates ?? true,
+        payment_updates: company.payment_updates ?? true,
+      });
+    } catch (error) {
+      console.error("[Settings] Company load failed:", error?.message || error);
+      showMessage("Could not load company settings.");
+    }
+  };
+
+  useEffect(() => {
+    loadCompany();
+  }, [userProfile?.company_id, user?.email]);
+
+  const ensureCompany = async () => {
+    let cId = companyId || userProfile?.company_id || "";
+
+    const payload = {
+      name: companyForm.name || "Company",
+      phone: companyForm.phone || "",
+      email: companyForm.email || user?.email || "",
+      website: companyForm.website || "",
+      city: companyForm.city || "",
+      state: companyForm.state || "",
+      service_area: companyForm.service_area || "",
+      status: "active",
+      created_by: user?.email || companyForm.email || "",
+      is_deleted: false,
+    };
+
+    if (cId) {
+      await base44.entities.Company.update(cId, payload);
+      return cId;
     }
 
-    loadCompany();
-  }, [userProfile?.company_id]);
+    const company = await base44.entities.Company.create(payload);
+    cId = company.id;
+    setCompanyId(cId);
+
+    if (userProfile?.id) {
+      await base44.entities.UserProfile.update(userProfile.id, {
+        company_id: cId,
+        email: user?.email || companyForm.email || "",
+        is_deleted: false,
+      });
+    }
+
+    if (refreshUserProfile) {
+      await refreshUserProfile();
+    }
+
+    return cId;
+  };
 
   const saveCompanyProfile = async () => {
     setSaving(true);
 
     try {
-      let cId = companyId || userProfile?.company_id || "";
-
-      const payload = {
-        name: companyForm.name,
-        phone: companyForm.phone,
-        email: companyForm.email,
-        website: companyForm.website,
-        city: companyForm.city,
-        state: companyForm.state,
-        service_area: companyForm.service_area,
-        status: "active",
-        created_by: user?.email || companyForm.email,
-        is_deleted: false,
-      };
-
-      if (cId) {
-        await base44.entities.Company.update(cId, payload);
-      } else {
-        const company = await base44.entities.Company.create(payload);
-        cId = company.id;
-        setCompanyId(cId);
-      }
-
-      if (userProfile?.id && cId) {
-        await base44.entities.UserProfile.update(userProfile.id, {
-          company_id: cId,
-          email: user?.email || companyForm.email,
-          is_deleted: false,
-        });
-      }
-
-      if (refreshUserProfile) {
-        await refreshUserProfile();
-      }
-
+      await ensureCompany();
       showMessage("Company profile saved.");
     } catch (error) {
-      console.error("[Settings] Save company failed:", error?.message || error);
+      console.error("[Settings] Company save failed:", error?.message || error);
       showMessage("Could not save company profile. Check Company and UserProfile permissions.");
     } finally {
       setSaving(false);
     }
   };
 
-  const saveNotificationSettings = async () => {
+  const saveCompanySettings = async (type) => {
     setSaving(true);
 
     try {
-      if (!userProfile?.id) {
-        showMessage("Missing user profile. Cannot save notifications.");
-        return;
+      const cId = await ensureCompany();
+
+      let payload = {};
+
+      if (type === "notifications") {
+        payload = {
+          email_notifications: settingsForm.email_notifications,
+          job_updates: settingsForm.job_updates,
+          estimate_updates: settingsForm.estimate_updates,
+          payment_updates: settingsForm.payment_updates,
+        };
       }
 
-      await base44.entities.UserProfile.update(userProfile.id, {
-        notification_settings: notificationForm,
-      });
-
-      showMessage("Notification settings saved.");
-    } catch (error) {
-      console.warn("[Settings] Notification save failed:", error?.message || error);
-      showMessage("Could not save notifications. Field may not exist on UserProfile.");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const saveSecuritySettings = async () => {
-    setSaving(true);
-
-    try {
-      if (!companyId && !userProfile?.company_id) {
-        showMessage("Missing company profile. Save company profile first.");
-        return;
+      if (type === "security") {
+        payload = {
+          require_login: settingsForm.require_login,
+          company_data_only: settingsForm.company_data_only,
+          audit_logging_enabled: settingsForm.audit_logging_enabled,
+          soft_delete_only: settingsForm.soft_delete_only,
+        };
       }
 
-      await base44.entities.Company.update(companyId || userProfile.company_id, {
-        security_settings: securityForm,
-      });
-
-      showMessage("Security settings saved.");
-    } catch (error) {
-      console.warn("[Settings] Security save failed:", error?.message || error);
-      showMessage("Could not save security settings. Field may not exist on Company.");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const saveIntegrationSettings = async () => {
-    setSaving(true);
-
-    try {
-      if (!companyId && !userProfile?.company_id) {
-        showMessage("Missing company profile. Save company profile first.");
-        return;
+      if (type === "integrations") {
+        payload = {
+          stripe_enabled: settingsForm.stripe_enabled,
+          resend_enabled: settingsForm.resend_enabled,
+          openai_enabled: settingsForm.openai_enabled,
+          gmail_enabled: settingsForm.gmail_enabled,
+        };
       }
 
-      await base44.entities.Company.update(companyId || userProfile.company_id, {
-        integration_settings: integrationForm,
-      });
+      await base44.entities.Company.update(cId, payload);
 
-      showMessage("Integration settings saved.");
+      showMessage(
+        type === "notifications"
+          ? "Notification settings saved."
+          : type === "security"
+            ? "Security settings saved."
+            : "Integration settings saved."
+      );
     } catch (error) {
-      console.warn("[Settings] Integration save failed:", error?.message || error);
-      showMessage("Could not save integration settings. Field may not exist on Company.");
+      console.error(`[Settings] ${type} save failed:`, error?.message || error);
+      showMessage("Could not save settings. Confirm Company fields are added to Company.jsonc.");
     } finally {
       setSaving(false);
     }
@@ -214,22 +234,17 @@ export default function Settings() {
     </div>
   );
 
-  const inputClass =
-    "w-full border rounded-lg px-3 py-2 bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30";
-
-  const Toggle = ({ label, checked, onChange, description }) => (
-    <div className="flex items-start justify-between gap-4 border rounded-lg p-4">
+  const Toggle = ({ label, description, checked, onChange }) => (
+    <div className="flex items-center justify-between gap-4 border rounded-lg p-4 bg-card">
       <div>
         <p className="font-medium text-sm">{label}</p>
-        {description && <p className="text-xs text-muted-foreground mt-1">{description}</p>}
+        <p className="text-xs text-muted-foreground mt-1">{description}</p>
       </div>
 
       <button
         type="button"
         onClick={() => onChange(!checked)}
-        className={`w-11 h-6 rounded-full transition ${
-          checked ? "bg-primary" : "bg-muted"
-        }`}
+        className={`w-11 h-6 rounded-full transition ${checked ? "bg-primary" : "bg-muted"}`}
       >
         <span
           className={`block w-5 h-5 bg-white rounded-full transition transform ${
@@ -240,21 +255,25 @@ export default function Settings() {
     </div>
   );
 
+  const inputClass =
+    "w-full border rounded-lg px-3 py-2 bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30";
+
+  const MessageBox = () =>
+    message ? (
+      <div className="mb-4 border rounded-lg px-4 py-3 text-sm bg-muted">{message}</div>
+    ) : null;
+
   if (activeSection === "company") {
     return (
       <div className="p-6 max-w-3xl">
         <SectionHeader
           title="Company Profile"
-          description="Manage your company identity and service area."
+          description="Manage company information used across jobs, users, estimates, and billing."
         />
 
-        {message && (
-          <div className="mb-4 border rounded-lg px-4 py-3 text-sm bg-muted">
-            {message}
-          </div>
-        )}
+        <MessageBox />
 
-        <div className="border rounded-xl p-4 space-y-4">
+        <div className="border rounded-xl p-4 space-y-4 bg-card">
           <Field label="Company Name">
             <input
               className={inputClass}
@@ -333,54 +352,42 @@ export default function Settings() {
       <div className="p-6 max-w-3xl">
         <SectionHeader
           title="Notifications"
-          description="Control which alerts your team receives."
+          description="Control which alerts company users receive during beta testing."
         />
 
-        {message && (
-          <div className="mb-4 border rounded-lg px-4 py-3 text-sm bg-muted">
-            {message}
-          </div>
-        )}
+        <MessageBox />
 
         <div className="space-y-3">
           <Toggle
             label="Email Notifications"
-            description="Send account and job notifications by email."
-            checked={notificationForm.email_notifications}
-            onChange={(value) =>
-              setNotificationForm({ ...notificationForm, email_notifications: value })
-            }
+            description="Send general account and job notifications by email."
+            checked={settingsForm.email_notifications}
+            onChange={(value) => setSettingsForm({ ...settingsForm, email_notifications: value })}
           />
 
           <Toggle
             label="Job Updates"
             description="Notify users when jobs are created or updated."
-            checked={notificationForm.job_updates}
-            onChange={(value) =>
-              setNotificationForm({ ...notificationForm, job_updates: value })
-            }
+            checked={settingsForm.job_updates}
+            onChange={(value) => setSettingsForm({ ...settingsForm, job_updates: value })}
           />
 
           <Toggle
             label="Estimate Updates"
-            description="Notify users when estimates are changed."
-            checked={notificationForm.estimate_updates}
-            onChange={(value) =>
-              setNotificationForm({ ...notificationForm, estimate_updates: value })
-            }
+            description="Notify users when estimates are created or changed."
+            checked={settingsForm.estimate_updates}
+            onChange={(value) => setSettingsForm({ ...settingsForm, estimate_updates: value })}
           />
 
           <Toggle
             label="Payment Updates"
-            description="Notify users when payments or invoices change."
-            checked={notificationForm.payment_updates}
-            onChange={(value) =>
-              setNotificationForm({ ...notificationForm, payment_updates: value })
-            }
+            description="Notify users when invoices or payments change."
+            checked={settingsForm.payment_updates}
+            onChange={(value) => setSettingsForm({ ...settingsForm, payment_updates: value })}
           />
 
           <button
-            onClick={saveNotificationSettings}
+            onClick={() => saveCompanySettings("notifications")}
             disabled={saving}
             className="bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-60"
           >
@@ -396,54 +403,44 @@ export default function Settings() {
       <div className="p-6 max-w-3xl">
         <SectionHeader
           title="Security"
-          description="Manage beta security defaults and company data protections."
+          description="Configure baseline SaaS protections for beta companies."
         />
 
-        {message && (
-          <div className="mb-4 border rounded-lg px-4 py-3 text-sm bg-muted">
-            {message}
-          </div>
-        )}
+        <MessageBox />
 
         <div className="space-y-3">
           <Toggle
             label="Require Login"
-            description="Users must be authenticated before accessing the app."
-            checked={securityForm.require_login}
-            onChange={(value) =>
-              setSecurityForm({ ...securityForm, require_login: value })
-            }
+            description="Users must be authenticated before accessing app data."
+            checked={settingsForm.require_login}
+            onChange={(value) => setSettingsForm({ ...settingsForm, require_login: value })}
           />
 
           <Toggle
             label="Company Data Isolation"
-            description="Only show records tied to the user's company_id."
-            checked={securityForm.company_data_only}
-            onChange={(value) =>
-              setSecurityForm({ ...securityForm, company_data_only: value })
-            }
+            description="Only show records tied to the active company_id."
+            checked={settingsForm.company_data_only}
+            onChange={(value) => setSettingsForm({ ...settingsForm, company_data_only: value })}
           />
 
           <Toggle
             label="Audit Logging"
-            description="Track critical create, update, and delete actions."
-            checked={securityForm.audit_logging}
+            description="Track important create, update, and delete actions."
+            checked={settingsForm.audit_logging_enabled}
             onChange={(value) =>
-              setSecurityForm({ ...securityForm, audit_logging: value })
+              setSettingsForm({ ...settingsForm, audit_logging_enabled: value })
             }
           />
 
           <Toggle
             label="Soft Delete Only"
             description="Archive records instead of permanently deleting them."
-            checked={securityForm.soft_delete_only}
-            onChange={(value) =>
-              setSecurityForm({ ...securityForm, soft_delete_only: value })
-            }
+            checked={settingsForm.soft_delete_only}
+            onChange={(value) => setSettingsForm({ ...settingsForm, soft_delete_only: value })}
           />
 
           <button
-            onClick={saveSecuritySettings}
+            onClick={() => saveCompanySettings("security")}
             disabled={saving}
             className="bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-60"
           >
@@ -459,54 +456,42 @@ export default function Settings() {
       <div className="p-6 max-w-3xl">
         <SectionHeader
           title="Integrations"
-          description="Track which external integrations are configured."
+          description="Track external integrations configured for this company."
         />
 
-        {message && (
-          <div className="mb-4 border rounded-lg px-4 py-3 text-sm bg-muted">
-            {message}
-          </div>
-        )}
+        <MessageBox />
 
         <div className="space-y-3">
           <Toggle
             label="Stripe"
             description="Payment processing for invoices."
-            checked={integrationForm.stripe_enabled}
-            onChange={(value) =>
-              setIntegrationForm({ ...integrationForm, stripe_enabled: value })
-            }
+            checked={settingsForm.stripe_enabled}
+            onChange={(value) => setSettingsForm({ ...settingsForm, stripe_enabled: value })}
           />
 
           <Toggle
             label="Resend"
             description="Transactional email delivery."
-            checked={integrationForm.resend_enabled}
-            onChange={(value) =>
-              setIntegrationForm({ ...integrationForm, resend_enabled: value })
-            }
+            checked={settingsForm.resend_enabled}
+            onChange={(value) => setSettingsForm({ ...settingsForm, resend_enabled: value })}
           />
 
           <Toggle
             label="OpenAI"
             description="AI photo analysis and scope support."
-            checked={integrationForm.openai_enabled}
-            onChange={(value) =>
-              setIntegrationForm({ ...integrationForm, openai_enabled: value })
-            }
+            checked={settingsForm.openai_enabled}
+            onChange={(value) => setSettingsForm({ ...settingsForm, openai_enabled: value })}
           />
 
           <Toggle
             label="Gmail SMTP"
             description="Fallback email delivery through Gmail."
-            checked={integrationForm.gmail_enabled}
-            onChange={(value) =>
-              setIntegrationForm({ ...integrationForm, gmail_enabled: value })
-            }
+            checked={settingsForm.gmail_enabled}
+            onChange={(value) => setSettingsForm({ ...settingsForm, gmail_enabled: value })}
           />
 
           <button
-            onClick={saveIntegrationSettings}
+            onClick={() => saveCompanySettings("integrations")}
             disabled={saving}
             className="bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-60"
           >
@@ -521,67 +506,36 @@ export default function Settings() {
     <div className="p-6 max-w-3xl">
       <h1 className="text-2xl font-bold mb-1">Settings</h1>
       <p className="text-sm text-muted-foreground mb-6">
-        Manage your account and company settings
+        Manage your account, company settings, beta security, and integrations.
       </p>
 
-      <div className="border rounded-xl divide-y">
-        <div className="flex items-center justify-between p-4">
-          <div>
-            <p className="font-medium">Company Profile</p>
-            <p className="text-sm text-muted-foreground">Configure company profile</p>
-          </div>
-          <button
-            onClick={() => setActiveSection("company")}
-            className="text-sm text-primary font-medium hover:underline"
-          >
-            Manage
-          </button>
-        </div>
+      <div className="border rounded-xl divide-y bg-card">
+        {[
+          ["Company Profile", "Configure company profile", "company"],
+          ["Notifications", "Configure notification preferences", "notifications"],
+          ["Security", "Configure company security defaults", "security"],
+          ["Integrations", "Configure company integrations", "integrations"],
+        ].map(([title, description, key]) => (
+          <div key={key} className="flex items-center justify-between p-4">
+            <div>
+              <p className="font-medium">{title}</p>
+              <p className="text-sm text-muted-foreground">{description}</p>
+            </div>
 
-        <div className="flex items-center justify-between p-4">
-          <div>
-            <p className="font-medium">Notifications</p>
-            <p className="text-sm text-muted-foreground">Configure notifications</p>
+            <button
+              onClick={() => setActiveSection(key)}
+              className="text-sm text-primary font-medium hover:underline"
+            >
+              Manage
+            </button>
           </div>
-          <button
-            onClick={() => setActiveSection("notifications")}
-            className="text-sm text-primary font-medium hover:underline"
-          >
-            Manage
-          </button>
-        </div>
-
-        <div className="flex items-center justify-between p-4">
-          <div>
-            <p className="font-medium">Security</p>
-            <p className="text-sm text-muted-foreground">Configure security</p>
-          </div>
-          <button
-            onClick={() => setActiveSection("security")}
-            className="text-sm text-primary font-medium hover:underline"
-          >
-            Manage
-          </button>
-        </div>
-
-        <div className="flex items-center justify-between p-4">
-          <div>
-            <p className="font-medium">Integrations</p>
-            <p className="text-sm text-muted-foreground">Configure integrations</p>
-          </div>
-          <button
-            onClick={() => setActiveSection("integrations")}
-            className="text-sm text-primary font-medium hover:underline"
-          >
-            Manage
-          </button>
-        </div>
+        ))}
       </div>
 
       <div className="mt-6 border border-destructive/30 rounded-xl p-4 bg-destructive/5">
         <p className="font-semibold text-destructive mb-1">Delete Account</p>
         <p className="text-sm text-muted-foreground mb-3">
-          Permanently delete your account and all associated data. This should be disabled during beta.
+          Disabled during beta testing to prevent accidental company data loss.
         </p>
 
         <button
