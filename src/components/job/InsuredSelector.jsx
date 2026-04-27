@@ -5,10 +5,11 @@ import { Search, Plus, Check, User } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 
 export default function InsuredSelector({ value, onChange }) {
-  const { user, userProfile } = useAuth();
+  const { user, userProfile, refreshUserProfile } = useAuth();
   const queryClient = useQueryClient();
 
-  const companyId = userProfile?.company_id || user?.company_id || '';
+  const [localCompanyId, setLocalCompanyId] = useState(userProfile?.company_id || user?.company_id || '');
+  const companyId = userProfile?.company_id || user?.company_id || localCompanyId || '';
 
   const [search, setSearch] = useState('');
   const [adding, setAdding] = useState(false);
@@ -18,6 +19,64 @@ export default function InsuredSelector({ value, onChange }) {
     email: '',
     phone: '',
   });
+
+  const ensureCompanyId = async () => {
+    let cId = userProfile?.company_id || user?.company_id || localCompanyId || '';
+
+    if (cId) return cId;
+
+    const email = user?.email || newForm.email || '';
+
+    const existingCompanies = await base44.entities.Company.filter({
+      created_by: email,
+      is_deleted: false,
+    });
+
+    if (existingCompanies?.length > 0) {
+      cId = existingCompanies[0].id;
+      setLocalCompanyId(cId);
+
+      if (userProfile?.id) {
+        await base44.entities.UserProfile.update(userProfile.id, {
+          company_id: cId,
+          email,
+          is_deleted: false,
+        });
+      }
+
+      if (refreshUserProfile) await refreshUserProfile();
+
+      return cId;
+    }
+
+    const company = await base44.entities.Company.create({
+      name: 'Eversafe Restoration',
+      phone: '636-219-9302',
+      email,
+      website: 'https://eversafepro.com',
+      city: 'St. Louis',
+      state: 'MO',
+      service_area: 'St. Louis, MO and surrounding areas; Alton, IL and surrounding areas',
+      status: 'active',
+      created_by: email,
+      is_deleted: false,
+    });
+
+    cId = company.id;
+    setLocalCompanyId(cId);
+
+    if (userProfile?.id) {
+      await base44.entities.UserProfile.update(userProfile.id, {
+        company_id: cId,
+        email,
+        is_deleted: false,
+      });
+    }
+
+    if (refreshUserProfile) await refreshUserProfile();
+
+    return cId;
+  };
 
   const {
     data: insureds = [],
@@ -41,7 +100,6 @@ export default function InsuredSelector({ value, onChange }) {
 
   const selected = useMemo(() => {
     if (!value) return null;
-
     return insureds.find((insured) => insured.id === value.id) || value;
   }, [insureds, value]);
 
@@ -74,39 +132,47 @@ export default function InsuredSelector({ value, onChange }) {
         phone: '',
       });
 
-      await queryClient.invalidateQueries({ queryKey: ['insureds', companyId] });
+      await queryClient.invalidateQueries({ queryKey: ['insureds'] });
       await refetch();
     },
     onError: (err) => {
       console.error('[InsuredSelector] Failed to create insured:', err);
-      setError('Could not save insured. Check Insured entity permissions and required fields.');
+      setError('Could not save insured. Check Insured entity permissions.');
     },
   });
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     setError('');
 
     const fullName = newForm.full_name.trim();
-    const email = newForm.email.trim();
+    const email = newForm.email.trim().toLowerCase();
     const phone = newForm.phone.trim();
-
-    if (!companyId) {
-      setError('Missing company profile. Complete onboarding or check your UserProfile company_id.');
-      return;
-    }
 
     if (!fullName) {
       setError('Full name is required.');
       return;
     }
 
-    createMutation.mutate({
-      company_id: companyId,
-      full_name: fullName,
-      email,
-      phone,
-      is_deleted: false,
-    });
+    try {
+      const cId = await ensureCompanyId();
+
+      if (!cId) {
+        setError('Could not create or link company profile.');
+        return;
+      }
+
+      createMutation.mutate({
+        company_id: cId,
+        full_name: fullName,
+        email,
+        phone,
+        is_deleted: false,
+        created_by: user?.email || email,
+      });
+    } catch (err) {
+      console.error('[InsuredSelector] Company auto-link failed:', err);
+      setError('Could not create or link company profile. Check Company and UserProfile permissions.');
+    }
   };
 
   return (
@@ -117,12 +183,8 @@ export default function InsuredSelector({ value, onChange }) {
             <Check size={14} className="text-primary" />
             <div>
               <p className="text-sm font-medium">{selected.full_name}</p>
-              {selected.email && (
-                <p className="text-xs text-muted-foreground">{selected.email}</p>
-              )}
-              {selected.phone && (
-                <p className="text-xs text-muted-foreground">{selected.phone}</p>
-              )}
+              {selected.email && <p className="text-xs text-muted-foreground">{selected.email}</p>}
+              {selected.phone && <p className="text-xs text-muted-foreground">{selected.phone}</p>}
             </div>
           </div>
 
@@ -206,11 +268,7 @@ export default function InsuredSelector({ value, onChange }) {
               setAdding((current) => !current);
               setError('');
             }}
-            className={
-              insureds.length === 0 && !adding
-                ? 'inline-flex items-center gap-1.5 px-3 h-8 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition'
-                : 'inline-flex items-center gap-1.5 text-xs text-primary font-medium hover:underline'
-            }
+            className="inline-flex items-center gap-1.5 text-xs text-primary font-medium hover:underline"
           >
             <Plus size={13} />
             {adding ? 'Cancel new insured' : 'Add new insured'}
