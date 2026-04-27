@@ -23,12 +23,7 @@ const DEFAULT_PRICING_LINE_ITEMS = [
 
 export default function Onboarding() {
   const navigate = useNavigate();
-  const auth = useAuth();
-  const user = auth?.user;
-  const markOnboardingComplete =
-    typeof auth?.markOnboardingComplete === "function"
-      ? auth.markOnboardingComplete
-      : () => {};
+  const { user, markOnboardingComplete } = useAuth();
 
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -58,23 +53,25 @@ export default function Onboarding() {
 
   const getUserEmail = () => user?.email || form.email || "";
   const getUserId = () => user?.id || user?.email || "";
+  const getOnboardingKey = () => `rs_onboarding_complete_${user?.id || user?.email || "current_user"}`;
 
   const safeFilter = async (entity, filter) => {
     try {
       const result = await entity.filter(filter);
       return Array.isArray(result) ? result : [];
-    } catch (err) {
-      console.warn("[Onboarding] Filter failed:", err?.message || err);
+    } catch (error) {
+      console.warn("[Onboarding] Filter failed:", error?.message || error);
       return [];
     }
   };
 
   const safeUpdate = async (entity, id, data) => {
     if (!id) return null;
+
     try {
       return await entity.update(id, data);
-    } catch (err) {
-      console.warn("[Onboarding] Update failed:", err?.message || err);
+    } catch (error) {
+      console.warn("[Onboarding] Update failed:", error?.message || error);
       return null;
     }
   };
@@ -169,8 +166,8 @@ export default function Onboarding() {
             email: prev.email || email || "",
           }));
         }
-      } catch (err) {
-        console.error("[Onboarding] Resume failed:", err?.message || err);
+      } catch (error) {
+        console.error("[Onboarding] Resume failed:", error?.message || error);
       } finally {
         if (mounted) setInitializing(false);
       }
@@ -216,8 +213,8 @@ export default function Onboarding() {
       }
 
       setBetaActivated(true);
-    } catch (err) {
-      console.warn("[Onboarding] Beta activation failed:", err?.message || err);
+    } catch (error) {
+      console.warn("[Onboarding] Beta activation failed:", error?.message || error);
     }
   };
 
@@ -338,8 +335,8 @@ export default function Onboarding() {
       await activateBetaIfNeeded(cId);
       showSaved();
       setStep(3);
-    } catch (err) {
-      console.error("[Onboarding] Step 2 failed:", err?.message || err);
+    } catch (error) {
+      console.error("[Onboarding] Step 2 failed:", error?.message || error);
       setError("Could not save company. Check required fields and permissions.");
     } finally {
       setLoading(false);
@@ -362,8 +359,8 @@ export default function Onboarding() {
       }
 
       setStep(4);
-    } catch (err) {
-      console.warn("[Onboarding] Role save failed:", err?.message || err);
+    } catch (error) {
+      console.warn("[Onboarding] Role save failed:", error?.message || error);
       setStep(4);
     } finally {
       setLoading(false);
@@ -395,8 +392,8 @@ export default function Onboarding() {
 
       await autosave(5, "pricing_profile_set");
       setStep(5);
-    } catch (err) {
-      console.warn("[Onboarding] Pricing save failed:", err?.message || err);
+    } catch (error) {
+      console.warn("[Onboarding] Pricing save failed:", error?.message || error);
       setStep(5);
     } finally {
       setLoading(false);
@@ -404,44 +401,54 @@ export default function Onboarding() {
   };
 
   const completeOnboarding = async () => {
-    const email = getUserEmail();
-    const userId = getUserId();
+    const key = getOnboardingKey();
 
-    let pId = userProfileId;
+    try {
+      localStorage.setItem(key, "true");
+    } catch (error) {
+      console.warn("[Onboarding] Local onboarding save failed:", error?.message || error);
+    }
 
-    if (!pId) {
-      const profilesByUser = userId
-        ? await safeFilter(base44.entities.UserProfile, {
-            user_id: userId,
-            is_deleted: false,
-          })
-        : [];
+    try {
+      const email = getUserEmail();
+      const userId = getUserId();
 
-      const profilesByEmail =
-        profilesByUser.length === 0 && email
+      let pId = userProfileId;
+
+      if (!pId) {
+        const profilesByUser = userId
           ? await safeFilter(base44.entities.UserProfile, {
-              email,
+              user_id: userId,
               is_deleted: false,
             })
           : [];
 
-      const profile = profilesByUser[0] || profilesByEmail[0];
+        const profilesByEmail =
+          profilesByUser.length === 0 && email
+            ? await safeFilter(base44.entities.UserProfile, {
+                email,
+                is_deleted: false,
+              })
+            : [];
 
-      if (profile?.id) {
-        pId = profile.id;
-        setUserProfileId(pId);
+        const profile = profilesByUser[0] || profilesByEmail[0];
+
+        if (profile?.id) {
+          pId = profile.id;
+          setUserProfileId(pId);
+        }
       }
-    }
 
-    if (pId) {
-      await base44.entities.UserProfile.update(pId, {
-        onboarding_status: "onboarding_completed",
-        onboarding_completed_at: new Date().toISOString(),
-        current_onboarding_step: 6,
-        is_deleted: false,
-      });
-    } else {
-      console.warn("[Onboarding] No UserProfile found. Continuing without profile completion write.");
+      if (pId) {
+        await base44.entities.UserProfile.update(pId, {
+          onboarding_status: "onboarding_completed",
+          onboarding_completed_at: new Date().toISOString(),
+          current_onboarding_step: 6,
+          is_deleted: false,
+        });
+      }
+    } catch (error) {
+      console.warn("[Onboarding] DB completion save failed. Local override will continue:", error?.message || error);
     }
 
     markOnboardingComplete();
@@ -454,9 +461,13 @@ export default function Onboarding() {
     try {
       await completeOnboarding();
       navigate("/jobs/new", { replace: true });
-    } catch (err) {
-      console.error("[Onboarding] Create first job failed:", err?.message || err);
-      setError("Could not save completion status. Check UserProfile permissions.");
+    } catch (error) {
+      console.warn("[Onboarding] Create first job fallback:", error?.message || error);
+      try {
+        localStorage.setItem(getOnboardingKey(), "true");
+      } catch {}
+      markOnboardingComplete();
+      navigate("/jobs/new", { replace: true });
     } finally {
       setLoading(false);
     }
@@ -469,9 +480,13 @@ export default function Onboarding() {
     try {
       await completeOnboarding();
       navigate("/dashboard", { replace: true });
-    } catch (err) {
-      console.error("[Onboarding] Skip failed:", err?.message || err);
-      setError("Could not save completion status. Check UserProfile permissions.");
+    } catch (error) {
+      console.warn("[Onboarding] Skip fallback:", error?.message || error);
+      try {
+        localStorage.setItem(getOnboardingKey(), "true");
+      } catch {}
+      markOnboardingComplete();
+      navigate("/dashboard", { replace: true });
     } finally {
       setLoading(false);
     }
@@ -505,9 +520,7 @@ export default function Onboarding() {
 
       <div
         className={`fixed top-4 right-4 z-50 flex items-center gap-2 px-3 py-2 bg-card border border-border rounded-lg shadow-md text-xs font-medium text-green-700 transition-all duration-300 ${
-          savedToast
-            ? "opacity-100 translate-y-0"
-            : "opacity-0 -translate-y-2 pointer-events-none"
+          savedToast ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2 pointer-events-none"
         }`}
       >
         <CheckCircle2 size={13} className="text-green-600" />
@@ -516,9 +529,7 @@ export default function Onboarding() {
 
       <div
         className={`fixed top-16 right-4 z-50 flex items-center gap-2 px-3 py-2 bg-violet-50 border border-violet-300 rounded-lg shadow-md text-xs font-semibold text-violet-800 transition-all duration-500 ${
-          betaActivated
-            ? "opacity-100 translate-y-0"
-            : "opacity-0 -translate-y-2 pointer-events-none"
+          betaActivated ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2 pointer-events-none"
         }`}
       >
         Beta access activated
@@ -526,9 +537,7 @@ export default function Onboarding() {
 
       <div className="flex-1 flex flex-col items-center justify-center px-4 py-6 sm:py-8">
         <div className="w-full max-w-[420px]">
-          {showProgress && (
-            <OnboardingProgressBar currentStep={progressStep} totalSteps={4} />
-          )}
+          {showProgress && <OnboardingProgressBar currentStep={progressStep} totalSteps={4} />}
 
           {error && (
             <div className="mb-4 px-4 py-3 rounded-lg bg-destructive/10 text-destructive text-sm border border-destructive/20">
