@@ -1,96 +1,34 @@
 import { useMemo, useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { Search, Plus, Check, Home } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Plus, Search, Save, X } from 'lucide-react';
+
+const inputCls =
+  'w-full min-h-touch px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring transition';
+
+const emptyForm = {
+  address_line_1: '',
+  address_line_2: '',
+  city: '',
+  state: '',
+  postal_code: '',
+  property_type: '',
+  year_built: '',
+};
 
 export default function PropertySelector({ value, onChange }) {
-  const { user, userProfile, refreshUserProfile } = useAuth();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  const [localCompanyId, setLocalCompanyId] = useState(
-    userProfile?.company_id || user?.company_id || ''
-  );
-
-  const companyId =
-    userProfile?.company_id || user?.company_id || localCompanyId || '';
-
+  const [mode, setMode] = useState('select');
   const [search, setSearch] = useState('');
-  const [adding, setAdding] = useState(false);
+  const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState('');
 
-  const [newForm, setNewForm] = useState({
-    address_line_1: '',
-    address_line_2: '',
-    city: '',
-    state: '',
-    zip: '',
-    property_type: 'Residential',
-  });
+  const companyId = user?.company_id || null;
 
-  const ensureCompanyId = async () => {
-    let cId = userProfile?.company_id || user?.company_id || localCompanyId || '';
-
-    if (cId) return cId;
-
-    const email = user?.email || '';
-
-    const existingCompanies = await base44.entities.Company.filter({
-      created_by: email,
-      is_deleted: false,
-    });
-
-    if (existingCompanies?.length > 0) {
-      cId = existingCompanies[0].id;
-      setLocalCompanyId(cId);
-
-      if (userProfile?.id) {
-        await base44.entities.UserProfile.update(userProfile.id, {
-          company_id: cId,
-          email,
-          is_deleted: false,
-        });
-      }
-
-      if (refreshUserProfile) await refreshUserProfile();
-
-      return cId;
-    }
-
-    const company = await base44.entities.Company.create({
-      name: 'Eversafe Restoration',
-      phone: '636-219-9302',
-      email,
-      website: 'https://eversafepro.com',
-      city: 'St. Louis',
-      state: 'MO',
-      service_area: 'St. Louis, MO and surrounding areas; Alton, IL and surrounding areas',
-      status: 'active',
-      created_by: email,
-      is_deleted: false,
-    });
-
-    cId = company.id;
-    setLocalCompanyId(cId);
-
-    if (userProfile?.id) {
-      await base44.entities.UserProfile.update(userProfile.id, {
-        company_id: cId,
-        email,
-        is_deleted: false,
-      });
-    }
-
-    if (refreshUserProfile) await refreshUserProfile();
-
-    return cId;
-  };
-
-  const {
-    data: properties = [],
-    isLoading,
-    refetch,
-  } = useQuery({
+  const propertyQuery = useQuery({
     queryKey: ['properties', companyId],
     enabled: !!companyId,
     queryFn: async () => {
@@ -100,323 +38,321 @@ export default function PropertySelector({ value, onChange }) {
           is_deleted: false,
         },
         'address_line_1',
-        100
+        200
       );
     },
-    staleTime: 30 * 1000,
   });
 
-  const selected = useMemo(() => {
-    if (!value) return null;
-    return properties.find((property) => property.id === value.id) || value;
-  }, [properties, value]);
+  const properties = Array.isArray(propertyQuery.data) ? propertyQuery.data : [];
 
-  const filtered = useMemo(() => {
+  const filteredProperties = useMemo(() => {
     const term = search.trim().toLowerCase();
 
     if (!term) return properties;
 
     return properties.filter((property) => {
-      const address = String(property.address_line_1 || '').toLowerCase();
-      const city = String(property.city || '').toLowerCase();
-      const state = String(property.state || '').toLowerCase();
-      const zip = String(property.zip || '').toLowerCase();
+      const haystack = [
+        property.address_line_1,
+        property.address_line_2,
+        property.city,
+        property.state,
+        property.postal_code,
+        property.property_type,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
 
-      return (
-        address.includes(term) ||
-        city.includes(term) ||
-        state.includes(term) ||
-        zip.includes(term)
-      );
+      return haystack.includes(term);
     });
   }, [properties, search]);
 
   const createMutation = useMutation({
-    mutationFn: async (payload) => {
+    mutationFn: async () => {
+      setError('');
+
+      if (!companyId) {
+        throw new Error('Your account is not linked to a company.');
+      }
+
+      if (!form.address_line_1.trim()) {
+        throw new Error('Street address is required.');
+      }
+
+      if (!form.city.trim()) {
+        throw new Error('City is required.');
+      }
+
+      if (!form.state.trim()) {
+        throw new Error('State is required.');
+      }
+
+      const payload = {
+        address_line_1: form.address_line_1.trim(),
+        address_line_2: form.address_line_2.trim() || null,
+        city: form.city.trim(),
+        state: form.state.trim(),
+        postal_code: form.postal_code.trim() || null,
+        property_type: form.property_type.trim() || null,
+        year_built: form.year_built ? Number(form.year_built) : null,
+        company_id: companyId,
+        is_deleted: false,
+      };
+
       return await base44.entities.Property.create(payload);
     },
     onSuccess: async (created) => {
+      await queryClient.invalidateQueries({ queryKey: ['properties', companyId] });
       onChange(created);
-      setAdding(false);
+      setForm(emptyForm);
       setSearch('');
-      setError('');
-
-      setNewForm({
-        address_line_1: '',
-        address_line_2: '',
-        city: '',
-        state: '',
-        zip: '',
-        property_type: 'Residential',
-      });
-
-      await queryClient.invalidateQueries({ queryKey: ['properties'] });
-      await refetch();
+      setMode('select');
     },
     onError: (err) => {
-      console.error('[PropertySelector] Failed to create property:', err);
-      setError('Could not save property. Check Property entity permissions.');
+      setError(err?.message || 'Failed to save property.');
     },
   });
 
-  const handleCreate = async () => {
-    setError('');
-
-    const address = newForm.address_line_1.trim();
-
-    if (!address) {
-      setError('Street address is required.');
-      return;
-    }
-
-    try {
-      const cId = await ensureCompanyId();
-
-      if (!cId) {
-        setError('Could not create or link company profile.');
-        return;
-      }
-
-      createMutation.mutate({
-        company_id: cId,
-        address_line_1: address,
-        address_line_2: newForm.address_line_2.trim(),
-        city: newForm.city.trim(),
-        state: newForm.state.trim(),
-        zip: newForm.zip.trim(),
-        property_type: newForm.property_type || 'Residential',
-        is_deleted: false,
-        created_by: user?.email || '',
-      });
-    } catch (err) {
-      console.error('[PropertySelector] Company auto-link failed:', err);
-      setError(
-        'Could not create or link company profile. Check Company and UserProfile permissions.'
-      );
-    }
+  const updateForm = (key) => (event) => {
+    setForm((current) => ({
+      ...current,
+      [key]: event.target.value,
+    }));
   };
 
   const formatAddress = (property) => {
     return [
-      property?.address_line_1,
-      property?.address_line_2,
-      property?.city,
-      property?.state,
-      property?.zip,
+      property.address_line_1,
+      property.address_line_2,
+      property.city,
+      property.state,
+      property.postal_code,
     ]
       .filter(Boolean)
       .join(', ');
   };
 
-  return (
-    <div className="space-y-2">
-      {selected && (
-        <div className="flex items-center justify-between bg-accent rounded-lg px-3 py-2">
-          <div className="flex items-center gap-2">
-            <Check size={14} className="text-primary" />
-            <div>
-              <p className="text-sm font-medium">
-                {selected.address_line_1 || 'Selected Property'}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {formatAddress(selected)}
-              </p>
-            </div>
-          </div>
+  if (!companyId) {
+    return (
+      <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+        Your user profile is missing a company ID. Complete company setup before adding a property.
+      </div>
+    );
+  }
 
-          <button
-            type="button"
-            onClick={() => onChange(null)}
-            className="text-xs text-muted-foreground hover:text-destructive transition"
-          >
-            Remove
-          </button>
+  return (
+    <div className="space-y-3">
+      {value?.id && (
+        <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold">{value.address_line_1}</p>
+              <p className="text-xs text-muted-foreground">{formatAddress(value)}</p>
+              {value.property_type && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Property type: {value.property_type}
+                </p>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => onChange(null)}
+              className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition"
+              title="Remove selected property"
+            >
+              <X size={15} />
+            </button>
+          </div>
         </div>
       )}
 
-      {!selected && (
-        <>
-          <div className="relative">
-            <Search
-              size={14}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-            />
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => {
+            setMode('select');
+            setError('');
+          }}
+          className={`min-h-touch px-3 rounded-lg border text-sm font-medium transition ${
+            mode === 'select'
+              ? 'bg-primary text-primary-foreground border-primary'
+              : 'border-border hover:bg-muted'
+          }`}
+        >
+          Select Existing
+        </button>
 
+        <button
+          type="button"
+          onClick={() => {
+            setMode('create');
+            setError('');
+          }}
+          className={`inline-flex items-center gap-1.5 min-h-touch px-3 rounded-lg border text-sm font-medium transition ${
+            mode === 'create'
+              ? 'bg-primary text-primary-foreground border-primary'
+              : 'border-border hover:bg-muted'
+          }`}
+        >
+          <Plus size={15} /> New Property
+        </button>
+      </div>
+
+      {mode === 'select' && (
+        <div className="space-y-3">
+          <div className="relative">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
-              className="w-full h-9 pl-8 pr-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              placeholder="Search property…"
+              className={`${inputCls} pl-9`}
               value={search}
               onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search property by address, city, state, or ZIP..."
             />
           </div>
 
-          {!adding && (
-            <div className="border border-border rounded-lg overflow-hidden max-h-48 overflow-y-auto">
-              {isLoading && (
-                <p className="text-xs text-muted-foreground px-3 py-2">
-                  Loading properties…
-                </p>
-              )}
-
-              {!isLoading &&
-                filtered.map((property) => (
-                  <button
-                    key={property.id}
-                    type="button"
-                    onClick={() => {
-                      onChange(property);
-                      setSearch('');
-                      setError('');
-                    }}
-                    className="w-full flex items-center gap-2 px-3 py-2.5 hover:bg-muted text-left transition border-b border-border last:border-0"
-                  >
-                    <Home size={14} className="text-muted-foreground shrink-0" />
-
-                    <div>
-                      <p className="text-sm font-medium">
-                        {property.address_line_1}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatAddress(property)}
-                      </p>
-                    </div>
-                  </button>
-                ))}
-
-              {!isLoading && filtered.length === 0 && (
-                <p className="text-xs text-muted-foreground px-3 py-2">
-                  No properties found.
-                </p>
-              )}
+          {propertyQuery.isLoading && (
+            <div className="rounded-lg border border-border p-4 text-sm text-muted-foreground">
+              Loading property records...
             </div>
           )}
 
+          {propertyQuery.isError && (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+              Failed to load property records.
+            </div>
+          )}
+
+          {!propertyQuery.isLoading && filteredProperties.length === 0 && (
+            <div className="rounded-lg border border-border p-4 text-sm text-muted-foreground">
+              No property records found. Use New Property to create one.
+            </div>
+          )}
+
+          {filteredProperties.length > 0 && (
+            <div className="max-h-64 overflow-auto rounded-lg border border-border divide-y divide-border">
+              {filteredProperties.map((property) => {
+                const selected = value?.id === property.id;
+
+                return (
+                  <button
+                    key={property.id}
+                    type="button"
+                    onClick={() => onChange(property)}
+                    className={`w-full text-left p-3 transition ${
+                      selected ? 'bg-primary/10' : 'hover:bg-muted'
+                    }`}
+                  >
+                    <p className="text-sm font-medium">{property.address_line_1}</p>
+                    <p className="text-xs text-muted-foreground">{formatAddress(property)}</p>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {mode === 'create' && (
+        <div className="rounded-lg border border-border p-4 space-y-3">
+          <div>
+            <label className="block text-sm font-medium mb-1.5">
+              Street Address <span className="text-destructive">*</span>
+            </label>
+            <input
+              className={inputCls}
+              value={form.address_line_1}
+              onChange={updateForm('address_line_1')}
+              placeholder="123 Main Street"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1.5">Address Line 2</label>
+            <input
+              className={inputCls}
+              value={form.address_line_2}
+              onChange={updateForm('address_line_2')}
+              placeholder="Unit, suite, apartment"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-sm font-medium mb-1.5">
+                City <span className="text-destructive">*</span>
+              </label>
+              <input
+                className={inputCls}
+                value={form.city}
+                onChange={updateForm('city')}
+                placeholder="City"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1.5">
+                State <span className="text-destructive">*</span>
+              </label>
+              <input
+                className={inputCls}
+                value={form.state}
+                onChange={updateForm('state')}
+                placeholder="MO"
+                maxLength={2}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1.5">ZIP</label>
+              <input
+                className={inputCls}
+                value={form.postal_code}
+                onChange={updateForm('postal_code')}
+                placeholder="63139"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium mb-1.5">Property Type</label>
+              <input
+                className={inputCls}
+                value={form.property_type}
+                onChange={updateForm('property_type')}
+                placeholder="Residential, commercial, multi-family..."
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1.5">Year Built</label>
+              <input
+                type="number"
+                className={inputCls}
+                value={form.year_built}
+                onChange={updateForm('year_built')}
+                placeholder="1995"
+              />
+            </div>
+          </div>
+
           {error && (
-            <div className="px-3 py-2 rounded-lg bg-destructive/10 border border-destructive/20 text-xs text-destructive">
+            <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
               {error}
             </div>
           )}
 
           <button
             type="button"
-            onClick={() => {
-              setAdding((current) => !current);
-              setError('');
-            }}
-            className="inline-flex items-center gap-1.5 px-3 h-8 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition"
+            onClick={() => createMutation.mutate()}
+            disabled={createMutation.isPending}
+            className="inline-flex items-center gap-2 min-h-touch px-4 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition disabled:opacity-60"
           >
-            <Plus size={13} />
-            {adding ? 'Cancel new property' : 'Add new property'}
+            <Save size={15} />
+            {createMutation.isPending ? 'Saving...' : 'Save Property'}
           </button>
-
-          {adding && (
-            <div className="bg-muted/50 rounded-lg p-3 space-y-2 border border-border">
-              <p className="text-xs font-semibold">New Property</p>
-
-              <input
-                className="w-full h-9 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                placeholder="Street address *"
-                value={newForm.address_line_1}
-                onChange={(event) =>
-                  setNewForm((current) => ({
-                    ...current,
-                    address_line_1: event.target.value,
-                  }))
-                }
-              />
-
-              <input
-                className="w-full h-9 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                placeholder="Apt, suite, unit"
-                value={newForm.address_line_2}
-                onChange={(event) =>
-                  setNewForm((current) => ({
-                    ...current,
-                    address_line_2: event.target.value,
-                  }))
-                }
-              />
-
-              <div className="grid grid-cols-2 gap-2">
-                <input
-                  className="w-full h-9 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="City"
-                  value={newForm.city}
-                  onChange={(event) =>
-                    setNewForm((current) => ({
-                      ...current,
-                      city: event.target.value,
-                    }))
-                  }
-                />
-
-                <input
-                  className="w-full h-9 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="State"
-                  value={newForm.state}
-                  onChange={(event) =>
-                    setNewForm((current) => ({
-                      ...current,
-                      state: event.target.value,
-                    }))
-                  }
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <input
-                  className="w-full h-9 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="ZIP"
-                  value={newForm.zip}
-                  onChange={(event) =>
-                    setNewForm((current) => ({
-                      ...current,
-                      zip: event.target.value,
-                    }))
-                  }
-                />
-
-                <select
-                  className="w-full h-9 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                  value={newForm.property_type}
-                  onChange={(event) =>
-                    setNewForm((current) => ({
-                      ...current,
-                      property_type: event.target.value,
-                    }))
-                  }
-                >
-                  <option value="Residential">Residential</option>
-                  <option value="Commercial">Commercial</option>
-                  <option value="Multi-Family">Multi-Family</option>
-                  <option value="Industrial">Industrial</option>
-                </select>
-              </div>
-
-              <div className="flex gap-2 justify-end">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAdding(false);
-                    setError('');
-                  }}
-                  className="text-xs px-3 h-8 rounded-lg border hover:bg-muted transition"
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="button"
-                  disabled={!newForm.address_line_1.trim() || createMutation.isPending}
-                  onClick={handleCreate}
-                  className="text-xs px-3 h-8 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition disabled:opacity-60"
-                >
-                  {createMutation.isPending ? 'Saving…' : 'Save Property'}
-                </button>
-              </div>
-            </div>
-          )}
-        </>
+        </div>
       )}
     </div>
   );
