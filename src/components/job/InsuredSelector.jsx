@@ -1,88 +1,31 @@
 import { useMemo, useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { Search, Plus, Check, User } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Plus, Search, Save, X } from 'lucide-react';
+
+const inputCls =
+  'w-full min-h-touch px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring transition';
+
+const emptyForm = {
+  full_name: '',
+  phone: '',
+  email: '',
+  mailing_address: '',
+};
 
 export default function InsuredSelector({ value, onChange }) {
-  const { user, userProfile, refreshUserProfile } = useAuth();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  const [localCompanyId, setLocalCompanyId] = useState(userProfile?.company_id || user?.company_id || '');
-  const companyId = userProfile?.company_id || user?.company_id || localCompanyId || '';
-
+  const [mode, setMode] = useState('select');
   const [search, setSearch] = useState('');
-  const [adding, setAdding] = useState(false);
+  const [form, setForm] = useState(emptyForm);
   const [error, setError] = useState('');
-  const [newForm, setNewForm] = useState({
-    full_name: '',
-    email: '',
-    phone: '',
-  });
 
-  const ensureCompanyId = async () => {
-    let cId = userProfile?.company_id || user?.company_id || localCompanyId || '';
+  const companyId = user?.company_id || null;
 
-    if (cId) return cId;
-
-    const email = user?.email || newForm.email || '';
-
-    const existingCompanies = await base44.entities.Company.filter({
-      created_by: email,
-      is_deleted: false,
-    });
-
-    if (existingCompanies?.length > 0) {
-      cId = existingCompanies[0].id;
-      setLocalCompanyId(cId);
-
-      if (userProfile?.id) {
-        await base44.entities.UserProfile.update(userProfile.id, {
-          company_id: cId,
-          email,
-          is_deleted: false,
-        });
-      }
-
-      if (refreshUserProfile) await refreshUserProfile();
-
-      return cId;
-    }
-
-    const company = await base44.entities.Company.create({
-      name: 'Eversafe Restoration',
-      phone: '636-219-9302',
-      email,
-      website: 'https://eversafepro.com',
-      city: 'St. Louis',
-      state: 'MO',
-      service_area: 'St. Louis, MO and surrounding areas; Alton, IL and surrounding areas',
-      status: 'active',
-      created_by: email,
-      is_deleted: false,
-    });
-
-    cId = company.id;
-    setLocalCompanyId(cId);
-
-    if (userProfile?.id) {
-      await base44.entities.UserProfile.update(userProfile.id, {
-        company_id: cId,
-        email,
-        is_deleted: false,
-      });
-    }
-
-    if (refreshUserProfile) await refreshUserProfile();
-
-    return cId;
-  };
-
-  const {
-    data: insureds = [],
-    isLoading,
-    refetch,
-  } = useQuery({
+  const insuredQuery = useQuery({
     queryKey: ['insureds', companyId],
     enabled: !!companyId,
     queryFn: async () => {
@@ -92,252 +35,262 @@ export default function InsuredSelector({ value, onChange }) {
           is_deleted: false,
         },
         'full_name',
-        100
+        200
       );
     },
-    staleTime: 30 * 1000,
   });
 
-  const selected = useMemo(() => {
-    if (!value) return null;
-    return insureds.find((insured) => insured.id === value.id) || value;
-  }, [insureds, value]);
+  const insureds = Array.isArray(insuredQuery.data) ? insuredQuery.data : [];
 
-  const filtered = useMemo(() => {
+  const filteredInsureds = useMemo(() => {
     const term = search.trim().toLowerCase();
 
     if (!term) return insureds;
 
     return insureds.filter((insured) => {
-      const name = String(insured.full_name || '').toLowerCase();
-      const email = String(insured.email || '').toLowerCase();
-      const phone = String(insured.phone || '').toLowerCase();
+      const haystack = [
+        insured.full_name,
+        insured.name,
+        insured.phone,
+        insured.email,
+        insured.mailing_address,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
 
-      return name.includes(term) || email.includes(term) || phone.includes(term);
+      return haystack.includes(term);
     });
   }, [insureds, search]);
 
   const createMutation = useMutation({
-    mutationFn: async (payload) => {
+    mutationFn: async () => {
+      setError('');
+
+      if (!companyId) {
+        throw new Error('Your account is not linked to a company.');
+      }
+
+      if (!form.full_name.trim()) {
+        throw new Error('Insured name is required.');
+      }
+
+      const payload = {
+        full_name: form.full_name.trim(),
+        name: form.full_name.trim(),
+        phone: form.phone.trim() || null,
+        email: form.email.trim() || null,
+        mailing_address: form.mailing_address.trim() || null,
+        company_id: companyId,
+        is_deleted: false,
+      };
+
       return await base44.entities.Insured.create(payload);
     },
     onSuccess: async (created) => {
+      await queryClient.invalidateQueries({ queryKey: ['insureds', companyId] });
       onChange(created);
-      setAdding(false);
+      setForm(emptyForm);
       setSearch('');
-      setError('');
-      setNewForm({
-        full_name: '',
-        email: '',
-        phone: '',
-      });
-
-      await queryClient.invalidateQueries({ queryKey: ['insureds'] });
-      await refetch();
+      setMode('select');
     },
     onError: (err) => {
-      console.error('[InsuredSelector] Failed to create insured:', err);
-      setError('Could not save insured. Check Insured entity permissions.');
+      setError(err?.message || 'Failed to save insured.');
     },
   });
 
-  const handleCreate = async () => {
-    setError('');
-
-    const fullName = newForm.full_name.trim();
-    const email = newForm.email.trim().toLowerCase();
-    const phone = newForm.phone.trim();
-
-    if (!fullName) {
-      setError('Full name is required.');
-      return;
-    }
-
-    try {
-      const cId = await ensureCompanyId();
-
-      if (!cId) {
-        setError('Could not create or link company profile.');
-        return;
-      }
-
-      createMutation.mutate({
-        company_id: cId,
-        full_name: fullName,
-        email,
-        phone,
-        is_deleted: false,
-        created_by: user?.email || email,
-      });
-    } catch (err) {
-      console.error('[InsuredSelector] Company auto-link failed:', err);
-      setError('Could not create or link company profile. Check Company and UserProfile permissions.');
-    }
+  const updateForm = (key) => (event) => {
+    setForm((current) => ({
+      ...current,
+      [key]: event.target.value,
+    }));
   };
 
-  return (
-    <div className="space-y-2">
-      {selected && (
-        <div className="flex items-center justify-between bg-accent rounded-lg px-3 py-2">
-          <div className="flex items-center gap-2">
-            <Check size={14} className="text-primary" />
-            <div>
-              <p className="text-sm font-medium">{selected.full_name}</p>
-              {selected.email && <p className="text-xs text-muted-foreground">{selected.email}</p>}
-              {selected.phone && <p className="text-xs text-muted-foreground">{selected.phone}</p>}
-            </div>
-          </div>
+  if (!companyId) {
+    return (
+      <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+        Your user profile is missing a company ID. Complete company setup before adding an insured.
+      </div>
+    );
+  }
 
-          <button
-            type="button"
-            onClick={() => onChange(null)}
-            className="text-xs text-muted-foreground hover:text-destructive transition"
-          >
-            Remove
-          </button>
+  return (
+    <div className="space-y-3">
+      {value?.id && (
+        <div className="rounded-lg border border-primary/30 bg-primary/5 p-3">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold">{value.full_name || value.name}</p>
+              <p className="text-xs text-muted-foreground">
+                {[value.phone, value.email].filter(Boolean).join(' • ') || 'No contact information'}
+              </p>
+              {value.mailing_address && (
+                <p className="text-xs text-muted-foreground mt-1">{value.mailing_address}</p>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => onChange(null)}
+              className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition"
+              title="Remove selected insured"
+            >
+              <X size={15} />
+            </button>
+          </div>
         </div>
       )}
 
-      {!selected && (
-        <>
-          <div className="relative">
-            <Search
-              size={14}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-            />
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => {
+            setMode('select');
+            setError('');
+          }}
+          className={`min-h-touch px-3 rounded-lg border text-sm font-medium transition ${
+            mode === 'select'
+              ? 'bg-primary text-primary-foreground border-primary'
+              : 'border-border hover:bg-muted'
+          }`}
+        >
+          Select Existing
+        </button>
 
+        <button
+          type="button"
+          onClick={() => {
+            setMode('create');
+            setError('');
+          }}
+          className={`inline-flex items-center gap-1.5 min-h-touch px-3 rounded-lg border text-sm font-medium transition ${
+            mode === 'create'
+              ? 'bg-primary text-primary-foreground border-primary'
+              : 'border-border hover:bg-muted'
+          }`}
+        >
+          <Plus size={15} /> New Insured
+        </button>
+      </div>
+
+      {mode === 'select' && (
+        <div className="space-y-3">
+          <div className="relative">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
-              className="w-full h-9 pl-8 pr-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              placeholder="Search insured…"
+              className={`${inputCls} pl-9`}
               value={search}
               onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search insured by name, phone, or email..."
             />
           </div>
 
-          {!adding && (
-            <div className="border border-border rounded-lg overflow-hidden max-h-48 overflow-y-auto">
-              {isLoading && (
-                <p className="text-xs text-muted-foreground px-3 py-2">
-                  Loading insureds…
-                </p>
-              )}
-
-              {!isLoading &&
-                filtered.map((insured) => (
-                  <button
-                    key={insured.id}
-                    type="button"
-                    onClick={() => {
-                      onChange(insured);
-                      setSearch('');
-                      setError('');
-                    }}
-                    className="w-full flex items-center gap-2 px-3 py-2.5 hover:bg-muted text-left transition border-b border-border last:border-0"
-                  >
-                    <User size={14} className="text-muted-foreground shrink-0" />
-
-                    <div>
-                      <p className="text-sm font-medium">{insured.full_name}</p>
-                      {insured.email && (
-                        <p className="text-xs text-muted-foreground">{insured.email}</p>
-                      )}
-                      {insured.phone && (
-                        <p className="text-xs text-muted-foreground">{insured.phone}</p>
-                      )}
-                    </div>
-                  </button>
-                ))}
-
-              {!isLoading && filtered.length === 0 && (
-                <p className="text-xs text-muted-foreground px-3 py-2">
-                  No insureds found.
-                </p>
-              )}
+          {insuredQuery.isLoading && (
+            <div className="rounded-lg border border-border p-4 text-sm text-muted-foreground">
+              Loading insured records...
             </div>
           )}
 
+          {insuredQuery.isError && (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+              Failed to load insured records.
+            </div>
+          )}
+
+          {!insuredQuery.isLoading && filteredInsureds.length === 0 && (
+            <div className="rounded-lg border border-border p-4 text-sm text-muted-foreground">
+              No insured records found. Use New Insured to create one.
+            </div>
+          )}
+
+          {filteredInsureds.length > 0 && (
+            <div className="max-h-64 overflow-auto rounded-lg border border-border divide-y divide-border">
+              {filteredInsureds.map((insured) => {
+                const selected = value?.id === insured.id;
+
+                return (
+                  <button
+                    key={insured.id}
+                    type="button"
+                    onClick={() => onChange(insured)}
+                    className={`w-full text-left p-3 transition ${
+                      selected ? 'bg-primary/10' : 'hover:bg-muted'
+                    }`}
+                  >
+                    <p className="text-sm font-medium">{insured.full_name || insured.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {[insured.phone, insured.email].filter(Boolean).join(' • ') || 'No contact information'}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {mode === 'create' && (
+        <div className="rounded-lg border border-border p-4 space-y-3">
+          <div>
+            <label className="block text-sm font-medium mb-1.5">
+              Full Name <span className="text-destructive">*</span>
+            </label>
+            <input
+              className={inputCls}
+              value={form.full_name}
+              onChange={updateForm('full_name')}
+              placeholder="Property owner or insured name"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium mb-1.5">Phone</label>
+              <input
+                className={inputCls}
+                value={form.phone}
+                onChange={updateForm('phone')}
+                placeholder="Phone number"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1.5">Email</label>
+              <input
+                className={inputCls}
+                value={form.email}
+                onChange={updateForm('email')}
+                placeholder="Email address"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1.5">Mailing Address</label>
+            <input
+              className={inputCls}
+              value={form.mailing_address}
+              onChange={updateForm('mailing_address')}
+              placeholder="Mailing address"
+            />
+          </div>
+
           {error && (
-            <div className="px-3 py-2 rounded-lg bg-destructive/10 border border-destructive/20 text-xs text-destructive">
+            <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
               {error}
             </div>
           )}
 
           <button
             type="button"
-            onClick={() => {
-              setAdding((current) => !current);
-              setError('');
-            }}
-            className="inline-flex items-center gap-1.5 text-xs text-primary font-medium hover:underline"
+            onClick={() => createMutation.mutate()}
+            disabled={createMutation.isPending}
+            className="inline-flex items-center gap-2 min-h-touch px-4 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition disabled:opacity-60"
           >
-            <Plus size={13} />
-            {adding ? 'Cancel new insured' : 'Add new insured'}
+            <Save size={15} />
+            {createMutation.isPending ? 'Saving...' : 'Save Insured'}
           </button>
-
-          {adding && (
-            <div className="bg-muted/50 rounded-lg p-3 space-y-2 border border-border">
-              <p className="text-xs font-semibold">New Insured</p>
-
-              <input
-                className="w-full h-9 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                placeholder="Full name *"
-                value={newForm.full_name}
-                onChange={(event) =>
-                  setNewForm((current) => ({
-                    ...current,
-                    full_name: event.target.value,
-                  }))
-                }
-              />
-
-              <input
-                className="w-full h-9 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                placeholder="Email"
-                value={newForm.email}
-                onChange={(event) =>
-                  setNewForm((current) => ({
-                    ...current,
-                    email: event.target.value,
-                  }))
-                }
-              />
-
-              <input
-                className="w-full h-9 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                placeholder="Phone"
-                value={newForm.phone}
-                onChange={(event) =>
-                  setNewForm((current) => ({
-                    ...current,
-                    phone: event.target.value,
-                  }))
-                }
-              />
-
-              <div className="flex gap-2 justify-end">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAdding(false);
-                    setError('');
-                  }}
-                  className="text-xs px-3 h-8 rounded-lg border hover:bg-muted transition"
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="button"
-                  disabled={!newForm.full_name.trim() || createMutation.isPending}
-                  onClick={handleCreate}
-                  className="text-xs px-3 h-8 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 transition disabled:opacity-60"
-                >
-                  {createMutation.isPending ? 'Saving…' : 'Save Insured'}
-                </button>
-              </div>
-            </div>
-          )}
-        </>
+        </div>
       )}
     </div>
   );
