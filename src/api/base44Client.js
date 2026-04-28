@@ -1,20 +1,14 @@
 import { createClient } from '@base44/sdk';
-import { appParams } from '@/lib/app-params';
 
-const { appId, token, functionsVersion, appBaseUrl } = appParams;
+const BASE_URL =
+  import.meta.env.VITE_BASE44_APP_BASE_URL ||
+  'https://restore-scope-flow.base44.app';
 
-if (!appId) {
-  console.warn('[base44Client] Missing VITE_BASE44_APP_ID. Add it to .env.');
-}
-
-if (!appBaseUrl) {
-  console.warn('[base44Client] Missing VITE_BASE44_APP_BASE_URL. Add it to .env.');
-}
+const APP_ID =
+  import.meta.env.VITE_BASE44_APP_ID ||
+  'cbef744a8545c389ef439ea6';
 
 export const base44 = createClient({
-  appId,
-  token,
-  functionsVersion,
-  appBaseUrl,
-  requiresAuth: false,
+  appId: APP_ID,
+  baseUrl: BASE_URL,
 });
