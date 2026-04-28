@@ -3,6 +3,29 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
 
+  const emptyReport = {
+    metrics: {
+      total_records: {
+        total: 0,
+        jobs: 0,
+        estimates: 0,
+        photos: 0,
+      },
+    },
+    usage: {
+      jobs_created: 0,
+      estimates_created: 0,
+      photos_uploaded: 0,
+      active_users: 0,
+    },
+    totals: {
+      jobs: 0,
+      estimates: 0,
+      photos: 0,
+      users: 0,
+    },
+  };
+
   try {
     const user = await base44.auth.me();
 
@@ -12,37 +35,55 @@ Deno.serve(async (req) => {
 
     const companyId = user.company_id;
 
-    const filter = {
+    if (!companyId) {
+      return Response.json(emptyReport);
+    }
+
+    const safeFilter = {
       company_id: companyId,
-      is_deleted: false
+      is_deleted: false,
     };
 
-    const jobs = await base44.asServiceRole.entities.Job.filter(filter).catch(() => []);
-    const photos = await base44.asServiceRole.entities.Photo.filter(filter).catch(() => []);
-    const estimates = await base44.asServiceRole.entities.EstimateDraft.filter(filter).catch(() => []);
-    const users = await base44.asServiceRole.entities.UserProfile.filter({ company_id: companyId }).catch(() => []);
+    const [jobs, estimates, photos, users] = await Promise.all([
+      base44.asServiceRole.entities.Job.filter(safeFilter).catch(() => []),
+      base44.asServiceRole.entities.EstimateDraft.filter(safeFilter).catch(() => []),
+      base44.asServiceRole.entities.Photo.filter(safeFilter).catch(() => []),
+      base44.asServiceRole.entities.UserProfile.filter({ company_id: companyId }).catch(() => []),
+    ]);
+
+    const jobCount = Array.isArray(jobs) ? jobs.length : 0;
+    const estimateCount = Array.isArray(estimates) ? estimates.length : 0;
+    const photoCount = Array.isArray(photos) ? photos.length : 0;
+    const userCount = Array.isArray(users) ? users.length : 0;
 
     return Response.json({
       metrics: {
         total_records: {
-          total: jobs.length + photos.length + estimates.length,
-          jobs: jobs.length,
-          estimates: estimates.length,
-          photos: photos.length
-        }
-      }
+          total: jobCount + estimateCount + photoCount,
+          jobs: jobCount,
+          estimates: estimateCount,
+          photos: photoCount,
+        },
+      },
+      usage: {
+        jobs_created: jobCount,
+        estimates_created: estimateCount,
+        photos_uploaded: photoCount,
+        active_users: userCount,
+      },
+      totals: {
+        jobs: jobCount,
+        estimates: estimateCount,
+        photos: photoCount,
+        users: userCount,
+      },
+      company_id: companyId,
+      generated_at: new Date().toISOString(),
     });
-
-  } catch {
+  } catch (error) {
     return Response.json({
-      metrics: {
-        total_records: {
-          total: 0,
-          jobs: 0,
-          estimates: 0,
-          photos: 0
-        }
-      }
+      ...emptyReport,
+      warning: error?.message || 'Usage report fallback returned.',
     });
   }
 });
