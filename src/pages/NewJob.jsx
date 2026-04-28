@@ -2,6 +2,11 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
+import { logAction } from '@/lib/auditLog';
+import UpgradeNudge from '@/components/trial/UpgradeNudge';
+import { useUpgradeTrigger } from '@/hooks/useUpgradeTrigger';
+import { useBetaAccess } from '@/hooks/useBetaAccess';
+import UpgradeRequiredModal from '@/components/trial/UpgradeRequiredModal';
 import { ArrowLeft, ArrowRight, Check, Save } from 'lucide-react';
 import InsuredSelector from '@/components/job/InsuredSelector';
 import PropertySelector from '@/components/job/PropertySelector';
@@ -12,23 +17,16 @@ import { cn } from '@/lib/utils';
 const LOSS_TYPES = [
   { value: 'water', label: 'Water' },
   { value: 'mold', label: 'Mold' },
+  { value: 'fire', label: 'Fire' },
+  { value: 'mixed_loss', label: 'Mixed Loss' },
 ];
 
-const SERVICE_TYPES = ['Water Mitigation', 'Mold Remediation', 'Inspection Only'];
+const SERVICE_TYPES = ['Mitigation', 'Restoration', 'Contents', 'Reconstruction', 'Inspection Only'];
 const STATUS_OPTIONS = ['new', 'in_progress', 'pending_approval', 'approved', 'closed'];
 const STEPS = ['Job Info', 'Insured & Property', 'Assignment', 'Review'];
 
 const inputCls =
   'w-full min-h-touch px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring transition';
-
-function generateJobNumber() {
-  const d = new Date();
-  const date = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(
-    d.getDate()
-  ).padStart(2, '0')}`;
-  const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
-  return `RSP-${date}-${rand}`;
-}
 
 function Field({ label, required, error, children }) {
   return (
@@ -60,7 +58,6 @@ function StepIndicator({ steps, current }) {
           >
             {i < current ? <Check size={13} /> : i + 1}
           </div>
-
           {i < steps.length - 1 && (
             <div className={cn('flex-1 h-px transition-colors', i < current ? 'bg-primary' : 'bg-border')} />
           )}
@@ -70,14 +67,24 @@ function StepIndicator({ steps, current }) {
   );
 }
 
+function generateJobNumber() {
+  const d = new Date();
+  const date = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+  const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
+  return `RSP-${date}-${rand}`;
+}
+
 export default function NewJob() {
   const navigate = useNavigate();
-  const { user, userProfile, refreshUserProfile } = useAuth();
+  const { user } = useAuth();
+  const nudge = useUpgradeTrigger({ feature: 'estimate', checkLimits: true });
+  const { isBlockedByExpiredBeta } = useBetaAccess();
 
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState({});
   const [submitError, setSubmitError] = useState('');
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   const [form, setForm] = useState({
     job_number: generateJobNumber(),
@@ -102,66 +109,22 @@ export default function NewJob() {
     setForm((current) => ({ ...current, [key]: value }));
   };
 
-  const ensureCompanyId = async () => {
-    let companyId =
-      userProfile?.company_id ||
-      user?.company_id ||
-      insured?.company_id ||
-      property?.company_id ||
-      '';
-
-    if (companyId) return companyId;
-
-    const email = user?.email || '';
-
-    const existingCompanies = await base44.entities.Company.filter({
-      created_by: email,
-      is_deleted: false,
-    });
-
-    if (existingCompanies?.length > 0) {
-      companyId = existingCompanies[0].id;
-    } else {
-      const company = await base44.entities.Company.create({
-        name: 'Eversafe Restoration',
-        phone: '636-219-9302',
-        email,
-        website: 'https://eversafepro.com',
-        city: 'St. Louis',
-        state: 'MO',
-        service_area: 'St. Louis, MO and surrounding areas; Alton, IL and surrounding areas',
-        status: 'active',
-        created_by: email,
-        is_deleted: false,
-      });
-
-      companyId = company.id;
-    }
-
-    if (userProfile?.id && companyId) {
-      await base44.entities.UserProfile.update(userProfile.id, {
-        company_id: companyId,
-        email,
-        is_deleted: false,
-      });
-
-      if (refreshUserProfile) await refreshUserProfile();
-    }
-
-    return companyId;
-  };
-
   const validate = (currentStep) => {
     const nextErrors = {};
+
+    if (!user?.company_id) {
+      nextErrors.company = 'Your account is not linked to a company. Complete company setup first.';
+    }
 
     if (currentStep === 0) {
       if (!form.loss_type) nextErrors.loss_type = 'Loss type is required.';
       if (!form.service_type) nextErrors.service_type = 'Service type is required.';
+      if (!form.job_number?.trim()) nextErrors.job_number = 'Job number is required.';
     }
 
     if (currentStep === 1) {
-      if (!insured) nextErrors.insured = 'Insured is required.';
-      if (!property) nextErrors.property = 'Property is required.';
+      if (!insured?.id) nextErrors.insured = 'Save or select an insured before continuing.';
+      if (!property?.id) nextErrors.property = 'Save or select a property before continuing.';
     }
 
     setErrors(nextErrors);
@@ -169,60 +132,71 @@ export default function NewJob() {
   };
 
   const next = () => {
-    if (validate(step)) setStep((current) => current + 1);
+    if (validate(step)) {
+      setSubmitError('');
+      setStep((current) => current + 1);
+    }
   };
 
   const back = () => {
     setErrors({});
-    setStep((current) => Math.max(0, current - 1));
+    setSubmitError('');
+    setStep((current) => Math.max(current - 1, 0));
   };
 
   const handleSubmit = async () => {
-    if (!validate(step)) return;
+    if (isBlockedByExpiredBeta) {
+      setShowUpgradeModal(true);
+      return;
+    }
+
+    if (!validate(1) || !validate(3)) return;
 
     setSaving(true);
     setSubmitError('');
 
     try {
-      const companyId = await ensureCompanyId();
-
-      if (!companyId) {
-        setSubmitError('Missing company profile. Save company profile first.');
-        setSaving(false);
-        return;
+      if (!user?.company_id) {
+        throw new Error('Missing company profile. Complete company setup before creating jobs.');
       }
 
+      if (!insured?.id) {
+        throw new Error('Insured was not saved correctly. Save or select an insured again.');
+      }
+
+      if (!property?.id) {
+        throw new Error('Property was not saved correctly. Save or select a property again.');
+      }
+
+      const cleanForm = Object.fromEntries(
+        Object.entries(form).map(([key, value]) => [key, value === '' ? null : value])
+      );
+
       const jobPayload = {
-        ...form,
-        company_id: companyId,
-        insured_id: insured?.id || '',
-        property_id: property?.id || '',
-        assigned_manager_id: assignedManagerId || '',
-        assigned_estimator_id: assignedEstimatorId || '',
-        created_by: user?.email || '',
+        ...cleanForm,
+        insured_id: insured.id,
+        property_id: property.id,
+        claim_id: null,
+        assigned_manager_id: assignedManagerId || null,
+        assigned_estimator_id: assignedEstimatorId || null,
+        company_id: user.company_id,
+        created_by: user.email || user.id || null,
         is_deleted: false,
       };
 
-      const createdJob = await base44.entities.Job.create(jobPayload);
+      const job = await base44.entities.Job.create(jobPayload);
 
-      const cachedJob = {
-        ...jobPayload,
-        ...createdJob,
-        id: createdJob.id,
-      };
+      await logAction(user, 'Job', job.id, 'created', `Job ${job.job_number} created`, {
+        loss_type: job.loss_type,
+        service_type: job.service_type,
+        insured_id: insured.id,
+        property_id: property.id,
+        company_id: user.company_id,
+      }).catch(() => null);
 
-      try {
-        sessionStorage.setItem(`job_cache_${createdJob.id}`, JSON.stringify(cachedJob));
-        sessionStorage.setItem('last_created_job_id', createdJob.id);
-      } catch {}
-
-      navigate(`/jobs/${createdJob.id}`, {
-        replace: true,
-        state: { job: cachedJob },
-      });
+      navigate(`/jobs/${job.id}`);
     } catch (error) {
-      console.error('[NewJob] Failed to create job:', error?.message || error);
-      setSubmitError('Failed to create job. Check Job entity permissions and company_id linkage.');
+      setSubmitError(error?.message || 'Failed to create job. Please try again.');
       setSaving(false);
     }
   };
@@ -243,111 +217,122 @@ export default function NewJob() {
         </p>
       </div>
 
+      {nudge && <UpgradeNudge {...nudge} className="mb-4" />}
+
       <StepIndicator steps={STEPS} current={step} />
+
+      {errors.company && (
+        <div className="mb-4 px-4 py-3 bg-destructive/10 border border-destructive/30 rounded-lg text-sm text-destructive">
+          {errors.company}
+        </div>
+      )}
 
       {step === 0 && (
         <div className="bg-card rounded-xl border border-border p-5 space-y-4">
-          <Field label="Job Number">
-            <div className="flex gap-2">
-              <input className={inputCls} value={form.job_number} onChange={set('job_number')} />
-              <button
-                type="button"
-                onClick={() => setForm((current) => ({ ...current, job_number: generateJobNumber() }))}
-                className="h-10 px-3 rounded-lg border border-border text-xs hover:bg-muted transition whitespace-nowrap"
-              >
-                Regenerate
-              </button>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="col-span-2">
+              <Field label="Job Number" required error={errors.job_number}>
+                <div className="flex gap-2">
+                  <input className={inputCls} value={form.job_number} onChange={set('job_number')} />
+                  <button
+                    type="button"
+                    onClick={() => setForm((current) => ({ ...current, job_number: generateJobNumber() }))}
+                    className="h-10 px-3 rounded-lg border border-border text-xs hover:bg-muted transition whitespace-nowrap"
+                  >
+                    Regenerate
+                  </button>
+                </div>
+              </Field>
             </div>
-          </Field>
 
-          <Field label="Loss Type" required error={errors.loss_type}>
-            <Select value={form.loss_type} onValueChange={(value) => setForm((current) => ({ ...current, loss_type: value }))}>
-              <SelectTrigger className="min-h-touch">
-                <SelectValue placeholder="Select loss type" />
-              </SelectTrigger>
-              <SelectContent>
-                {LOSS_TYPES.map((type) => (
-                  <SelectItem key={type.value} value={type.value}>
-                    {type.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
+            <Field label="Loss Type" required error={errors.loss_type}>
+              <Select value={form.loss_type} onValueChange={(value) => setForm((current) => ({ ...current, loss_type: value }))}>
+                <SelectTrigger className={cn('min-h-touch', errors.loss_type && 'border-destructive')}>
+                  <SelectValue placeholder="Select…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {LOSS_TYPES.map((type) => (
+                    <SelectItem key={type.value} value={type.value}>
+                      {type.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
 
-          <Field label="Service Type" required error={errors.service_type}>
-            <Select value={form.service_type} onValueChange={(value) => setForm((current) => ({ ...current, service_type: value }))}>
-              <SelectTrigger className="min-h-touch">
-                <SelectValue placeholder="Select service type" />
-              </SelectTrigger>
-              <SelectContent>
-                {SERVICE_TYPES.map((type) => (
-                  <SelectItem key={type} value={type}>
-                    {type}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
+            <Field label="Service Type" required error={errors.service_type}>
+              <Select value={form.service_type} onValueChange={(value) => setForm((current) => ({ ...current, service_type: value }))}>
+                <SelectTrigger className={cn('min-h-touch', errors.service_type && 'border-destructive')}>
+                  <SelectValue placeholder="Select…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SERVICE_TYPES.map((type) => (
+                    <SelectItem key={type} value={type}>
+                      {type}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
 
-          <Field label="Status">
-            <Select value={form.status} onValueChange={(value) => setForm((current) => ({ ...current, status: value }))}>
-              <SelectTrigger className="min-h-touch">
-                <SelectValue placeholder="Select status" />
-              </SelectTrigger>
-              <SelectContent>
-                {STATUS_OPTIONS.map((status) => (
-                  <SelectItem key={status} value={status}>
-                    {status.replace(/_/g, ' ')}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
+            <Field label="Status">
+              <Select value={form.status} onValueChange={(value) => setForm((current) => ({ ...current, status: value }))}>
+                <SelectTrigger className="min-h-touch">
+                  <SelectValue placeholder="Select…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {STATUS_OPTIONS.map((status) => (
+                    <SelectItem key={status} value={status}>
+                      {status.replace(/_/g, ' ')}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
 
-          <Field label="Date of Loss">
-            <input type="date" className={inputCls} value={form.date_of_loss} onChange={set('date_of_loss')} />
-          </Field>
+            <Field label="Date of Loss">
+              <input type="date" className={inputCls} value={form.date_of_loss} onChange={set('date_of_loss')} />
+            </Field>
 
-          <Field label="Inspection Date">
-            <input type="date" className={inputCls} value={form.inspection_date} onChange={set('inspection_date')} />
-          </Field>
+            <Field label="Inspection Date">
+              <input type="date" className={inputCls} value={form.inspection_date} onChange={set('inspection_date')} />
+            </Field>
 
-          <Field label="Cause of Loss">
-            <input className={inputCls} value={form.cause_of_loss} onChange={set('cause_of_loss')} placeholder="Brief description" />
-          </Field>
+            <div className="col-span-2">
+              <Field label="Cause of Loss">
+                <input className={inputCls} value={form.cause_of_loss} onChange={set('cause_of_loss')} placeholder="Brief description…" />
+              </Field>
+            </div>
 
-          <div className="flex gap-6">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={form.emergency_flag}
-                onChange={(event) => setForm((current) => ({ ...current, emergency_flag: event.target.checked }))}
-                className="w-4 h-4 accent-primary"
-              />
-              <span className="text-sm">Emergency</span>
-            </label>
+            <div className="col-span-2 flex gap-6">
+              {[
+                { key: 'emergency_flag', label: 'Emergency' },
+                { key: 'after_hours_flag', label: 'After Hours' },
+              ].map(({ key, label }) => (
+                <label key={key} className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form[key]}
+                    onChange={(event) => setForm((current) => ({ ...current, [key]: event.target.checked }))}
+                    className="w-4 h-4 accent-primary"
+                  />
+                  <span className="text-sm">{label}</span>
+                </label>
+              ))}
+            </div>
 
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={form.after_hours_flag}
-                onChange={(event) => setForm((current) => ({ ...current, after_hours_flag: event.target.checked }))}
-                className="w-4 h-4 accent-primary"
-              />
-              <span className="text-sm">After Hours</span>
-            </label>
+            <div className="col-span-2">
+              <Field label="Summary Notes">
+                <textarea
+                  className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+                  rows={3}
+                  value={form.summary_notes}
+                  onChange={set('summary_notes')}
+                  placeholder="Initial notes…"
+                />
+              </Field>
+            </div>
           </div>
-
-          <Field label="Summary Notes">
-            <textarea
-              className="w-full px-3 py-2 rounded-lg border border-input bg-background text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring"
-              rows={3}
-              value={form.summary_notes}
-              onChange={set('summary_notes')}
-              placeholder="Initial notes"
-            />
-          </Field>
         </div>
       )}
 
@@ -389,11 +374,38 @@ export default function NewJob() {
         <div className="space-y-4">
           <div className="bg-card rounded-xl border border-border p-5 space-y-3">
             <h2 className="text-sm font-semibold font-display">Job Summary</h2>
-            <div className="flex justify-between"><span className="text-xs text-muted-foreground">Job Number</span><span className="text-sm font-medium">{form.job_number}</span></div>
-            <div className="flex justify-between"><span className="text-xs text-muted-foreground">Loss Type</span><span className="text-sm font-medium">{form.loss_type}</span></div>
-            <div className="flex justify-between"><span className="text-xs text-muted-foreground">Service Type</span><span className="text-sm font-medium">{form.service_type}</span></div>
-            <div className="flex justify-between"><span className="text-xs text-muted-foreground">Insured</span><span className="text-sm font-medium">{insured?.full_name || insured?.name}</span></div>
-            <div className="flex justify-between"><span className="text-xs text-muted-foreground">Property</span><span className="text-sm font-medium">{property?.address_line_1}</span></div>
+            {[
+              ['Job Number', form.job_number],
+              ['Loss Type', LOSS_TYPES.find((type) => type.value === form.loss_type)?.label],
+              ['Service Type', form.service_type],
+              ['Status', form.status?.replace(/_/g, ' ')],
+              ['Date of Loss', form.date_of_loss],
+              ['Inspection Date', form.inspection_date],
+              ['Cause of Loss', form.cause_of_loss],
+              ['Emergency', form.emergency_flag ? 'Yes' : 'No'],
+              ['After Hours', form.after_hours_flag ? 'Yes' : 'No'],
+            ].map(([label, value]) =>
+              value ? (
+                <div key={label} className="flex items-start justify-between gap-4">
+                  <span className="text-xs text-muted-foreground shrink-0">{label}</span>
+                  <span className="text-sm font-medium text-right">{value}</span>
+                </div>
+              ) : null
+            )}
+          </div>
+
+          <div className="bg-card rounded-xl border border-border p-5 space-y-2">
+            <h2 className="text-sm font-semibold font-display">Insured & Property</h2>
+            <div className="flex justify-between">
+              <span className="text-xs text-muted-foreground">Insured</span>
+              <span className="text-sm font-medium">{insured?.full_name || insured?.name || '—'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-xs text-muted-foreground">Property</span>
+              <span className="text-sm font-medium text-right max-w-[60%]">
+                {property ? [property.address_line_1, property.city, property.state].filter(Boolean).join(', ') : '—'}
+              </span>
+            </div>
           </div>
         </div>
       )}
@@ -402,6 +414,10 @@ export default function NewJob() {
         <div className="mt-4 px-4 py-2.5 bg-destructive/10 border border-destructive/30 rounded-lg text-sm text-destructive">
           {submitError}
         </div>
+      )}
+
+      {showUpgradeModal && (
+        <UpgradeRequiredModal action="Creating new jobs" onClose={() => setShowUpgradeModal(false)} />
       )}
 
       <div className="flex justify-between mt-5 gap-3">
