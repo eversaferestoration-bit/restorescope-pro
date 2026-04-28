@@ -3,7 +3,8 @@ import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useAuth } from '@/lib/AuthContext';
 
 import JobOverview from '@/components/job/tabs/JobOverview';
 import JobInsuredClaim from '@/components/job/tabs/JobInsuredClaim';
@@ -47,62 +48,66 @@ const STATUS_COLORS = {
   closed: 'bg-muted text-muted-foreground',
 };
 
-function getCachedJob(jobId, locationStateJob) {
-  if (locationStateJob?.id === jobId) return locationStateJob;
-
-  try {
-    const cached = sessionStorage.getItem(`job_cache_${jobId}`);
-    if (cached) return JSON.parse(cached);
-  } catch {}
-
-  return null;
-}
-
 export default function JobDetail() {
   const { jobId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
+
+  const companyId = user?.company_id;
 
   const tabFromUrl = new URLSearchParams(location.search).get('tab') || 'overview';
   const [activeTab, setActiveTab] = useState(tabFromUrl);
 
-  const cachedJob = getCachedJob(jobId, location.state?.job);
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    params.set('tab', activeTab);
+    navigate(`${location.pathname}?${params.toString()}`, { replace: true });
+  }, [activeTab]);
 
-  const { data: fetchedJob, isLoading } = useQuery({
-    queryKey: ['job', jobId],
-    enabled: !!jobId,
+  const { data: job, isLoading, isError } = useQuery({
+    queryKey: ['job', jobId, companyId],
+    enabled: !!jobId && !!companyId,
+    retry: false,
     queryFn: async () => {
       const results = await base44.entities.Job.filter({
         id: jobId,
+        company_id: companyId,
         is_deleted: false,
       });
 
-      return Array.isArray(results) && results.length > 0 ? results[0] : null;
+      if (!results || results.length === 0) return null;
+
+      const found = results[0];
+
+      // cache safe version
+      sessionStorage.setItem(`job_cache_${jobId}`, JSON.stringify(found));
+
+      return found;
     },
-    staleTime: 60 * 1000,
-    retry: 1,
   });
 
-  const job = fetchedJob || cachedJob;
+  const cachedJob = (() => {
+    try {
+      return JSON.parse(sessionStorage.getItem(`job_cache_${jobId}`));
+    } catch {
+      return null;
+    }
+  })();
+
+  const finalJob = job || cachedJob;
 
   if (isLoading && !cachedJob) {
-    return (
-      <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-4">
-        <div className="h-8 w-40 rounded-lg bg-muted animate-pulse" />
-        <div className="h-16 rounded-xl bg-muted animate-pulse" />
-        <div className="h-10 rounded-lg bg-muted animate-pulse" />
-        <div className="h-64 rounded-xl bg-muted animate-pulse" />
-      </div>
-    );
+    return <div className="p-6">Loading job...</div>;
   }
 
-  if (!job) {
+  if (isError || !finalJob) {
     return (
-      <div className="p-4 md:p-6 max-w-5xl mx-auto text-center py-20">
-        <p className="text-muted-foreground mb-4">Job not found or not readable yet.</p>
+      <div className="p-6 text-center">
+        <p className="text-muted-foreground mb-4">Job not found or access denied.</p>
         <button
           onClick={() => navigate('/jobs')}
-          className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold"
+          className="px-4 py-2 bg-primary text-white rounded"
         >
           Back to Jobs
         </button>
@@ -110,77 +115,43 @@ export default function JobDetail() {
     );
   }
 
-  const ActiveTab = TABS.find((t) => t.key === activeTab);
-  const ActiveComponent = ActiveTab?.component;
+  const ActiveComponent = TABS.find((t) => t.key === activeTab)?.component;
 
   return (
-    <div className="flex flex-col min-h-full scrollable-container">
-      <div className="px-4 md:px-6 pt-4 pb-3 border-b border-border bg-card/60">
-        <button
-          onClick={() => navigate('/jobs')}
-          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-3 transition"
-        >
-          <ArrowLeft size={15} /> Jobs
+    <div className="flex flex-col min-h-full">
+      <div className="p-4 border-b">
+        <button onClick={() => navigate('/jobs')} className="text-sm mb-2">
+          <ArrowLeft size={14} /> Jobs
         </button>
 
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-xl font-bold font-display">
-                {job.job_number || `Job #${String(job.id || '').slice(-6)}`}
-              </h1>
+        <h1 className="text-xl font-bold">
+          {finalJob.job_number || `Job #${finalJob.id}`}
+        </h1>
 
-              {job.emergency_flag && (
-                <span className="inline-flex items-center gap-1 text-xs font-medium text-destructive">
-                  <AlertCircle size={12} /> Emergency
-                </span>
-              )}
-
-              {job.status && (
-                <span
-                  className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                    STATUS_COLORS[job.status] || 'bg-muted text-muted-foreground'
-                  }`}
-                >
-                  {String(job.status).replace(/_/g, ' ')}
-                </span>
-              )}
-            </div>
-
-            <p className="text-sm text-muted-foreground mt-0.5">
-              {[job.loss_type, job.service_type].filter(Boolean).join(' · ')}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <div className="border-b border-border bg-card/40 sticky top-0 z-10 overflow-x-auto">
-        <div className="flex min-w-max px-4 md:px-6">
-          {TABS.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={cn(
-                'px-3 py-3 text-sm font-medium border-b-2 whitespace-nowrap transition-colors',
-                activeTab === tab.key
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
-              )}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="flex-1 p-4 md:p-6 max-w-5xl mx-auto w-full">
-        {ActiveComponent ? (
-          <ActiveComponent job={job} />
-        ) : (
-          <div className="border rounded-xl p-4 text-sm text-muted-foreground">
-            This section is not available yet.
-          </div>
+        {finalJob.status && (
+          <span className={STATUS_COLORS[finalJob.status]}>
+            {finalJob.status}
+          </span>
         )}
+      </div>
+
+      <div className="flex border-b overflow-x-auto">
+        {TABS.map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={cn(
+              'px-3 py-2',
+              activeTab === tab.key ? 'text-primary border-b-2 border-primary' : ''
+            )}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="p-4">
+        {ActiveComponent && <ActiveComponent job={finalJob} />}
       </div>
     </div>
   );
