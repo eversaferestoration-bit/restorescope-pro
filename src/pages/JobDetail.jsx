@@ -1,13 +1,10 @@
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowLeft, AlertCircle, Shield } from 'lucide-react';
+import { ArrowLeft, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useState, useEffect } from 'react';
-import RiskIndicator from '@/components/job/RiskIndicator';
-import RiskPanel from '@/components/job/RiskPanel';
+import { useState } from 'react';
 
-// Tab pages
 import JobOverview from '@/components/job/tabs/JobOverview';
 import JobInsuredClaim from '@/components/job/tabs/JobInsuredClaim';
 import JobProperty from '@/components/job/tabs/JobProperty';
@@ -19,12 +16,10 @@ import JobEquipment from '@/components/job/tabs/JobEquipment';
 import JobContainment from '@/components/job/tabs/JobContainment';
 import JobScope from '@/components/job/tabs/JobScope';
 import JobEstimates from '@/components/job/tabs/JobEstimates';
+import JobSupplements from '@/components/job/tabs/JobSupplements';
 import JobJustification from '@/components/job/tabs/JobJustification';
 import JobApprovals from '@/components/job/tabs/JobApprovals';
 import JobExports from '@/components/job/tabs/JobExports';
-import JobSupplements from '@/components/job/tabs/JobSupplements';
-import OutcomePanel from '@/components/job/OutcomePanel';
-import KnowledgePanel from '@/components/job/KnowledgePanel';
 
 const TABS = [
   { key: 'overview', label: 'Overview', component: JobOverview },
@@ -41,8 +36,6 @@ const TABS = [
   { key: 'supplements', label: 'Supplements', component: JobSupplements },
   { key: 'justification', label: 'Justification', component: JobJustification },
   { key: 'approvals', label: 'Approvals', component: JobApprovals },
-  { key: 'outcome', label: 'Outcome', component: null },
-  { key: 'knowledge', label: 'Knowledge', component: null },
   { key: 'exports', label: 'Exports', component: JobExports },
 ];
 
@@ -54,37 +47,45 @@ const STATUS_COLORS = {
   closed: 'bg-muted text-muted-foreground',
 };
 
+function getCachedJob(jobId, locationStateJob) {
+  if (locationStateJob?.id === jobId) return locationStateJob;
+
+  try {
+    const cached = sessionStorage.getItem(`job_cache_${jobId}`);
+    if (cached) return JSON.parse(cached);
+  } catch {}
+
+  return null;
+}
+
 export default function JobDetail() {
   const { jobId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+
   const tabFromUrl = new URLSearchParams(location.search).get('tab') || 'overview';
   const [activeTab, setActiveTab] = useState(tabFromUrl);
-  const [riskData, setRiskData] = useState(null);
-  const [showRiskPanel, setShowRiskPanel] = useState(false);
 
-  const { data: job, isLoading } = useQuery({
+  const cachedJob = getCachedJob(jobId, location.state?.job);
+
+  const { data: fetchedJob, isLoading } = useQuery({
     queryKey: ['job', jobId],
-    queryFn: () => base44.entities.Job.filter({ id: jobId, is_deleted: false }),
-    select: (data) => data[0],
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    retry: 2,
+    enabled: !!jobId,
+    queryFn: async () => {
+      const results = await base44.entities.Job.filter({
+        id: jobId,
+        is_deleted: false,
+      });
+
+      return Array.isArray(results) && results.length > 0 ? results[0] : null;
+    },
+    staleTime: 60 * 1000,
+    retry: 1,
   });
 
-  // Analyze risk on job load
-  useEffect(() => {
-    if (job?.id) {
-      base44.functions.invoke('analyzeRisk', { job_id: job.id })
-        .then((res) => {
-          if (res.data && !res.data.error) {
-            setRiskData(res.data);
-          }
-        })
-        .catch(console.error);
-    }
-  }, [job?.id]);
+  const job = fetchedJob || cachedJob;
 
-  if (isLoading) {
+  if (isLoading && !cachedJob) {
     return (
       <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-4">
         <div className="h-8 w-40 rounded-lg bg-muted animate-pulse" />
@@ -98,19 +99,22 @@ export default function JobDetail() {
   if (!job) {
     return (
       <div className="p-4 md:p-6 max-w-5xl mx-auto text-center py-20">
-        <p className="text-muted-foreground">Job not found.</p>
+        <p className="text-muted-foreground mb-4">Job not found or not readable yet.</p>
+        <button
+          onClick={() => navigate('/jobs')}
+          className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-semibold"
+        >
+          Back to Jobs
+        </button>
       </div>
     );
   }
 
   const ActiveTab = TABS.find((t) => t.key === activeTab);
   const ActiveComponent = ActiveTab?.component;
-  const isOutcomeTab = activeTab === 'outcome';
-  const isKnowledgeTab = activeTab === 'knowledge';
 
   return (
     <div className="flex flex-col min-h-full scrollable-container">
-      {/* Header */}
       <div className="px-4 md:px-6 pt-4 pb-3 border-b border-border bg-card/60">
         <button
           onClick={() => navigate('/jobs')}
@@ -118,30 +122,31 @@ export default function JobDetail() {
         >
           <ArrowLeft size={15} /> Jobs
         </button>
+
         <div className="flex items-start justify-between gap-3">
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-xl font-bold font-display">
-                {job.job_number || `Job #${job.id?.slice(-6)}`}
+                {job.job_number || `Job #${String(job.id || '').slice(-6)}`}
               </h1>
+
               {job.emergency_flag && (
                 <span className="inline-flex items-center gap-1 text-xs font-medium text-destructive">
                   <AlertCircle size={12} /> Emergency
                 </span>
               )}
+
               {job.status && (
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[job.status] || 'bg-muted text-muted-foreground'}`}>
-                  {job.status.replace(/_/g, ' ')}
+                <span
+                  className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                    STATUS_COLORS[job.status] || 'bg-muted text-muted-foreground'
+                  }`}
+                >
+                  {String(job.status).replace(/_/g, ' ')}
                 </span>
               )}
-              {riskData && (
-                <RiskIndicator
-                  riskLevel={riskData.risk_level}
-                  flagCount={riskData.risk_flags?.length || 0}
-                  onClick={() => setShowRiskPanel(true)}
-                />
-              )}
             </div>
+
             <p className="text-sm text-muted-foreground mt-0.5">
               {[job.loss_type, job.service_type].filter(Boolean).join(' · ')}
             </p>
@@ -149,7 +154,6 @@ export default function JobDetail() {
         </div>
       </div>
 
-      {/* Tab bar — horizontal scroll on mobile */}
       <div className="border-b border-border bg-card/40 sticky top-0 z-10 overflow-x-auto">
         <div className="flex min-w-max px-4 md:px-6">
           {TABS.map((tab) => (
@@ -169,20 +173,15 @@ export default function JobDetail() {
         </div>
       </div>
 
-      {/* Tab content */}
       <div className="flex-1 p-4 md:p-6 max-w-5xl mx-auto w-full">
-        {isOutcomeTab ? (
-          <OutcomePanel jobId={job?.id} />
-        ) : isKnowledgeTab ? (
-          <KnowledgePanel jobId={job?.id} />
+        {ActiveComponent ? (
+          <ActiveComponent job={job} />
         ) : (
-          ActiveComponent && <ActiveComponent job={job} />
+          <div className="border rounded-xl p-4 text-sm text-muted-foreground">
+            This section is not available yet.
+          </div>
         )}
       </div>
-
-      {showRiskPanel && riskData && (
-        <RiskPanel riskData={riskData} onClose={() => setShowRiskPanel(false)} />
-      )}
     </div>
   );
 }
