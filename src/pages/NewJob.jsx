@@ -58,6 +58,7 @@ function StepIndicator({ steps, current }) {
           >
             {i < current ? <Check size={13} /> : i + 1}
           </div>
+
           {i < steps.length - 1 && (
             <div className={cn('flex-1 h-px transition-colors', i < current ? 'bg-primary' : 'bg-border')} />
           )}
@@ -72,6 +73,12 @@ function generateJobNumber() {
   const date = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
   const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
   return `RSP-${date}-${rand}`;
+}
+
+function cleanPayload(data) {
+  return Object.fromEntries(
+    Object.entries(data).map(([key, value]) => [key, value === '' ? null : value])
+  );
 }
 
 export default function NewJob() {
@@ -117,12 +124,12 @@ export default function NewJob() {
     }
 
     if (currentStep === 0) {
+      if (!form.job_number?.trim()) nextErrors.job_number = 'Job number is required.';
       if (!form.loss_type) nextErrors.loss_type = 'Loss type is required.';
       if (!form.service_type) nextErrors.service_type = 'Service type is required.';
-      if (!form.job_number?.trim()) nextErrors.job_number = 'Job number is required.';
     }
 
-    if (currentStep === 1) {
+    if (currentStep === 1 || currentStep === 3) {
       if (!insured?.id) nextErrors.insured = 'Save or select an insured before continuing.';
       if (!property?.id) nextErrors.property = 'Save or select a property before continuing.';
     }
@@ -132,10 +139,9 @@ export default function NewJob() {
   };
 
   const next = () => {
-    if (validate(step)) {
-      setSubmitError('');
-      setStep((current) => current + 1);
-    }
+    if (!validate(step)) return;
+    setSubmitError('');
+    setStep((current) => Math.min(current + 1, STEPS.length - 1));
   };
 
   const back = () => {
@@ -150,7 +156,7 @@ export default function NewJob() {
       return;
     }
 
-    if (!validate(1) || !validate(3)) return;
+    if (!validate(0) || !validate(1) || !validate(3)) return;
 
     setSaving(true);
     setSubmitError('');
@@ -168,12 +174,8 @@ export default function NewJob() {
         throw new Error('Property was not saved correctly. Save or select a property again.');
       }
 
-      const cleanForm = Object.fromEntries(
-        Object.entries(form).map(([key, value]) => [key, value === '' ? null : value])
-      );
-
       const jobPayload = {
-        ...cleanForm,
+        ...cleanPayload(form),
         insured_id: insured.id,
         property_id: property.id,
         claim_id: null,
@@ -186,7 +188,14 @@ export default function NewJob() {
 
       const job = await base44.entities.Job.create(jobPayload);
 
-      await logAction(user, 'Job', job.id, 'created', `Job ${job.job_number} created`, {
+      await base44.entities.Job.update(job.id, {
+        insured_id: insured.id,
+        property_id: property.id,
+        company_id: user.company_id,
+        is_deleted: false,
+      });
+
+      await logAction(user, 'Job', job.id, 'created', `Job ${job.job_number || job.id} created`, {
         loss_type: job.loss_type,
         service_type: job.service_type,
         insured_id: insured.id,
@@ -194,7 +203,17 @@ export default function NewJob() {
         company_id: user.company_id,
       }).catch(() => null);
 
-      navigate(`/jobs/${job.id}`);
+      sessionStorage.setItem(
+        `job_cache_${job.id}`,
+        JSON.stringify({
+          ...job,
+          insured_id: insured.id,
+          property_id: property.id,
+          company_id: user.company_id,
+        })
+      );
+
+      navigate(`/jobs/${job.id}?tab=overview`);
     } catch (error) {
       setSubmitError(error?.message || 'Failed to create job. Please try again.');
       setSaving(false);
@@ -204,10 +223,11 @@ export default function NewJob() {
   return (
     <div className="p-4 md:p-6 max-w-xl mx-auto">
       <button
-        onClick={() => (step === 0 ? navigate(-1) : back())}
+        type="button"
+        onClick={() => (step === 0 ? navigate('/jobs') : back())}
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-5 transition"
       >
-        <ArrowLeft size={15} /> {step === 0 ? 'Back' : 'Previous'}
+        <ArrowLeft size={15} /> {step === 0 ? 'Back to Jobs' : 'Previous'}
       </button>
 
       <div className="mb-5">
@@ -246,7 +266,7 @@ export default function NewJob() {
             </div>
 
             <Field label="Loss Type" required error={errors.loss_type}>
-              <Select value={form.loss_type} onValueChange={(value) => setForm((current) => ({ ...current, loss_type: value }))}>
+              <Select value={form.loss_type} onValueChange={set('loss_type')}>
                 <SelectTrigger className={cn('min-h-touch', errors.loss_type && 'border-destructive')}>
                   <SelectValue placeholder="Select…" />
                 </SelectTrigger>
@@ -261,7 +281,7 @@ export default function NewJob() {
             </Field>
 
             <Field label="Service Type" required error={errors.service_type}>
-              <Select value={form.service_type} onValueChange={(value) => setForm((current) => ({ ...current, service_type: value }))}>
+              <Select value={form.service_type} onValueChange={set('service_type')}>
                 <SelectTrigger className={cn('min-h-touch', errors.service_type && 'border-destructive')}>
                   <SelectValue placeholder="Select…" />
                 </SelectTrigger>
@@ -276,7 +296,7 @@ export default function NewJob() {
             </Field>
 
             <Field label="Status">
-              <Select value={form.status} onValueChange={(value) => setForm((current) => ({ ...current, status: value }))}>
+              <Select value={form.status} onValueChange={set('status')}>
                 <SelectTrigger className="min-h-touch">
                   <SelectValue placeholder="Select…" />
                 </SelectTrigger>
@@ -300,7 +320,12 @@ export default function NewJob() {
 
             <div className="col-span-2">
               <Field label="Cause of Loss">
-                <input className={inputCls} value={form.cause_of_loss} onChange={set('cause_of_loss')} placeholder="Brief description…" />
+                <input
+                  className={inputCls}
+                  value={form.cause_of_loss}
+                  onChange={set('cause_of_loss')}
+                  placeholder="Brief description…"
+                />
               </Field>
             </div>
 
@@ -345,7 +370,8 @@ export default function NewJob() {
               </h2>
               {errors.insured && <p className="text-xs text-destructive">{errors.insured}</p>}
             </div>
-            <InsuredSelector value={insured} onChange={setInsured} />
+
+            <InsuredSelector value={insured} onChange={setInsured} jobId={null} />
           </div>
 
           <div className="bg-card rounded-xl border border-border p-5 space-y-3">
@@ -355,7 +381,8 @@ export default function NewJob() {
               </h2>
               {errors.property && <p className="text-xs text-destructive">{errors.property}</p>}
             </div>
-            <PropertySelector value={property} onChange={setProperty} />
+
+            <PropertySelector value={property} onChange={setProperty} jobId={null} />
           </div>
         </div>
       )}
@@ -374,6 +401,7 @@ export default function NewJob() {
         <div className="space-y-4">
           <div className="bg-card rounded-xl border border-border p-5 space-y-3">
             <h2 className="text-sm font-semibold font-display">Job Summary</h2>
+
             {[
               ['Job Number', form.job_number],
               ['Loss Type', LOSS_TYPES.find((type) => type.value === form.loss_type)?.label],
@@ -396,10 +424,12 @@ export default function NewJob() {
 
           <div className="bg-card rounded-xl border border-border p-5 space-y-2">
             <h2 className="text-sm font-semibold font-display">Insured & Property</h2>
+
             <div className="flex justify-between">
               <span className="text-xs text-muted-foreground">Insured</span>
               <span className="text-sm font-medium">{insured?.full_name || insured?.name || '—'}</span>
             </div>
+
             <div className="flex justify-between">
               <span className="text-xs text-muted-foreground">Property</span>
               <span className="text-sm font-medium text-right max-w-[60%]">
@@ -423,7 +453,7 @@ export default function NewJob() {
       <div className="flex justify-between mt-5 gap-3">
         <button
           type="button"
-          onClick={() => (step === 0 ? navigate(-1) : back())}
+          onClick={() => (step === 0 ? navigate('/jobs') : back())}
           className="px-4 min-h-touch rounded-lg border border-border text-sm font-medium hover:bg-muted transition"
         >
           {step === 0 ? 'Cancel' : 'Back'}
