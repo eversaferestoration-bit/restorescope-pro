@@ -33,7 +33,7 @@ export default function JobEquipment({ job }) {
   const addMutation = useMutation({
     mutationFn: (data) => base44.functions.invoke('saveEquipmentLog', data),
     onSuccess: () => {
-      qc.invalidateQueries(['equipment', job.id]);
+      qc.invalidateQueries({ queryKey: ['equipment', job.id] });
       setAdding(false);
       setForm({ equipment_type: '', model: '', serial_number: '', quantity: 1, status: 'placed', notes: '' });
     },
@@ -41,7 +41,7 @@ export default function JobEquipment({ job }) {
 
   const removeMutation = useMutation({
     mutationFn: (id) => base44.functions.invoke('softDeleteRecord', { entity_type: 'EquipmentLog', entity_id: id }),
-    onSuccess: () => qc.invalidateQueries(['equipment', job.id]),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['equipment', job.id] }),
   });
 
   const isTechnician = user?.role === 'technician';

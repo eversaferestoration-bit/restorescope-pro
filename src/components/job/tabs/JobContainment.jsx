@@ -30,9 +30,16 @@ export default function JobContainment({ job }) {
   });
 
   const addMutation = useMutation({
-    mutationFn: (data) => base44.functions.invoke('syncOfflineDraft', { job_id: job.id, draft_type: 'containment', payload: data }),
+    mutationFn: (data) => base44.entities.Containment.create({
+      ...data,
+      job_id: job.id,
+      company_id: job.company_id,
+      installed_by: user?.email || null,
+      installed_at: new Date().toISOString(),
+      is_deleted: false,
+    }),
     onSuccess: () => {
-      qc.invalidateQueries(['containments', job.id]);
+      qc.invalidateQueries({ queryKey: ['containments', job.id] });
       setAdding(false);
       setForm({ containment_type: '', description: '', status: 'active' });
     },
@@ -40,7 +47,7 @@ export default function JobContainment({ job }) {
 
   const removeMutation = useMutation({
     mutationFn: (id) => base44.functions.invoke('softDeleteRecord', { entity_type: 'Containment', entity_id: id }),
-    onSuccess: () => qc.invalidateQueries(['containments', job.id]),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['containments', job.id] }),
   });
 
   const isTechnician = user?.role === 'technician';

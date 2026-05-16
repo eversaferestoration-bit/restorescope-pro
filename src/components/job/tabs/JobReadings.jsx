@@ -32,7 +32,7 @@ function MoistureForm({ job, roomId, user, onClose }) {
   const addMutation = useMutation({
     mutationFn: (data) => base44.functions.invoke('saveReading', data),
     onSuccess: () => {
-      qc.invalidateQueries(['moisture', job.id]);
+      qc.invalidateQueries({ queryKey: ['moisture', job.id] });
       setOptimistic(null);
       onClose();
     },
@@ -108,7 +108,7 @@ function EnvForm({ job, roomId, user, onClose }) {
   const addMutation = useMutation({
     mutationFn: (data) => base44.functions.invoke('saveReading', data),
     onSuccess: () => {
-      qc.invalidateQueries(['env', job.id]);
+      qc.invalidateQueries({ queryKey: ['env', job.id] });
       setOptimistic(null);
       onClose();
     },
@@ -183,11 +183,11 @@ export default function JobReadings({ job }) {
 
   const deleteMoisture = useMutation({
     mutationFn: (id) => base44.functions.invoke('softDeleteRecord', { entity_type: 'MoistureReading', entity_id: id }),
-    onSuccess: () => qc.invalidateQueries(['moisture', job.id]),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['moisture', job.id] }),
   });
   const deleteEnv = useMutation({
     mutationFn: (id) => base44.functions.invoke('softDeleteRecord', { entity_type: 'EnvironmentalReading', entity_id: id }),
-    onSuccess: () => qc.invalidateQueries(['env', job.id]),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['env', job.id] }),
   });
 
   const isTechnician = user?.role === 'technician';

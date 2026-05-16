@@ -50,7 +50,7 @@ export default function JobObservations({ job }) {
   const addMutation = useMutation({
     mutationFn: (data) => base44.functions.invoke('saveObservation', data),
     onSuccess: () => {
-      qc.invalidateQueries(['observations', job.id]);
+      qc.invalidateQueries({ queryKey: ['observations', job.id] });
       setAdding(false);
       setForm({ description: '', observation_type: '', severity: '' });
       setOptimisticData(null);
@@ -63,13 +63,12 @@ export default function JobObservations({ job }) {
   const deleteMutation = useMutation({
     mutationFn: (id) => base44.functions.invoke('softDeleteRecord', { entity_type: 'Observation', entity_id: id }),
     onMutate: (id) => {
-      // Optimistically remove from display
-      qc.setQueryData(['observations', job.id, roomId], (old) => 
+      qc.setQueryData(['observations', job.id, roomId], (old) =>
         old?.filter(o => o.id !== id) || []
       );
     },
-    onSuccess: () => qc.invalidateQueries(['observations', job.id]),
-    onError: () => qc.invalidateQueries(['observations', job.id]),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['observations', job.id] }),
+    onError: () => qc.invalidateQueries({ queryKey: ['observations', job.id] }),
   });
 
   const isTechnician = user?.role === 'technician';

@@ -7,7 +7,7 @@ import { format } from 'date-fns';
 export default function PendingApprovalsWidget() {
   const { data: drafts = [], isLoading } = useQuery({
     queryKey: ['dashboard-pending-approvals'],
-    queryFn: () => base44.entities.EstimateDraft.filter({ status: 'submitted', is_deleted: false }, '-created_date', 10),
+    queryFn: () => base44.entities.EstimateDraft.filter({ status: 'pending_review', is_deleted: false }, '-created_date', 10),
   });
 
   return (

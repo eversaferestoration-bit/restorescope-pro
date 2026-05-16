@@ -6,12 +6,12 @@ import { CheckCircle2, Clock, Lock, XCircle, FileCheck, GitBranch, AlertCircle }
 import { cn } from '@/lib/utils';
 
 const STATUS_CONFIG = {
-  draft:      { icon: Clock,        color: 'text-blue-500',  bg: 'bg-blue-50 border-blue-200',   label: 'Draft' },
-  submitted:  { icon: AlertCircle,  color: 'text-amber-500', bg: 'bg-amber-50 border-amber-200', label: 'Awaiting Approval' },
-  approved:   { icon: CheckCircle2, color: 'text-green-600', bg: 'bg-green-50 border-green-200', label: 'Approved' },
-  locked:     { icon: Lock,         color: 'text-slate-600', bg: 'bg-slate-50 border-slate-200', label: 'Locked' },
-  rejected:   { icon: XCircle,      color: 'text-red-500',   bg: 'bg-red-50 border-red-200',     label: 'Rejected' },
-  superseded: { icon: GitBranch,    color: 'text-muted-foreground', bg: 'bg-muted border-border', label: 'Superseded' },
+  draft:          { icon: Clock,        color: 'text-blue-500',  bg: 'bg-blue-50 border-blue-200',   label: 'Draft' },
+  pending_review: { icon: AlertCircle,  color: 'text-amber-500', bg: 'bg-amber-50 border-amber-200', label: 'Awaiting Approval' },
+  approved:       { icon: CheckCircle2, color: 'text-green-600', bg: 'bg-green-50 border-green-200', label: 'Approved' },
+  locked:         { icon: Lock,         color: 'text-slate-600', bg: 'bg-slate-50 border-slate-200', label: 'Locked' },
+  rejected:       { icon: XCircle,      color: 'text-red-500',   bg: 'bg-red-50 border-red-200',     label: 'Rejected' },
+  superseded:     { icon: GitBranch,    color: 'text-muted-foreground', bg: 'bg-muted border-border', label: 'Superseded' },
 };
 
 function TimelineEntry({ draft, isLast }) {
@@ -97,8 +97,8 @@ export default function JobApprovals({ job }) {
   });
 
   // Approval flow status summary
-  const active = drafts.find((d) => ['submitted', 'approved', 'locked'].includes(d.status));
-  const pendingApproval = drafts.filter((d) => d.status === 'submitted');
+  const active = drafts.find((d) => ['pending_review', 'approved', 'locked'].includes(d.status));
+  const pendingApproval = drafts.filter((d) => d.status === 'pending_review');
 
   return (
     <div className="space-y-5">
