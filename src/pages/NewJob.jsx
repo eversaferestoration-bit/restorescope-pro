@@ -188,13 +188,6 @@ export default function NewJob() {
 
       const job = await base44.entities.Job.create(jobPayload);
 
-      await base44.entities.Job.update(job.id, {
-        insured_id: insured.id,
-        property_id: property.id,
-        company_id: user.company_id,
-        is_deleted: false,
-      });
-
       await logAction(user, 'Job', job.id, 'created', `Job ${job.job_number || job.id} created`, {
         loss_type: job.loss_type,
         service_type: job.service_type,

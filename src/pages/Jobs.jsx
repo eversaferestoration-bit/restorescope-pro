@@ -22,47 +22,32 @@ export default function Jobs() {
   useEffect(() => { setPage(0); }, [search]);
   const PAGE_SIZE = 30;
 
-  const jobsQuery = useQuery({
-    queryKey: ['jobs', page, search],
+  const allJobsQuery = useQuery({
+    queryKey: ['jobs-all', search],
     queryFn: async () => {
-      // Fetch with pagination
-      const allJobs = await base44.entities.Job.filter({ is_deleted: false }, '-created_date', 200);
-      // Client-side filtering and pagination
-      let filtered = allJobs;
-      if (search) {
-        const searchLower = search.toLowerCase();
-        filtered = allJobs.filter((j) =>
-          j.job_number?.toLowerCase().includes(searchLower) ||
-          j.loss_type?.toLowerCase().includes(searchLower) ||
-          j.status?.toLowerCase().includes(searchLower)
-        );
-      }
-      return filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
-    },
-    staleTime: 2 * 60 * 1000,
-    gcTime: 5 * 60 * 1000,
-  });
-
-  const { data: jobs = [], isLoading, isFetching } = jobsQuery;
-  const { isRefreshing, onTouchStart, onTouchMove, onTouchEnd } = usePullToRefresh(
-    () => jobsQuery.refetch()
-  );
-
-  // Get total count for pagination
-  const { data: totalCount = 0 } = useQuery({
-    queryKey: ['jobs-count', search],
-    queryFn: async () => {
-      const allJobs = await base44.entities.Job.filter({ is_deleted: false }, '-created_date', 1000);
-      if (!search) return allJobs.length;
+      const allJobs = await base44.entities.Job.filter({ is_deleted: false }, '-created_date', 500);
+      if (!search) return allJobs;
       const searchLower = search.toLowerCase();
       return allJobs.filter((j) =>
         j.job_number?.toLowerCase().includes(searchLower) ||
         j.loss_type?.toLowerCase().includes(searchLower) ||
         j.status?.toLowerCase().includes(searchLower)
-      ).length;
+      );
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 2 * 60 * 1000,
+    gcTime: 5 * 60 * 1000,
   });
+
+  const allFiltered = allJobsQuery.data ?? [];
+  const totalCount = allFiltered.length;
+  const jobs = allFiltered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  const isLoading = allJobsQuery.isLoading;
+  const isFetching = allJobsQuery.isFetching;
+  const jobsQuery = allJobsQuery; // preserve for pull-to-refresh
+
+  const { isRefreshing, onTouchStart, onTouchMove, onTouchEnd } = usePullToRefresh(
+    () => allJobsQuery.refetch()
+  );
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
 

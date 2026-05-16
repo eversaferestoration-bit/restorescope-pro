@@ -12,7 +12,7 @@ const emptyProperty = {
   address_line_2: '',
   city: '',
   state: '',
-  postal_code: '',
+  zip: '',
 };
 
 export default function JobProperty({ job }) {
@@ -45,7 +45,7 @@ export default function JobProperty({ job }) {
         address_line_2: property.address_line_2 || '',
         city: property.city || '',
         state: property.state || '',
-        postal_code: property.postal_code || '',
+        zip: property.zip || '',
       });
     }
   }, [property]);
@@ -96,7 +96,7 @@ export default function JobProperty({ job }) {
         <input className={inputCls} placeholder="Address 2" value={form.address_line_2} onChange={update('address_line_2')} />
         <input className={inputCls} placeholder="City" value={form.city} onChange={update('city')} />
         <input className={inputCls} placeholder="State" value={form.state} onChange={update('state')} />
-        <input className={inputCls} placeholder="ZIP" value={form.postal_code} onChange={update('postal_code')} />
+        <input className={inputCls} placeholder="ZIP" value={form.zip} onChange={update('zip')} />
 
         <button
           onClick={() => saveMutation.mutate()}
@@ -118,7 +118,7 @@ export default function JobProperty({ job }) {
         <>
           <p>{property.address_line_1}</p>
           <p>{property.city}, {property.state}</p>
-          <p>{property.postal_code}</p>
+          <p>{property.zip}</p>
         </>
       ) : (
         <p className="text-muted-foreground">No property linked</p>

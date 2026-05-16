@@ -66,7 +66,7 @@ export default function JobDetail() {
   }, [activeTab]);
 
   const { data: job, isLoading, isError } = useQuery({
-    queryKey: ['job', jobId, companyId],
+    queryKey: ['job', jobId],
     enabled: !!jobId,
     retry: false,
     queryFn: async () => {
