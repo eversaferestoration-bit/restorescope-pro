@@ -5,19 +5,14 @@ import { User } from 'lucide-react';
 import SelectBottomSheet from '@/components/mobile/SelectBottomSheet';
 
 export default function UserSelector({ label, value, onChange }) {
-  const { user } = useAuth();
-  const companyId = user?.company_id;
+  const { user: currentUser } = useAuth();
+  const companyId = currentUser?.company_id;
 
   const { data: users = [] } = useQuery({
     queryKey: ['users-list', companyId],
     enabled: !!companyId,
     queryFn: () =>
-      base44.entities.UserProfile.filter(
-        { company_id: companyId, is_deleted: false },
-        'full_name',
-        200
-      ),
-    staleTime: 5 * 60 * 1000,
+      base44.entities.UserProfile.filter({ company_id: companyId, is_deleted: false }),
   });
 
   const selected = users.find((u) => u.user_id === value || u.id === value);

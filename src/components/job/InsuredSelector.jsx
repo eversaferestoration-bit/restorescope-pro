@@ -2,13 +2,10 @@ import { useMemo, useState } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Search, Save, X, Loader2 } from 'lucide-react';
+import { Plus, Search, Save, X, User } from 'lucide-react';
 
 const inputCls =
   'w-full min-h-touch px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring transition';
-
-const btnBase =
-  'min-h-touch px-3 rounded-lg border text-sm font-medium transition';
 
 const emptyForm = {
   full_name: '',
@@ -31,9 +28,8 @@ export default function InsuredSelector({ value, onChange, jobId }) {
   const insuredQuery = useQuery({
     queryKey: ['insureds', companyId],
     enabled: !!companyId,
-    queryFn: async () =>
+    queryFn: () =>
       base44.entities.Insured.filter({ company_id: companyId, is_deleted: false }),
-    staleTime: 5 * 60 * 1000,
   });
 
   const insureds = insuredQuery.data || [];
@@ -55,7 +51,11 @@ export default function InsuredSelector({ value, onChange, jobId }) {
   const createMutation = useMutation({
     mutationFn: async () => {
       if (!form.full_name.trim()) throw new Error('Name required');
-      return base44.entities.Insured.create({ ...form, company_id: companyId, is_deleted: false });
+      return await base44.entities.Insured.create({
+        ...form,
+        company_id: companyId,
+        is_deleted: false,
+      });
     },
     onSuccess: async (created) => {
       await queryClient.invalidateQueries({ queryKey: ['insureds', companyId] });
@@ -63,6 +63,7 @@ export default function InsuredSelector({ value, onChange, jobId }) {
       onChange(created);
       setForm(emptyForm);
       setMode('select');
+      setError('');
     },
     onError: (err) => setError(err.message),
   });
@@ -76,11 +77,10 @@ export default function InsuredSelector({ value, onChange, jobId }) {
 
   return (
     <div className="space-y-3">
-      {/* Selected badge */}
-      {value?.id && (
-        <div className="flex items-start justify-between gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
+      {value && (
+        <div className="flex items-center justify-between rounded-lg border border-primary/30 bg-primary/5 px-3 py-2.5">
           <div>
-            <p className="text-sm font-semibold">{value.full_name}</p>
+            <p className="text-sm font-medium">{value.full_name || value.name}</p>
             <p className="text-xs text-muted-foreground">
               {[value.phone, value.email].filter(Boolean).join(' • ') || 'No contact info'}
             </p>
@@ -88,32 +88,38 @@ export default function InsuredSelector({ value, onChange, jobId }) {
           <button
             type="button"
             onClick={() => onChange(null)}
-            className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition"
+            className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition"
           >
             <X size={14} />
           </button>
         </div>
       )}
 
-      {/* Mode toggle */}
       <div className="flex gap-2">
         <button
           type="button"
-          onClick={() => { setMode('select'); setError(''); }}
-          className={`${btnBase} ${mode === 'select' ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-muted'}`}
+          onClick={() => setMode('select')}
+          className={`min-h-touch px-3 rounded-lg border text-sm font-medium transition ${
+            mode === 'select'
+              ? 'bg-primary text-primary-foreground border-primary'
+              : 'border-border hover:bg-muted'
+          }`}
         >
           Select Existing
         </button>
         <button
           type="button"
           onClick={() => { setMode('create'); setError(''); }}
-          className={`inline-flex items-center gap-1.5 ${btnBase} ${mode === 'create' ? 'bg-primary text-primary-foreground border-primary' : 'border-border hover:bg-muted'}`}
+          className={`inline-flex items-center gap-1.5 min-h-touch px-3 rounded-lg border text-sm font-medium transition ${
+            mode === 'create'
+              ? 'bg-primary text-primary-foreground border-primary'
+              : 'border-border hover:bg-muted'
+          }`}
         >
           <Plus size={14} /> New Insured
         </button>
       </div>
 
-      {/* Select mode */}
       {mode === 'select' && (
         <div className="space-y-2">
           <div className="relative">
@@ -127,15 +133,13 @@ export default function InsuredSelector({ value, onChange, jobId }) {
           </div>
 
           {insuredQuery.isLoading && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground p-3">
-              <Loader2 size={14} className="animate-spin" /> Loading...
-            </div>
+            <div className="rounded-lg border border-border p-4 text-sm text-muted-foreground">Loading...</div>
           )}
 
           {!insuredQuery.isLoading && filtered.length === 0 && (
-            <p className="text-sm text-muted-foreground p-3 border border-border rounded-lg">
+            <div className="rounded-lg border border-border p-4 text-sm text-muted-foreground">
               No insured records found. Use New Insured to create one.
-            </p>
+            </div>
           )}
 
           {filtered.length > 0 && (
@@ -145,12 +149,15 @@ export default function InsuredSelector({ value, onChange, jobId }) {
                   key={i.id}
                   type="button"
                   onClick={() => selectInsured(i)}
-                  className={`w-full text-left p-3 transition hover:bg-muted ${value?.id === i.id ? 'bg-primary/10' : ''}`}
+                  className={`w-full flex items-center gap-2 text-left px-3 py-2.5 transition hover:bg-muted ${
+                    value?.id === i.id ? 'bg-primary/10' : ''
+                  }`}
                 >
-                  <p className="text-sm font-medium">{i.full_name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {[i.phone, i.email].filter(Boolean).join(' • ') || 'No contact info'}
-                  </p>
+                  <User size={13} className="text-muted-foreground shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium">{i.full_name}</p>
+                    {i.email && <p className="text-xs text-muted-foreground">{i.email}</p>}
+                  </div>
                 </button>
               ))}
             </div>
@@ -158,41 +165,37 @@ export default function InsuredSelector({ value, onChange, jobId }) {
         </div>
       )}
 
-      {/* Create mode */}
       {mode === 'create' && (
         <div className="rounded-lg border border-border p-4 space-y-3">
-          <div>
-            <label className="block text-sm font-medium mb-1.5">Full Name <span className="text-destructive">*</span></label>
-            <input className={inputCls} value={form.full_name} onChange={update('full_name')} placeholder="Property owner or insured name" />
+          <p className="text-xs font-semibold">New Insured</p>
+          <input className={inputCls} value={form.full_name} onChange={update('full_name')} placeholder="Full name *" />
+          <div className="grid grid-cols-2 gap-3">
+            <input className={inputCls} value={form.phone} onChange={update('phone')} placeholder="Phone" />
+            <input className={inputCls} value={form.email} onChange={update('email')} placeholder="Email" />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium mb-1.5">Phone</label>
-              <input className={inputCls} value={form.phone} onChange={update('phone')} placeholder="Phone number" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1.5">Email</label>
-              <input className={inputCls} value={form.email} onChange={update('email')} placeholder="Email address" />
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1.5">Mailing Address</label>
-            <input className={inputCls} value={form.mailing_address} onChange={update('mailing_address')} placeholder="Mailing address" />
-          </div>
+          <input className={inputCls} value={form.mailing_address} onChange={update('mailing_address')} placeholder="Mailing address" />
 
           {error && (
-            <p className="text-sm text-destructive">{error}</p>
+            <p className="text-xs text-destructive">{error}</p>
           )}
 
-          <button
-            type="button"
-            onClick={() => createMutation.mutate()}
-            disabled={createMutation.isPending}
-            className="inline-flex items-center gap-2 min-h-touch px-4 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition disabled:opacity-60"
-          >
-            <Save size={14} />
-            {createMutation.isPending ? 'Saving...' : 'Save Insured'}
-          </button>
+          <div className="flex gap-2 justify-end">
+            <button
+              type="button"
+              onClick={() => setMode('select')}
+              className="px-3 min-h-touch rounded-lg border border-border text-sm hover:bg-muted transition"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => createMutation.mutate()}
+              disabled={createMutation.isPending}
+              className="inline-flex items-center gap-2 min-h-touch px-4 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition disabled:opacity-60"
+            >
+              <Save size={13} /> {createMutation.isPending ? 'Saving...' : 'Save Insured'}
+            </button>
+          </div>
         </div>
       )}
     </div>
