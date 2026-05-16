@@ -2,11 +2,11 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 // Valid status transitions
 const TRANSITIONS = {
-  draft:     ['submitted'],
-  submitted: ['approved', 'rejected', 'draft'],
-  approved:  ['locked'],
-  locked:    [],       // terminal — new version only
-  rejected:  ['draft'],
+  draft:          ['pending_review'],
+  pending_review: ['approved', 'rejected', 'draft'],
+  approved:       ['locked'],
+  locked:         [],       // terminal — new version only
+  rejected:       ['draft'],
 };
 
 Deno.serve(async (req) => {
@@ -41,16 +41,16 @@ Deno.serve(async (req) => {
 
   // Derive target status
   const ACTION_MAP = {
-    submit:      { from: 'draft',      to: 'submitted' },
-    approve:     { from: 'submitted',  to: 'approved' },
-    reject:      { from: 'submitted',  to: 'rejected' },
-    reopen:      null, // handled specially below — works from both 'rejected' and 'submitted'
-    lock:        { from: 'approved',   to: 'locked' },
+    submit:      { from: 'draft',          to: 'pending_review' },
+    approve:     { from: 'pending_review', to: 'approved' },
+    reject:      { from: 'pending_review', to: 'rejected' },
+    reopen:      null, // handled specially below — works from both 'rejected' and 'pending_review'
+    lock:        { from: 'approved',       to: 'locked' },
   };
 
-  // Special case: reopen works from both 'submitted' and 'rejected' → back to 'draft'
+  // Special case: reopen works from both 'pending_review' and 'rejected' → back to 'draft'
   if (action === 'reopen') {
-    if (!['submitted', 'rejected'].includes(draft.status)) {
+    if (!['pending_review', 'rejected'].includes(draft.status)) {
       return Response.json({ error: `Cannot reopen an estimate with status "${draft.status}".` }, { status: 422 });
     }
     await base44.asServiceRole.entities.EstimateDraft.update(draft_id, { status: 'draft' });

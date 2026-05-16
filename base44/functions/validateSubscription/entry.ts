@@ -8,9 +8,10 @@ Deno.serve(async (req) => {
   const { company_id } = await req.json();
   if (!company_id) return Response.json({ error: 'company_id required' }, { status: 400 });
 
-  // Verify user belongs to this company
-  const profiles = await base44.asServiceRole.entities.UserProfile.filter({ user_id: user.id, company_id, is_deleted: false });
-  if (!profiles.length && user.role !== 'admin') {
+  // Strict company isolation — resolve from session, never trust admin bypass
+  const userProfiles = await base44.asServiceRole.entities.UserProfile.filter({ user_id: user.id, is_deleted: false });
+  const userCompanyId = userProfiles[0]?.company_id;
+  if (!userCompanyId || userCompanyId !== company_id) {
     return Response.json({ error: 'Forbidden: not a member of this company' }, { status: 403 });
   }
 

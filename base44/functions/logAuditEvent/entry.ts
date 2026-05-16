@@ -14,10 +14,11 @@ Deno.serve(async (req) => {
 
   if (!entity_type || !action) return Response.json({ error: 'entity_type and action required' }, { status: 400 });
 
-  // Verify company access if company_id provided
+  // Verify company access if company_id provided — strict isolation, no admin bypass
   if (company_id) {
-    const profiles = await base44.asServiceRole.entities.UserProfile.filter({ user_id: user.id, company_id, is_deleted: false });
-    if (!profiles.length && user.role !== 'admin') {
+    const userProfiles = await base44.asServiceRole.entities.UserProfile.filter({ user_id: user.id, is_deleted: false });
+    const userCompanyId = userProfiles[0]?.company_id;
+    if (!userCompanyId || userCompanyId !== company_id) {
       return Response.json({ error: 'Forbidden: not a member of this company' }, { status: 403 });
     }
   }

@@ -75,6 +75,22 @@ Deno.serve(async (req) => {
       redeemed_by: [...(invite.redeemed_by || []), company_id],
     });
 
+    // Audit log — beta redemptions are security-relevant events
+    try {
+      await base44.asServiceRole.entities.AuditLog.create({
+        company_id,
+        entity_type: 'BetaInvite',
+        entity_id: invite.id,
+        action: 'redeemed',
+        actor_email: user.email,
+        actor_id: user.id,
+        description: `Beta invite redeemed by ${user.email} — access until ${format(endDate, 'yyyy-MM-dd')}`,
+        metadata: { invite_code: invite_code.trim().toUpperCase(), beta_end_date: format(endDate, 'yyyy-MM-dd'), trial_days: invite.trial_days },
+      });
+    } catch (auditErr) {
+      console.warn('[redeemBetaInvite] Audit log failed:', auditErr.message);
+    }
+
     return Response.json({
       success: true,
       beta_start_date: format(startDate, 'yyyy-MM-dd'),
@@ -82,6 +98,7 @@ Deno.serve(async (req) => {
       trial_days: invite.trial_days,
     });
   } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    console.error('[redeemBetaInvite] Error:', error.message);
+    return Response.json({ error: 'An internal error occurred. Please try again.' }, { status: 500 });
   }
 });

@@ -65,7 +65,7 @@ async function authenticateApiKey(req, base44) {
   // Check rate limit
   const rateLimit = checkRateLimit(apiKey);
   if (!rateLimit.allowed) {
-    await logApiRequest(apiKeyRecord, req, 'rate_limited', 429);
+    await logApiRequest(apiKeyRecord, req, base44, 'rate_limited', 429);
     return { error: 'Rate limit exceeded', status: 429, rateLimit };
   }
 
@@ -78,7 +78,7 @@ async function authenticateApiKey(req, base44) {
   if (apiKeyRecord.allowed_ips?.length > 0) {
     const clientIp = req.headers.get('x-forwarded-for') || 'unknown';
     if (!apiKeyRecord.allowed_ips.includes(clientIp)) {
-      await logApiRequest(apiKeyRecord, req, 'ip_blocked', 403);
+      await logApiRequest(apiKeyRecord, req, base44, 'ip_blocked', 403);
       return { error: 'IP not allowed', status: 403 };
     }
   }
@@ -86,10 +86,10 @@ async function authenticateApiKey(req, base44) {
   return { apiKeyRecord, rateLimit };
 }
 
-async function logApiRequest(apiKeyRecord, req, status = 'success', statusCode = 200) {
+async function logApiRequest(apiKeyRecord, req, base44Client, status = 'success', statusCode = 200) {
   try {
-    const url = new URL(req.url);
-    await base44.asServiceRole.entities.AuditLog.create({
+    const url = req ? new URL(req.url) : { pathname: 'unknown' };
+    await base44Client.asServiceRole.entities.AuditLog.create({
       company_id: apiKeyRecord.company_id,
       entity_type: 'ApiKey',
       entity_id: apiKeyRecord.id,
@@ -98,11 +98,11 @@ async function logApiRequest(apiKeyRecord, req, status = 'success', statusCode =
       actor_id: apiKeyRecord.id,
       description: `External API ${url.pathname} - ${statusCode}`,
       metadata: {
-        method: req.method,
+        method: req?.method,
         path: url.pathname,
         status_code: statusCode,
-        user_agent: req.headers.get('user-agent'),
-        ip: req.headers.get('x-forwarded-for'),
+        user_agent: req?.headers?.get('user-agent'),
+        ip: req?.headers?.get('x-forwarded-for'),
       },
     });
   } catch (e) {
@@ -110,12 +110,17 @@ async function logApiRequest(apiKeyRecord, req, status = 'success', statusCode =
   }
 }
 
-function json(data, status = 200, apiKeyRecord = null) {
-  if (apiKeyRecord) {
-    logApiRequest(apiKeyRecord, null, 'success', status);
+function json(data, status = 200, apiKeyRecord = null, base44Client = null) {
+  if (apiKeyRecord && base44Client) {
+    logApiRequest(apiKeyRecord, null, base44Client, 'success', status);
   }
   return Response.json(data, { status });
 }
 
 // Export for use in endpoint functions
 export { authenticateApiKey, logApiRequest, json };
+
+// Required stub — this file is a shared library, not a callable endpoint
+Deno.serve(async () => {
+  return Response.json({ error: 'Not a callable endpoint' }, { status: 404 });
+});

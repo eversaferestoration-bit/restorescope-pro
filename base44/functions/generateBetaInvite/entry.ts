@@ -33,6 +33,7 @@ Deno.serve(async (req) => {
 
     return Response.json({ invite });
   } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    console.error('[generateBetaInvite] Error:', error.message);
+    return Response.json({ error: 'An internal error occurred. Please try again.' }, { status: 500 });
   }
 });
