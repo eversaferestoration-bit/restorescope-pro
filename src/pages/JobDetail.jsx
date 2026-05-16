@@ -67,14 +67,12 @@ export default function JobDetail() {
 
   const { data: job, isLoading, isError } = useQuery({
     queryKey: ['job', jobId, companyId],
-    enabled: !!jobId && !!companyId,
+    enabled: !!jobId,
     retry: false,
     queryFn: async () => {
-      const results = await base44.entities.Job.filter({
-        id: jobId,
-        company_id: companyId,
-        is_deleted: false,
-      });
+      const filter = { id: jobId, is_deleted: false };
+      if (companyId) filter.company_id = companyId;
+      const results = await base44.entities.Job.filter(filter);
 
       if (!results || results.length === 0) return null;
 
@@ -98,7 +96,14 @@ export default function JobDetail() {
   const finalJob = job || cachedJob;
 
   if (isLoading && !cachedJob) {
-    return <div className="p-6">Loading job...</div>;
+    return (
+      <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-4">
+        <div className="h-8 w-40 rounded-lg bg-muted animate-pulse" />
+        <div className="h-16 rounded-xl bg-muted animate-pulse" />
+        <div className="h-10 rounded-lg bg-muted animate-pulse" />
+        <div className="h-64 rounded-xl bg-muted animate-pulse" />
+      </div>
+    );
   }
 
   if (isError || !finalJob) {
@@ -119,38 +124,54 @@ export default function JobDetail() {
 
   return (
     <div className="flex flex-col min-h-full">
-      <div className="p-4 border-b">
-        <button onClick={() => navigate('/jobs')} className="text-sm mb-2">
-          <ArrowLeft size={14} /> Jobs
+      <div className="px-4 md:px-6 pt-4 pb-3 border-b border-border bg-card/60">
+        <button
+          onClick={() => navigate('/jobs')}
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-3 transition"
+        >
+          <ArrowLeft size={15} /> Jobs
         </button>
 
-        <h1 className="text-xl font-bold">
-          {finalJob.job_number || `Job #${finalJob.id}`}
-        </h1>
-
-        {finalJob.status && (
-          <span className={STATUS_COLORS[finalJob.status]}>
-            {finalJob.status}
-          </span>
-        )}
+        <div className="flex items-center gap-2 flex-wrap">
+          <h1 className="text-xl font-bold font-display">
+            {finalJob.job_number || `Job #${String(finalJob.id || '').slice(-6)}`}
+          </h1>
+          {finalJob.emergency_flag && (
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-destructive">
+              <AlertCircle size={12} /> Emergency
+            </span>
+          )}
+          {finalJob.status && (
+            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[finalJob.status] || 'bg-muted text-muted-foreground'}`}>
+              {String(finalJob.status).replace(/_/g, ' ')}
+            </span>
+          )}
+        </div>
+        <p className="text-sm text-muted-foreground mt-0.5">
+          {[finalJob.loss_type, finalJob.service_type].filter(Boolean).join(' · ')}
+        </p>
       </div>
 
-      <div className="flex border-b overflow-x-auto">
-        {TABS.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={cn(
-              'px-3 py-2',
-              activeTab === tab.key ? 'text-primary border-b-2 border-primary' : ''
-            )}
-          >
-            {tab.label}
-          </button>
-        ))}
+      <div className="border-b border-border bg-card/40 sticky top-0 z-10 overflow-x-auto">
+        <div className="flex min-w-max px-4 md:px-6">
+          {TABS.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={cn(
+                'px-3 py-3 text-sm font-medium border-b-2 whitespace-nowrap transition-colors',
+                activeTab === tab.key
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="p-4">
+      <div className="flex-1 p-4 md:p-6 max-w-5xl mx-auto w-full">
         {ActiveComponent && <ActiveComponent job={finalJob} />}
       </div>
     </div>

@@ -71,7 +71,7 @@ export default function Dashboard() {
 
   const { data: pendingApprovals = [] } = useQuery({
     queryKey: ['dashboard-pending-approvals-count'],
-    queryFn: () => base44.entities.EstimateDraft.filter({ status: 'submitted', is_deleted: false }),
+    queryFn: () => base44.entities.EstimateDraft.filter({ status: 'pending_review', is_deleted: false }),
     staleTime: 2 * 60 * 1000,
     gcTime: 5 * 60 * 1000,
   });

@@ -38,7 +38,7 @@ export default function JobOverview({ job }) {
   const mutation = useMutation({
     mutationFn: (data) => base44.functions.invoke('updateJob', { job_id: job.id, updates: data }),
     onSuccess: () => {
-      qc.invalidateQueries(['job', job.id]);
+      qc.invalidateQueries({ queryKey: ['job', job.id] });
       setEditing(false);
     },
   });

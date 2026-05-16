@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
@@ -17,6 +17,9 @@ const STATUS_COLORS = {
 export default function Jobs() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
+
+  // Reset to page 0 whenever search changes
+  useEffect(() => { setPage(0); }, [search]);
   const PAGE_SIZE = 30;
 
   const jobsQuery = useQuery({
