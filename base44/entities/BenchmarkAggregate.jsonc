@@ -1,49 +1,44 @@
 {
-  "name": "PricingTrend",
+  "name": "BenchmarkAggregate",
   "type": "object",
   "properties": {
+    "metric_type": {
+      "type": "string",
+      "enum": [
+        "estimate_total",
+        "line_item_price",
+        "scope_count",
+        "category_price"
+      ]
+    },
     "region_code": {
       "type": "string"
     },
     "loss_type": {
       "type": "string"
     },
-    "service_type": {
-      "type": "string"
-    },
-    "category": {
-      "type": "string"
-    },
-    "period": {
-      "type": "string",
-      "format": "date-time"
-    },
-    "avg_unit_price": {
+    "avg_estimate_total": {
       "type": "number"
     },
-    "median_unit_price": {
+    "avg_line_item_price": {
       "type": "number"
     },
-    "price_stddev": {
+    "avg_scope_count": {
       "type": "number"
     },
-    "min_price": {
+    "high_percentile_value": {
       "type": "number"
     },
-    "max_price": {
+    "low_percentile_value": {
       "type": "number"
     },
     "sample_size": {
       "type": "integer",
       "default": 0
     },
-    "price_momentum": {
-      "type": "number"
-    },
-    "confidence_score": {
-      "type": "number",
-      "minimum": 0,
-      "maximum": 1
+    "last_updated": {
+      "type": "string",
+      "format": "date-time"
     },
     "is_deleted": {
       "type": "boolean",
@@ -51,10 +46,8 @@
     }
   },
   "required": [
-    "region_code",
-    "loss_type",
-    "category",
-    "period"
+    "metric_type",
+    "region_code"
   ],
   "rls": {
     "create": {

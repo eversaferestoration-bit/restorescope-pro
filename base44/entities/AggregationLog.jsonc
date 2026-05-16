@@ -8,8 +8,7 @@
         "benchmark",
         "pricing_trend",
         "approval_pattern"
-      ],
-      "description": "Type of aggregation performed"
+      ]
     },
     "period_start": {
       "type": "string",
@@ -55,5 +54,27 @@
     "aggregation_type",
     "period_start",
     "period_end"
-  ]
+  ],
+  "rls": {
+    "create": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "read": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "update": {
+      "user_condition": {
+        "role": "admin"
+      }
+    },
+    "delete": {
+      "user_condition": {
+        "role": "admin"
+      }
+    }
+  }
 }
