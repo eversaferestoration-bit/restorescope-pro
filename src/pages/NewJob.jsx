@@ -83,7 +83,8 @@ function cleanPayload(data) {
 
 export default function NewJob() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
+  const companyId = userProfile?.company_id;
   const nudge = useUpgradeTrigger({ feature: 'estimate', checkLimits: true });
   const { isBlockedByExpiredBeta } = useBetaAccess();
 
@@ -119,7 +120,7 @@ export default function NewJob() {
   const validate = (currentStep) => {
     const nextErrors = {};
 
-    if (!user?.company_id) {
+    if (!companyId) {
       nextErrors.company = 'Your account is not linked to a company. Complete company setup first.';
     }
 
@@ -162,7 +163,7 @@ export default function NewJob() {
     setSubmitError('');
 
     try {
-      if (!user?.company_id) {
+      if (!companyId) {
         throw new Error('Missing company profile. Complete company setup before creating jobs.');
       }
 
@@ -181,7 +182,7 @@ export default function NewJob() {
         claim_id: null,
         assigned_manager_id: assignedManagerId || null,
         assigned_estimator_id: assignedEstimatorId || null,
-        company_id: user.company_id,
+        company_id: companyId,
         created_by: user.email || user.id || null,
         is_deleted: false,
       };
@@ -193,7 +194,7 @@ export default function NewJob() {
         service_type: job.service_type,
         insured_id: insured.id,
         property_id: property.id,
-        company_id: user.company_id,
+        company_id: companyId,
       }).catch(() => null);
 
       sessionStorage.setItem(
@@ -202,7 +203,7 @@ export default function NewJob() {
           ...job,
           insured_id: insured.id,
           property_id: property.id,
-          company_id: user.company_id,
+          company_id: companyId,
         })
       );
 
