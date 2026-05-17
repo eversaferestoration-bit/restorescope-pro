@@ -37,6 +37,7 @@ import DemoJob from '@/pages/DemoJob';
 import BetaAdmin from '@/pages/BetaAdmin';
 import BetaManagement from '@/pages/BetaManagement';
 import BetaUsers from '@/pages/BetaUsers';
+import BetaFeedbackAdmin from '@/pages/BetaFeedbackAdmin';
 
 function FullScreenLoader({ message = 'Loading RestoreScope Pro...' }) {
   return (
@@ -269,12 +270,21 @@ function AuthenticatedRoutes() {
         />
 
         <Route
-          path="/beta-users"
-          element={
-            <PageTransition>
-              <BetaUsers />
-            </PageTransition>
-          }
+        path="/beta-users"
+        element={
+          <PageTransition>
+            <BetaUsers />
+          </PageTransition>
+        }
+        />
+
+        <Route
+        path="/beta-feedback"
+        element={
+          <PageTransition>
+            <BetaFeedbackAdmin />
+          </PageTransition>
+        }
         />
       </Route>
 

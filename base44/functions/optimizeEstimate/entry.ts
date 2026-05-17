@@ -58,10 +58,11 @@ Deno.serve(async (req) => {
   if (!drafts.length) return Response.json({ error: 'Estimate not found' }, { status: 404 });
   const estimate = drafts[0];
 
-  // Verify access
-  if (user.role !== 'admin') {
-    const profiles = await base44.asServiceRole.entities.UserProfile.filter({ user_id: user.id, company_id: estimate.company_id, is_deleted: false });
-    if (!profiles.length) return Response.json({ error: 'Forbidden' }, { status: 403 });
+  // Strict company isolation — no admin bypass
+  const callerProfiles = await base44.asServiceRole.entities.UserProfile.filter({ user_id: user.id, is_deleted: false });
+  const callerCompanyId = callerProfiles[0]?.company_id;
+  if (!callerCompanyId || callerCompanyId !== estimate.company_id) {
+    return Response.json({ error: 'Forbidden', message: 'Access denied: resource belongs to a different company.' }, { status: 403 });
   }
 
   // Load job and pricing profile

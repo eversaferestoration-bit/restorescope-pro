@@ -6,10 +6,7 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
 
     if (user?.role !== 'admin') {
-      return Response.json(
-        { error: 'Forbidden: Admin access required' },
-        { status: 403 }
-      );
+      return Response.json({ error: 'Forbidden: Admin access required' }, { status: 403 });
     }
 
     const body = await req.json();
@@ -18,26 +15,17 @@ Deno.serve(async (req) => {
     const periodStart = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
     const periodEnd = new Date();
 
-    // Fetch all claim outcomes
-    const outcomes = await base44.asServiceRole.entities.ClaimOutcome.filter({
-      is_deleted: false,
-    });
+    const outcomes = await base44.asServiceRole.entities.ClaimOutcome.filter({ is_deleted: false });
 
     const filtered = outcomes.filter((o) => {
       const closed = new Date(o.closed_date || o.created_date);
       return closed >= periodStart && closed <= periodEnd;
     });
 
-    // Group by region, loss_type
     const patterns = {};
 
     for (const outcome of filtered) {
-      // Fetch job for loss_type, region
-      const jobs = await base44.asServiceRole.entities.Job.filter({
-        id: outcome.job_id,
-        is_deleted: false,
-      });
-
+      const jobs = await base44.asServiceRole.entities.Job.filter({ id: outcome.job_id, is_deleted: false });
       if (jobs.length === 0) continue;
       const job = jobs[0];
 
@@ -73,18 +61,13 @@ Deno.serve(async (req) => {
       }
       if (outcome.status === 'disputed') patterns[key].disputes++;
 
-      // Track turnaround (estimate creation to outcome)
-      const estimate = await base44.asServiceRole.entities.EstimateDraft.filter({
-        id: outcome.estimate_version_id,
-        is_deleted: false,
-      });
+      const estimate = await base44.asServiceRole.entities.EstimateDraft.filter({ id: outcome.estimate_version_id, is_deleted: false });
       if (estimate.length > 0) {
         const hours = (new Date(outcome.closed_date) - new Date(estimate[0].created_date)) / (1000 * 60 * 60);
         patterns[key].turnarounds.push(hours);
       }
     }
 
-    // Calculate stats
     let aggregated = 0;
     const errors = [];
 
@@ -92,16 +75,12 @@ Deno.serve(async (req) => {
       try {
         const approval_rate = (pattern.approved / pattern.total) * 100;
         const avg_reduction = pattern.reductions.length > 0
-          ? pattern.reductions.reduce((a, b) => a + b, 0) / pattern.reductions.length
-          : 0;
+          ? pattern.reductions.reduce((a, b) => a + b, 0) / pattern.reductions.length : 0;
         const avg_turnaround = pattern.turnarounds.length > 0
-          ? pattern.turnarounds.reduce((a, b) => a + b, 0) / pattern.turnarounds.length
-          : 0;
+          ? pattern.turnarounds.reduce((a, b) => a + b, 0) / pattern.turnarounds.length : 0;
         const dispute_rate = (pattern.disputes / pattern.total) * 100;
         const supplement_success_rate = pattern.supplements_total > 0
-          ? (pattern.supplement_successes / pattern.supplements_total) * 100
-          : 0;
-
+          ? (pattern.supplement_successes / pattern.supplements_total) * 100 : 0;
         const confidence = Math.min(1, pattern.total / 100);
 
         const existing = await base44.asServiceRole.entities.ApprovalPattern.filter({
@@ -130,14 +109,12 @@ Deno.serve(async (req) => {
         } else {
           await base44.asServiceRole.entities.ApprovalPattern.create(record);
         }
-
         aggregated++;
       } catch (err) {
         errors.push(`${pattern.loss_type}: ${err.message}`);
       }
     }
 
-    // Log aggregation
     await base44.asServiceRole.entities.AggregationLog.create({
       aggregation_type: 'approval_pattern',
       period_start: periodStart.toISOString(),
@@ -149,16 +126,9 @@ Deno.serve(async (req) => {
       anonymization_verified: true,
     });
 
-    return Response.json({
-      success: true,
-      aggregated,
-      errors,
-    });
+    return Response.json({ success: true, aggregated, errors });
   } catch (error) {
-    console.error(error);
-    return Response.json(
-      { error: error.message },
-      { status: 500 }
-    );
+    console.error('[aggregateApprovalPatterns] Error:', error.message);
+    return Response.json({ error: 'An internal error occurred. Please try again.' }, { status: 500 });
   }
 });

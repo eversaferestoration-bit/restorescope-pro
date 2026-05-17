@@ -33,6 +33,13 @@ Deno.serve(async (req) => {
 
     const job = jobs[0];
 
+    // Strict company isolation — no admin bypass
+    const callerProfiles = await base44.asServiceRole.entities.UserProfile.filter({ user_id: user.id, is_deleted: false });
+    const callerCompanyId = callerProfiles[0]?.company_id;
+    if (!callerCompanyId || callerCompanyId !== job.company_id) {
+      return Response.json({ error: 'Forbidden', message: 'Access denied: resource belongs to a different company.' }, { status: 403 });
+    }
+
     // Fetch scope items to identify categories
     const scopeItems = await base44.asServiceRole.entities.ScopeItem.filter({
       job_id,
@@ -113,9 +120,10 @@ Deno.serve(async (req) => {
     });
 
   } catch (error) {
+    console.error('[suggestKnowledge] Error:', error.message);
     return Response.json({
       success: false,
-      error: error.message,
+      error: 'An internal error occurred. Please try again.',
     }, { status: 500 });
   }
 });

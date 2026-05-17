@@ -280,9 +280,9 @@ Deno.serve(async (req) => {
       report,
     });
   } catch (error) {
-    console.error(error);
+    console.error('[runDominanceValidation] Error:', error.message);
     return Response.json(
-      { error: error.message },
+      { error: 'An internal error occurred. Please try again.' },
       { status: 500 }
     );
   }
