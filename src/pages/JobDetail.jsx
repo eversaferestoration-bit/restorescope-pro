@@ -157,8 +157,8 @@ export default function JobDetail() {
 
   const ActiveComponent = TABS.find((t) => t.key === activeTab)?.component;
 
-  // Enrich job with resolved company_id so all child tabs have it
-  const jobForTabs = companyId && !finalJob.company_id ? { ...finalJob, company_id: companyId } : finalJob;
+  // Always ensure company_id is set — fall back to userProfile/user if job record lacks it
+  const jobForTabs = { ...finalJob, company_id: finalJob.company_id || companyId };
 
   return (
     <div className="flex flex-col min-h-full">

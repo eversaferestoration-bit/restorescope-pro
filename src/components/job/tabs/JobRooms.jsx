@@ -87,10 +87,8 @@ export default function JobRooms({ job }) {
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState({ name: '', room_type: '', floor_level: '', size_sqft: '', ceiling_height_ft: '', status: '', notes: '' });
 
-  // Guard: must have a real DB job.id (UUID format) before allowing child record creation
-  // A real UUID looks like xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx (36 chars with dashes)
-  const isRealId = !!job?.id && /^[0-9a-f-]{32,36}$/i.test(job.id);
-  const jobReady = isRealId && !!job?.company_id;
+  // Guard: job must have an id (any non-empty string from the DB) and a company_id
+  const jobReady = !!job?.id && !!job?.company_id;
   console.log('[JobRooms] job.id:', job?.id, '| company_id:', job?.company_id, '| jobReady:', jobReady);
 
   const { data: rooms = [], isLoading } = useQuery({
