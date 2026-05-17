@@ -20,14 +20,9 @@ Deno.serve(async (req) => {
     if (!category || !VALID_CATEGORIES.includes(category)) return Response.json({ error: 'valid category required' }, { status: 400 });
     if (!description) return Response.json({ error: 'description required' }, { status: 400 });
 
-    let jobs;
-    try {
-      jobs = await base44.asServiceRole.entities.Job.filter({ id: job_id, is_deleted: false });
-    } catch {
-      return Response.json({ error: 'Job not found' }, { status: 404 });
-    }
-    if (!jobs.length) return Response.json({ error: 'Job not found' }, { status: 404 });
-    const job = jobs[0];
+    let job;
+    try { job = await base44.asServiceRole.entities.Job.get(job_id); } catch { job = null; }
+    if (!job || job.is_deleted) return Response.json({ error: 'Job not found', job_id }, { status: 404 });
 
     // Strict company isolation — no role bypasses cross-tenant access
     const userProfiles = await base44.asServiceRole.entities.UserProfile.filter({ user_id: user.id, is_deleted: false });
@@ -62,14 +57,9 @@ Deno.serve(async (req) => {
     // Technicians cannot confirm/reject
     if (user.role === 'technician') return Response.json({ error: 'Forbidden: technicians cannot update scope status' }, { status: 403 });
 
-    let items;
-    try {
-      items = await base44.asServiceRole.entities.ScopeItem.filter({ id: item_id, is_deleted: false });
-    } catch {
-      return Response.json({ error: 'Item not found' }, { status: 404 });
-    }
-    if (!items.length) return Response.json({ error: 'Item not found' }, { status: 404 });
-    const existing = items[0];
+    let existing;
+    try { existing = await base44.asServiceRole.entities.ScopeItem.get(item_id); } catch { existing = null; }
+    if (!existing || existing.is_deleted) return Response.json({ error: 'Item not found' }, { status: 404 });
 
     // Strict company isolation — no role bypasses cross-tenant access
     const userProfiles2 = await base44.asServiceRole.entities.UserProfile.filter({ user_id: user.id, is_deleted: false });

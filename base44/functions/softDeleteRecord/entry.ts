@@ -19,14 +19,13 @@ Deno.serve(async (req) => {
     return Response.json({ error: `Forbidden: only admins/managers can delete ${entity_type}` }, { status: 403 });
   }
 
-  let records;
+  let record;
   try {
-    records = await base44.asServiceRole.entities[entity_type].filter({ id: entity_id, is_deleted: false });
+    record = await base44.asServiceRole.entities[entity_type].get(entity_id);
   } catch {
-    return Response.json({ error: 'Record not found' }, { status: 404 });
+    record = null;
   }
-  if (!records || !records.length) return Response.json({ error: 'Record not found' }, { status: 404 });
-  const record = records[0];
+  if (!record || record.is_deleted) return Response.json({ error: 'Record not found' }, { status: 404 });
 
   // Strict company isolation — no role bypasses cross-tenant access
   const company_id = record.company_id;

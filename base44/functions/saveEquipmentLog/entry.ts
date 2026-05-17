@@ -11,19 +11,20 @@ Deno.serve(async (req) => {
   if (!job_id || !room_id) return Response.json({ error: 'job_id and room_id required' }, { status: 400 });
   if (!equipment_type) return Response.json({ error: 'equipment_type required' }, { status: 400 });
 
-  const jobs = await base44.asServiceRole.entities.Job.filter({ id: job_id, is_deleted: false });
-  if (!jobs.length) return Response.json({ error: 'Job not found' }, { status: 404 });
-  const job = jobs[0];
+  let job;
+  try { job = await base44.asServiceRole.entities.Job.get(job_id); } catch { job = null; }
+  if (!job || job.is_deleted) return Response.json({ error: 'Job not found', job_id }, { status: 404 });
 
-  // Strict company isolation — enforce regardless of role (admin is NOT cross-tenant)
   const userProfiles = await base44.asServiceRole.entities.UserProfile.filter({ user_id: user.id, is_deleted: false });
   const userCompanyId = userProfiles[0]?.company_id;
   if (!userCompanyId || userCompanyId !== job.company_id) {
     return Response.json({ error: 'Forbidden', message: 'Access denied: resource belongs to a different company.' }, { status: 403 });
   }
 
-  const rooms = await base44.asServiceRole.entities.Room.filter({ id: room_id, job_id, is_deleted: false });
-  if (!rooms.length) return Response.json({ error: 'Room not found or not part of this job' }, { status: 404 });
+  let room;
+  try { room = await base44.asServiceRole.entities.Room.get(room_id); } catch { room = null; }
+  if (!room || room.job_id !== job_id || room.is_deleted) return Response.json({ error: 'Room not found or not part of this job' }, { status: 404 });
+  const rooms = [room];
 
   const log = await base44.asServiceRole.entities.EquipmentLog.create({
     company_id: job.company_id,

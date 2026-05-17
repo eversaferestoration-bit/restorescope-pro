@@ -69,13 +69,29 @@ export default function JobDetail() {
     enabled: !!jobId,
     retry: 1,
     queryFn: async () => {
-      const results = await base44.entities.Job.filter({ id: jobId, is_deleted: false });
+      console.log('[JobDetail] Loading job, route param jobId:', jobId);
 
-      if (!results || results.length === 0) return null;
+      let found = null;
+      try {
+        found = await base44.entities.Job.get(jobId);
+      } catch {
+        found = null;
+      }
 
-      const found = results[0];
+      // Fallback: route param might be a job_number slug instead of a DB id
+      if (!found || found.is_deleted) {
+        const results = await base44.entities.Job.filter({ job_number: jobId, is_deleted: false });
+        found = results?.[0] || null;
+      }
 
-      // cache safe version
+      if (!found) {
+        console.warn('[JobDetail] Job not found for param:', jobId);
+        return null;
+      }
+
+      console.log('[JobDetail] Loaded job:', { id: found.id, job_number: found.job_number, company_id: found.company_id });
+
+      // Cache for instant re-render on tab switch
       sessionStorage.setItem(`job_cache_${jobId}`, JSON.stringify(found));
 
       return found;

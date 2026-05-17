@@ -82,10 +82,14 @@ function RoomCard({ room, obsCount, onDelete }) {
 }
 
 export default function JobRooms({ job }) {
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const qc = useQueryClient();
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState({ name: '', room_type: '', floor_level: '', size_sqft: '', ceiling_height_ft: '', status: '', notes: '' });
+
+  // Guard: must have a real DB job.id before allowing any child record creation
+  const jobReady = !!job?.id && !job?.id?.startsWith('tmp');
+  console.log('[JobRooms] job.id:', job?.id, '| company_id:', job?.company_id, '| userProfile.company_id:', userProfile?.company_id, '| jobReady:', jobReady);
 
   const { data: rooms = [], isLoading } = useQuery({
     queryKey: ['rooms', job.id],
@@ -103,13 +107,18 @@ export default function JobRooms({ job }) {
   const obsByRoom = observations.reduce((acc, o) => { acc[o.room_id] = (acc[o.room_id] || 0) + 1; return acc; }, {});
 
   const addMutation = useMutation({
-    mutationFn: (data) => base44.functions.invoke('createRoom', data),
-    onSuccess: () => {
+    mutationFn: (data) => {
+      console.log('[JobRooms] createRoom payload:', data);
+      return base44.functions.invoke('createRoom', data);
+    },
+    onSuccess: (res) => {
+      console.log('[JobRooms] createRoom response:', res?.data);
       qc.invalidateQueries({ queryKey: ['rooms', job.id] });
       setAdding(false);
       setForm({ name: '', room_type: '', floor_level: '', size_sqft: '', ceiling_height_ft: '', status: '', notes: '' });
       toast({ title: 'Room added successfully' });
     },
+
     onError: (err) => {
       const msg = err?.response?.data?.message || err?.response?.data?.error || err?.message || 'Failed to add room';
       toast({ title: 'Error adding room', description: msg, variant: 'destructive' });
@@ -133,7 +142,9 @@ export default function JobRooms({ job }) {
         <p className="text-sm text-muted-foreground">{rooms.length} room{rooms.length !== 1 ? 's' : ''}</p>
         <button
           onClick={() => setAdding(!adding)}
-          className="inline-flex items-center gap-1.5 px-3 h-8 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition"
+          disabled={!jobReady}
+          title={!jobReady ? 'Job is still loading…' : undefined}
+          className="inline-flex items-center gap-1.5 px-3 h-8 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Plus size={13} /> Add Room
         </button>
@@ -141,7 +152,11 @@ export default function JobRooms({ job }) {
 
       {adding && (
         <form
-          onSubmit={(e) => { e.preventDefault(); addMutation.mutate({ job_id: job.id, name: form.name, room_type: form.room_type || undefined, floor_level: form.floor_level || undefined, size_sqft: form.size_sqft ? Number(form.size_sqft) : undefined, ceiling_height_ft: form.ceiling_height_ft ? Number(form.ceiling_height_ft) : undefined, status: form.status || undefined, notes: form.notes || undefined }); }}
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!jobReady) { toast({ title: 'Job not ready', description: 'Please wait for the job to finish loading.', variant: 'destructive' }); return; }
+            addMutation.mutate({ job_id: job.id, name: form.name, room_type: form.room_type || undefined, floor_level: form.floor_level || undefined, size_sqft: form.size_sqft ? Number(form.size_sqft) : undefined, ceiling_height_ft: form.ceiling_height_ft ? Number(form.ceiling_height_ft) : undefined, status: form.status || undefined, notes: form.notes || undefined });
+          }}
           className="bg-card rounded-xl border border-primary/40 p-4 grid grid-cols-2 gap-3"
         >
           <div className="col-span-2"><label className="text-xs font-medium">Room Name *</label><input required className={inputCls} value={form.name} onChange={set('name')} placeholder="e.g. Master Bedroom" /></div>
