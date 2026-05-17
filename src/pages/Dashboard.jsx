@@ -31,17 +31,20 @@ const STATUS_COLORS = {
 };
 
 export default function Dashboard() {
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [onboardingStatus, setOnboardingStatus] = useState(null);
-  const [companyId, setCompanyId] = useState(null);
+  // Use userProfile from auth context first (fast), fall back to local state
+  const [localCompanyId, setLocalCompanyId] = useState(null);
+  const companyId = userProfile?.company_id || localCompanyId;
   const { isTrial, isExpired, daysLeft } = useTrialStatus();
   const { enterDemo } = useDemo();
 
   // Pull-to-refresh setup
   const dashboardQuery = useQuery({
-    queryKey: ['jobs-dashboard'],
-    queryFn: () => base44.entities.Job.filter({ is_deleted: false }, '-created_date', 30),
+    queryKey: ['jobs-dashboard', companyId],
+    enabled: !!companyId,
+    queryFn: () => companyId ? base44.entities.Job.filter({ company_id: companyId, is_deleted: false }, '-created_date', 30) : [],
     staleTime: 3 * 60 * 1000,
     gcTime: 5 * 60 * 1000,
   });
@@ -56,7 +59,7 @@ export default function Dashboard() {
       .then((profiles) => {
         if (profiles.length > 0) {
           const profile = profiles[0];
-          setCompanyId(profile.company_id || null);
+          setLocalCompanyId(profile.company_id || null);
           const status = profile.onboarding_status;
           if (status && status !== 'onboarding_completed') {
             setOnboardingStatus(status);
@@ -70,15 +73,17 @@ export default function Dashboard() {
   const { data: jobs = [], isLoading } = dashboardQuery;
 
   const { data: pendingApprovals = [] } = useQuery({
-    queryKey: ['dashboard-pending-approvals-count'],
-    queryFn: () => base44.entities.EstimateDraft.filter({ status: 'pending_review', is_deleted: false }, '-created_date', 50),
+    queryKey: ['dashboard-pending-approvals-count', companyId],
+    enabled: !!companyId,
+    queryFn: () => companyId ? base44.entities.EstimateDraft.filter({ company_id: companyId, status: 'pending_review', is_deleted: false }, '-created_date', 50) : [],
     staleTime: 2 * 60 * 1000,
     gcTime: 5 * 60 * 1000,
   });
 
   const { data: syncErrors = [] } = useQuery({
-    queryKey: ['dashboard-sync-errors-count'],
-    queryFn: () => base44.entities.Photo.filter({ sync_status: 'failed', is_deleted: false }),
+    queryKey: ['dashboard-sync-errors-count', companyId],
+    enabled: !!companyId,
+    queryFn: () => companyId ? base44.entities.Photo.filter({ company_id: companyId, sync_status: 'failed', is_deleted: false }) : [],
     staleTime: 2 * 60 * 1000,
     gcTime: 5 * 60 * 1000,
   });

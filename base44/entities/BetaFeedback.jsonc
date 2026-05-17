@@ -9,6 +9,10 @@
       "type": "string"
     },
     "user_email": {
+      "type": "string",
+      "format": "email"
+    },
+    "user_role": {
       "type": "string"
     },
     "feedback_type": {
@@ -17,10 +21,15 @@
         "bug",
         "feature_request",
         "confusion",
-        "performance",
-        "general"
-      ],
-      "default": "general"
+        "praise",
+        "other"
+      ]
+    },
+    "title": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
     },
     "severity": {
       "type": "string",
@@ -32,30 +41,24 @@
       ],
       "default": "medium"
     },
-    "title": {
-      "type": "string"
-    },
-    "description": {
-      "type": "string"
-    },
     "page_url": {
       "type": "string"
     },
     "screenshot_url": {
       "type": "string"
     },
-    "device_info": {
-      "type": "string"
-    },
     "status": {
       "type": "string",
       "enum": [
-        "open",
+        "new",
         "in_review",
         "resolved",
         "wont_fix"
       ],
-      "default": "open"
+      "default": "new"
+    },
+    "admin_notes": {
+      "type": "string"
     },
     "is_deleted": {
       "type": "boolean",
@@ -63,8 +66,6 @@
     }
   },
   "required": [
-    "company_id",
-    "user_id",
     "feedback_type",
     "title",
     "description"
@@ -84,16 +85,9 @@
       ]
     },
     "update": {
-      "$or": [
-        {
-          "user_id": "{{user.id}}"
-        },
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        }
-      ]
+      "user_condition": {
+        "role": "admin"
+      }
     },
     "delete": {
       "user_condition": {

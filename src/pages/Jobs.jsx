@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useQuery } from '@tanstack/react-query';
+import { useAuth } from '@/lib/AuthContext';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { Plus, FolderOpen, Search, ChevronRight, AlertCircle, Clock, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
@@ -15,6 +16,8 @@ const STATUS_COLORS = {
 };
 
 export default function Jobs() {
+  const { userProfile } = useAuth();
+  const companyId = userProfile?.company_id;
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(0);
 
@@ -23,9 +26,10 @@ export default function Jobs() {
   const PAGE_SIZE = 30;
 
   const allJobsQuery = useQuery({
-    queryKey: ['jobs-all', search],
+    queryKey: ['jobs-all', search, companyId],
+    enabled: !!companyId,
     queryFn: async () => {
-      const allJobs = await base44.entities.Job.filter({ is_deleted: false }, '-created_date', 500);
+      const allJobs = await base44.entities.Job.filter({ company_id: companyId, is_deleted: false }, '-created_date', 500);
       if (!search) return allJobs;
       const searchLower = search.toLowerCase();
       return allJobs.filter((j) =>
