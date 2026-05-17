@@ -147,11 +147,31 @@ export default function BetaAdmin() {
   const handleConvertToPaid = async (companyId) => {
     setConvertingPaid((s) => ({ ...s, [companyId]: true }));
     try {
+      // Update company to paid status
       await base44.entities.Company.update(companyId, {
         is_beta_user: false,
         beta_status: 'converted_to_paid',
         status: 'active',
       });
+
+      // Also update the Subscription record so useTrialStatus picks it up correctly
+      const subs = await base44.entities.Subscription.filter({ company_id: companyId }, '-created_date', 1).catch(() => []);
+      if (subs[0]) {
+        await base44.entities.Subscription.update(subs[0].id, {
+          status: 'active',
+          current_period_start: new Date().toISOString(),
+          current_period_end: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+        });
+      } else {
+        // Create one if it doesn't exist
+        await base44.entities.Subscription.create({
+          company_id: companyId,
+          status: 'active',
+          current_period_start: new Date().toISOString(),
+          current_period_end: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+        });
+      }
+
       qc.invalidateQueries(['beta-companies']);
       setExpandedCompany(null);
       toast.success('Company converted to paid plan');

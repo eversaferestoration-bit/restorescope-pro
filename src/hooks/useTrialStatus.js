@@ -22,6 +22,11 @@ import { differenceInDays, parseISO } from 'date-fns';
  *   'export'    — allowed on trial + paid
  *   'advanced'  — paid only (analytics, defense, adjuster insights)
  */
+// Statuses that mean the user is fully paid / active
+const PAID_STATUSES = ['active', 'paid'];
+// Statuses that mean still in a valid trial
+const TRIAL_STATUSES = ['trialing', 'trial'];
+
 export function useTrialStatus() {
   const { user } = useAuth();
   const [state, setState] = useState({
@@ -44,26 +49,25 @@ export function useTrialStatus() {
         const companyId = profiles[0].company_id;
         if (!companyId) { setState(s => ({ ...s, loading: false })); return; }
 
-        const subs = await base44.entities.Subscription.filter({ company_id: companyId }, '-created_date', 1);
-        const sub = subs[0];
+        const subs = await base44.entities.Subscription.filter({ company_id: companyId }, '-created_date', 1).catch(() => []);
+        const sub = subs[0] || null;
 
         if (!sub) {
-          // No subscription at all — treat as expired trial
           setState({ loading: false, isTrial: false, isExpired: true, isPaid: false, daysLeft: null, trialEnd: null });
           return;
         }
 
         const now = new Date();
         const trialEnd = sub.trial_end ? parseISO(sub.trial_end) : null;
-        const isInTrial = sub.status === 'trialing' || (trialEnd && trialEnd > now && sub.status !== 'active');
-        const isPaid = sub.status === 'active';
-        const isExpired = !isPaid && trialEnd && trialEnd <= now;
+        const isPaid = PAID_STATUSES.includes(sub.status);
+        const isInTrial = !isPaid && (TRIAL_STATUSES.includes(sub.status) || (trialEnd && trialEnd > now));
+        const isExpired = !isPaid && !isInTrial;
         const daysLeft = isInTrial && trialEnd ? Math.max(0, differenceInDays(trialEnd, now)) : null;
 
         setState({
           loading: false,
           isTrial: isInTrial,
-          isExpired: !!isExpired,
+          isExpired,
           isPaid,
           daysLeft,
           trialEnd: sub.trial_end || null,
@@ -74,7 +78,7 @@ export function useTrialStatus() {
       }
     };
 
-    // Also re-check on focus to catch subscription updates
+    // Re-check on window focus to catch subscription updates
     const handleFocus = () => load();
     window.addEventListener('focus', handleFocus);
     load();
