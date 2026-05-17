@@ -33,7 +33,12 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const companyId = user.company_id;
+    // Resolve company_id from UserProfile — never trust user.company_id (not a real field)
+    const profiles = await base44.asServiceRole.entities.UserProfile.filter({
+      user_id: user.id,
+      is_deleted: false,
+    });
+    const companyId = profiles[0]?.company_id;
 
     if (!companyId) {
       return Response.json(emptyReport);

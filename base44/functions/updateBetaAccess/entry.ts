@@ -86,6 +86,6 @@ Deno.serve(async (req) => {
     return Response.json({ success: true, action, company_id });
   } catch (error) {
     console.error('[updateBetaAccess] Error:', error.message);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'An internal error occurred. Please try again.' }, { status: 500 });
   }
 });

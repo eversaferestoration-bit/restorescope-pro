@@ -70,6 +70,6 @@ Deno.serve(async (req) => {
     return Response.json({ companies });
   } catch (error) {
     console.error('[getBetaCompanies] Error:', error.message);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: 'An internal error occurred. Please try again.' }, { status: 500 });
   }
 });

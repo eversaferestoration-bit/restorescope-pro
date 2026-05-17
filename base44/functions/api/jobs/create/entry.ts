@@ -202,9 +202,10 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     await logApiRequest(apiKeyRecord, req, 'error', 500);
+    console.error('[api/jobs/create] Error:', error.message);
     return Response.json({ 
       error: 'internal_error',
-      message: error.message,
+      message: 'An internal error occurred.',
     }, { status: 500 });
   }
 });

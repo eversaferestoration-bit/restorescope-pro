@@ -44,6 +44,7 @@ Deno.serve(async (req) => {
       duration_days,
     });
   } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    console.error('[activateBetaAccess] Error:', error.message);
+    return Response.json({ error: 'An internal error occurred. Please try again.' }, { status: 500 });
   }
 });

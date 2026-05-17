@@ -75,6 +75,7 @@ Deno.serve(async (req) => {
     });
   } catch (error) {
     await logApiRequest(apiKeyRecord, req, 'error', 500);
-    return Response.json({ error: 'internal_error', message: error.message }, { status: 500 });
+    console.error('[api/estimates/get] Error:', error.message);
+    return Response.json({ error: 'internal_error', message: 'An internal error occurred.' }, { status: 500 });
   }
 });
