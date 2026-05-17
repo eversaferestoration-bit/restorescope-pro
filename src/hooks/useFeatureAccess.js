@@ -34,14 +34,13 @@ export function useFeatureAccess(feature) {
 
         const companyId = profiles[0].company_id;
 
-        // Get subscription
-        const subscriptions = await base44.entities.Subscription.filter({ 
-          company_id: companyId, 
-          status: 'active' 
-        }, '-created_date', 1);
+        // Get subscription — check all paid statuses, not just 'active'
+        const PAID_STATUSES = ['active', 'paid', 'enterprise', 'trialing_paid', 'grandfathered'];
+        const allSubs = await base44.entities.Subscription.filter({ company_id: companyId }, '-updated_date', 5).catch(() => []);
+        const subscriptions = allSubs.filter(s => PAID_STATUSES.includes(s.status));
 
         if (!subscriptions.length) {
-          // No subscription - check if feature is available on free tier
+          // No paid subscription - check if feature is available on free tier
           setHasAccess(['core_estimating', 'basic_photos'].includes(feature));
           setCurrentTier('free');
           setLoading(false);

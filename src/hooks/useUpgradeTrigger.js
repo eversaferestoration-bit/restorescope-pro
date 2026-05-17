@@ -24,6 +24,9 @@ export function useUpgradeTrigger({ feature = 'basic', checkLimits = false } = {
 
   if (loading) return null;
 
+  // Paid users never see upgrade nudges
+  if (isPaid) return null;
+
   // 1. Expired — highest priority
   if (isExpired) {
     return {

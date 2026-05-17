@@ -6,12 +6,14 @@ import { useBetaAccess } from '@/hooks/useBetaAccess';
 /**
  * Compact trial status card for dashboard.
  * Shows countdown or expiry status in a small, non-intrusive format.
+ * Never shown for paid accounts.
  */
-export default function TrialCountdownCard({ isExpired, daysLeft }) {
+export default function TrialCountdownCard({ isExpired, daysLeft, isPaid }) {
   const { isBlockedByExpiredBeta } = useBetaAccess();
 
-  // Safety: if beta expired and no subscription, don't render here (should be caught at action level)
-  // This prevents double-blocking and keeps UI responsive
+  // Never show for paid users
+  if (isPaid) return null;
+
   if (!isExpired && daysLeft === null && !isBlockedByExpiredBeta) return null;
 
   // Determine styling based on status

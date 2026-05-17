@@ -52,11 +52,13 @@ export function useBetaAccess() {
         const effectiveStatus = hasExpired ? 'expired' : (company.beta_status || 'active');
         const betaExpired = effectiveStatus === 'expired';
 
-        // Check if there's an active subscription — if so, don't block
+        // Check if there's any paid subscription — if so, don't block
+        // Fetch all recent subs and check against all valid paid statuses
         let hasActiveSub = false;
         if (betaExpired) {
-          const subs = await base44.entities.Subscription.filter({ company_id: companyId, status: 'active' }, '-created_date', 1);
-          hasActiveSub = subs.length > 0;
+          const PAID = new Set(['active', 'paid', 'trialing_paid', 'enterprise', 'grandfathered']);
+          const subs = await base44.entities.Subscription.filter({ company_id: companyId }, '-updated_date', 5).catch(() => []);
+          hasActiveSub = subs.some(s => PAID.has(s.status));
         }
 
         setState({

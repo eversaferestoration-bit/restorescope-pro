@@ -37,7 +37,7 @@ export default function Dashboard() {
   // Use userProfile from auth context first (fast), fall back to local state
   const [localCompanyId, setLocalCompanyId] = useState(null);
   const companyId = userProfile?.company_id || localCompanyId;
-  const { isTrial, isExpired, daysLeft } = useTrialStatus();
+  const { isTrial, isExpired, isPaid, daysLeft } = useTrialStatus();
   const { enterDemo } = useDemo();
 
   // Pull-to-refresh setup
@@ -131,8 +131,8 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Trial countdown / expiry banner */}
-      {(isTrial || isExpired) && (
+      {/* Trial countdown / expiry banner — never shown for paid accounts */}
+      {!isPaid && (isTrial || isExpired) && (
         <TrialBanner daysLeft={daysLeft} isExpired={isExpired} />
       )}
 
@@ -155,10 +155,10 @@ export default function Dashboard() {
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {/* Trial countdown card */}
-        {(isTrial || isExpired) && (
+        {/* Trial countdown card — never shown for paid accounts */}
+        {!isPaid && (isTrial || isExpired) && (
           <div className="col-span-2 lg:col-span-1">
-            <TrialCountdownCard isExpired={isExpired} daysLeft={daysLeft} />
+            <TrialCountdownCard isExpired={isExpired} daysLeft={daysLeft} isPaid={isPaid} />
           </div>
         )}
         <StatCard
