@@ -98,7 +98,7 @@ function loadLocalSettings(companyId) {
 
 export default function Settings() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, userProfile, refreshUserProfile } = useAuth();
 
   const [activeTab, setActiveTab] = useState('company');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -115,7 +115,7 @@ export default function Settings() {
   const [localSettings, setLocalSettings] = useState(defaultLocalSettings);
 
   const isAdmin = user?.role === 'admin' || user?.role === 'super_admin' || user?.role === 'platform_admin';
-  const companyId = user?.company_id || profile?.company_id || company?.id || null;
+  const companyId = userProfile?.company_id || profile?.company_id || company?.id || null;
 
   const tabs = useMemo(
     () => [
@@ -152,7 +152,7 @@ export default function Settings() {
           }
         }
 
-        const resolvedCompanyId = user?.company_id || resolvedProfile?.company_id;
+        const resolvedCompanyId = resolvedProfile?.company_id || userProfile?.company_id;
 
         if (resolvedCompanyId) {
           const companies = await base44.entities.Company.filter(
@@ -163,12 +163,31 @@ export default function Settings() {
           resolvedCompany = companies?.[0] || null;
         }
 
+        // Backfill: if no company via profile, try finding one by creator email
+        if (!resolvedCompany && user?.email) {
+          const byCreator = await base44.entities.Company.filter(
+            { created_by: user.email, is_deleted: false },
+            '-created_date',
+            1
+          ).catch(() => []);
+          resolvedCompany = byCreator?.[0] || null;
+
+          // If found and profile exists but isn't linked, repair the link
+          if (resolvedCompany && resolvedProfile?.id && !resolvedProfile.company_id) {
+            await base44.entities.UserProfile.update(resolvedProfile.id, {
+              company_id: resolvedCompany.id,
+            }).catch(() => null);
+            resolvedProfile = { ...resolvedProfile, company_id: resolvedCompany.id };
+            await refreshUserProfile().catch(() => null);
+          }
+        }
+
         if (!cancelled) {
           setProfile(resolvedProfile);
           setCompany(resolvedCompany);
           setCompanyForm(normalizeCompany(resolvedCompany));
           setUserForm(normalizeProfile(resolvedProfile, user));
-          setLocalSettings(loadLocalSettings(resolvedCompanyId));
+          setLocalSettings(loadLocalSettings(resolvedCompanyId || resolvedCompany?.id));
         }
       } catch (err) {
         if (!cancelled) setErrorMsg(err?.message || 'Failed to load settings.');
@@ -227,6 +246,35 @@ export default function Settings() {
 
       setCompany(saved);
       setCompanyForm(normalizeCompany(saved));
+
+      // CRITICAL: Link UserProfile to this company if not already linked
+      if (saved?.id) {
+        const currentProfile = profile;
+        if (currentProfile?.id) {
+          if (currentProfile.company_id !== saved.id) {
+            const updatedProfile = await base44.entities.UserProfile.update(currentProfile.id, {
+              company_id: saved.id,
+            });
+            setProfile(updatedProfile);
+          }
+        } else {
+          // No UserProfile exists yet — create one linked to this company
+          const newProfile = await base44.entities.UserProfile.create({
+            user_id: user.id,
+            company_id: saved.id,
+            email: user.email,
+            role: user.role || 'admin',
+            status: 'active',
+            onboarding_status: 'onboarding_completed',
+            is_deleted: false,
+          });
+          setProfile(newProfile);
+        }
+
+        // Refresh global auth context so userProfile.company_id is up-to-date everywhere
+        await refreshUserProfile();
+      }
+
       showSuccess('Company profile saved.');
     } catch (err) {
       showError(err?.message || 'Failed to save company profile.');
