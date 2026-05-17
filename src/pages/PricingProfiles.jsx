@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
+import { toast } from '@/components/ui/use-toast';
 import { Tag, Plus, Trash2, ChevronDown, ChevronUp, Star, Save, X } from 'lucide-react';
 
 const inputCls = 'w-full h-9 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring';
@@ -28,7 +29,7 @@ function ProfileCard({ profile, onDelete, onSetDefault }) {
 
   const modMutation = useMutation({
     mutationFn: (data) => base44.entities.PricingProfile.update(profile.id, data),
-    onSuccess: () => { qc.invalidateQueries(['pricing-profiles']); setEditingMods(false); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['pricing-profiles'] }); setEditingMods(false); toast({ title: 'Modifiers saved' }); },
   });
 
   const MOD_FIELDS = [
@@ -117,7 +118,7 @@ function LineItemsEditor({ profile }) {
 
   const saveMutation = useMutation({
     mutationFn: (data) => base44.entities.PricingProfile.update(profile.id, { line_items: data }),
-    onSuccess: () => qc.invalidateQueries(['pricing-profiles']),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['pricing-profiles'] }),
   });
 
   const addItem = () => {
@@ -197,8 +198,20 @@ function NewProfileModal({ companyId, onClose }) {
   const [desc, setDesc] = useState('');
 
   const createMutation = useMutation({
-    mutationFn: (data) => base44.entities.PricingProfile.create(data),
-    onSuccess: () => { qc.invalidateQueries(['pricing-profiles']); onClose(); },
+    mutationFn: (data) => {
+      console.log('[NewProfileModal] creating profile with:', data);
+      return base44.entities.PricingProfile.create(data);
+    },
+    onSuccess: (result) => {
+      console.log('[NewProfileModal] created profile:', result);
+      qc.invalidateQueries({ queryKey: ['pricing-profiles', companyId] });
+      toast({ title: 'Pricing profile created' });
+      onClose();
+    },
+    onError: (err) => {
+      console.error('[NewProfileModal] create error:', err);
+      toast({ title: 'Failed to create profile', description: err?.message || 'Please try again.', variant: 'destructive' });
+    },
   });
 
   return (
@@ -233,22 +246,60 @@ function NewProfileModal({ companyId, onClose }) {
   );
 }
 
+const DEFAULT_PROFILE_DATA = {
+  name: 'Standard Restoration Pricing',
+  description: 'Default pricing profile for restoration services',
+  is_default: true,
+  line_items: [],
+  ...DEFAULT_MODIFIERS,
+  is_deleted: false,
+};
+
 export default function PricingProfiles() {
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const qc = useQueryClient();
   const [showNew, setShowNew] = useState(false);
 
-  const companyId = user?.company_id || '';
+  // Resolve companyId from user.company_id (stamped by completeSignup) or userProfile
+  const companyId = user?.company_id || userProfile?.company_id || '';
+
+  console.log('[PricingProfiles] companyId:', companyId, '| user.company_id:', user?.company_id, '| userProfile.company_id:', userProfile?.company_id);
 
   const { data: profiles = [], isLoading } = useQuery({
-    queryKey: ['pricing-profiles'],
-    queryFn: () => base44.entities.PricingProfile.filter({ company_id: companyId, is_deleted: false }, '-created_date'),
+    queryKey: ['pricing-profiles', companyId],
+    queryFn: async () => {
+      if (!companyId) return [];
+      const results = await base44.entities.PricingProfile.filter({ company_id: companyId, is_deleted: false }, '-created_date');
+      console.log('[PricingProfiles] fetched:', results?.length, 'profiles');
+      return results || [];
+    },
     enabled: !!companyId,
   });
 
+  // Auto-create default profile if none exist
+  const autoCreatedRef = useRef(false);
+  const autoCreateMutation = useMutation({
+    mutationFn: (data) => base44.entities.PricingProfile.create(data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['pricing-profiles', companyId] });
+      toast({ title: 'Default pricing profile created' });
+    },
+  });
+
+  useEffect(() => {
+    if (!isLoading && profiles.length === 0 && companyId && !autoCreatedRef.current) {
+      autoCreatedRef.current = true;
+      console.log('[PricingProfiles] No profiles found, auto-creating default...');
+      autoCreateMutation.mutate({ ...DEFAULT_PROFILE_DATA, company_id: companyId });
+    }
+  }, [isLoading, profiles.length, companyId]);
+
   const deleteMutation = useMutation({
     mutationFn: (id) => base44.entities.PricingProfile.update(id, { is_deleted: true }),
-    onSuccess: () => qc.invalidateQueries(['pricing-profiles']),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['pricing-profiles', companyId] });
+      toast({ title: 'Profile deleted' });
+    },
   });
 
   const setDefaultMutation = useMutation({
@@ -258,7 +309,10 @@ export default function PricingProfiles() {
       }
       return base44.entities.PricingProfile.update(id, { is_default: true });
     },
-    onSuccess: () => qc.invalidateQueries(['pricing-profiles']),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['pricing-profiles', companyId] });
+      toast({ title: 'Default profile updated' });
+    },
   });
 
   return (

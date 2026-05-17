@@ -4,7 +4,14 @@ import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { Users as UsersIcon, UserPlus, Mail, Shield, X, CheckCircle } from 'lucide-react';
 
-const ROLES = ['admin', 'manager', 'estimator', 'technician', 'user'];
+// Display roles shown in UI → mapped to backend-accepted values ('user' or 'admin')
+const ROLES = [
+  { label: 'Admin', value: 'admin', backendRole: 'admin' },
+  { label: 'Manager', value: 'manager', backendRole: 'admin' },
+  { label: 'Estimator', value: 'estimator', backendRole: 'user' },
+  { label: 'Technician', value: 'technician', backendRole: 'user' },
+  { label: 'User', value: 'user', backendRole: 'user' },
+];
 
 const ROLE_COLORS = {
   admin: 'bg-red-100 text-red-700',
@@ -48,8 +55,12 @@ export default function Users() {
     setErrorMsg('');
     setSuccessMsg('');
 
+    // Map display role to backend-accepted role ('user' or 'admin')
+    const roleEntry = ROLES.find((r) => r.value === inviteRole);
+    const backendRole = roleEntry?.backendRole || 'user';
+
     try {
-      await base44.users.inviteUser(inviteEmail.trim().toLowerCase(), inviteRole);
+      await base44.users.inviteUser(inviteEmail.trim().toLowerCase(), backendRole);
       setSuccessMsg(`Invite sent to ${inviteEmail.trim()}`);
       setInviteEmail('');
       setInviteRole('user');
@@ -116,7 +127,7 @@ export default function Users() {
               className="min-h-touch px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring transition"
             >
               {ROLES.map((r) => (
-                <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>
+                <option key={r.value} value={r.value}>{r.label}</option>
               ))}
             </select>
             <button
