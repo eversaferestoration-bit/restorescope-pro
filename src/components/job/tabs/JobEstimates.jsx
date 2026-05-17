@@ -52,7 +52,7 @@ export default function JobEstimates({ job }) {
       if (data.error) {
         setError(data);
       } else {
-        qc.invalidateQueries(['estimates', job.id]);
+        qc.invalidateQueries({ queryKey: ['estimates', job.id] });
       }
     } catch (err) {
       const data = err?.response?.data;

@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { Plus, Save, Droplets, Wind } from 'lucide-react';
+import { toast } from '@/components/ui/use-toast';
 import RoomPicker from '@/components/job/RoomPicker';
 import EntryList from '@/components/job/EntryList';
 import SelectBottomSheet from '@/components/mobile/SelectBottomSheet';
@@ -34,9 +35,14 @@ function MoistureForm({ job, roomId, user, onClose }) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['moisture', job.id] });
       setOptimistic(null);
+      toast({ title: 'Moisture reading saved' });
       onClose();
     },
-    onError: () => setOptimistic(null),
+    onError: (err) => {
+      setOptimistic(null);
+      const msg = err?.response?.data?.message || err?.response?.data?.error || err?.message || 'Failed to save reading';
+      toast({ title: 'Error saving reading', description: msg, variant: 'destructive' });
+    },
   });
 
   const handleSubmit = (e) => {
@@ -110,9 +116,14 @@ function EnvForm({ job, roomId, user, onClose }) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['env', job.id] });
       setOptimistic(null);
+      toast({ title: 'Environmental reading saved' });
       onClose();
     },
-    onError: () => setOptimistic(null),
+    onError: (err) => {
+      setOptimistic(null);
+      const msg = err?.response?.data?.message || err?.response?.data?.error || err?.message || 'Failed to save reading';
+      toast({ title: 'Error saving reading', description: msg, variant: 'destructive' });
+    },
   });
 
   const handleSubmit = (e) => {

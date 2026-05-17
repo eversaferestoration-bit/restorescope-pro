@@ -63,6 +63,7 @@ Deno.serve(async (req) => {
       });
     } catch (error) {
       console.error('[CREATE_PROFILE_ERROR]', error);
+      // Rollback: Delete the company we just created (handled below)
       
       // Rollback: Delete the company we just created
       try {
@@ -79,6 +80,14 @@ Deno.serve(async (req) => {
         },
         { status: 500 }
       );
+    }
+
+    // Step 5: Stamp company_id onto the base44 User record so RLS {{user_company_id}} resolves correctly
+    try {
+      await base44.auth.updateMe({ company_id: company.id });
+    } catch (updateUserError) {
+      console.warn('[UPDATE_USER_COMPANY_ID_ERROR]', updateUserError);
+      // Non-fatal: RLS may not work but signup succeeds; backfill can fix this later
     }
 
     // Log signup completion

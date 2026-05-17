@@ -115,12 +115,20 @@ export default function JobScope({ job }) {
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => base44.functions.invoke('saveScopeItem', { action: 'update', item_id: id, data }),
-    onSuccess: () => qc.invalidateQueries(['scope', job.id]),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['scope', job.id] }),
+    onError: (err) => {
+      const msg = err?.response?.data?.message || err?.response?.data?.error || err?.message || 'Failed to update scope item';
+      console.error('[JobScope] update error:', msg);
+    },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id) => base44.functions.invoke('saveScopeItem', { action: 'delete', item_id: id, data: {} }),
-    onSuccess: () => qc.invalidateQueries(['scope', job.id]),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['scope', job.id] }),
+    onError: (err) => {
+      const msg = err?.response?.data?.message || err?.message || 'Failed to delete scope item';
+      console.error('[JobScope] delete error:', msg);
+    },
   });
 
   const handleGenerate = async () => {
@@ -154,9 +162,9 @@ export default function JobScope({ job }) {
         });
       }
 
-      qc.invalidateQueries(['scope', job.id]);
+      qc.invalidateQueries({ queryKey: ['scope', job.id] });
     } catch (err) {
-      setGenerateError(err?.response?.data?.message || 'Failed to generate scope. Please try again.');
+      setGenerateError(err?.response?.data?.message || err?.message || 'Failed to generate scope. Please try again.');
     }
     setGenerating(false);
   };
@@ -168,9 +176,9 @@ export default function JobScope({ job }) {
         job_id: job.id,
         data: { room_id: roomId || null, ...formData },
       });
-      qc.invalidateQueries(['scope', job.id]);
-    } catch {
-      setGenerateError('Failed to add item. Please try again.');
+      qc.invalidateQueries({ queryKey: ['scope', job.id] });
+    } catch (err) {
+      setGenerateError(err?.response?.data?.message || err?.message || 'Failed to add item. Please try again.');
     }
   };
 

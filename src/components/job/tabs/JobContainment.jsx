@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { Plus, Save } from 'lucide-react';
+import { toast } from '@/components/ui/use-toast';
 import RoomPicker from '@/components/job/RoomPicker';
 import { format } from 'date-fns';
 
@@ -42,12 +43,21 @@ export default function JobContainment({ job }) {
       qc.invalidateQueries({ queryKey: ['containments', job.id] });
       setAdding(false);
       setForm({ containment_type: '', description: '', status: 'active' });
+      toast({ title: 'Containment logged successfully' });
+    },
+    onError: (err) => {
+      const msg = err?.response?.data?.message || err?.message || 'Failed to save containment';
+      toast({ title: 'Error saving containment', description: msg, variant: 'destructive' });
     },
   });
 
   const removeMutation = useMutation({
     mutationFn: (id) => base44.functions.invoke('softDeleteRecord', { entity_type: 'Containment', entity_id: id }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['containments', job.id] }),
+    onError: (err) => {
+      const msg = err?.response?.data?.message || err?.message || 'Failed to remove containment';
+      toast({ title: 'Error', description: msg, variant: 'destructive' });
+    },
   });
 
   const isTechnician = user?.role === 'technician';

@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { Plus, Save } from 'lucide-react';
+import { toast } from '@/components/ui/use-toast';
 import RoomPicker from '@/components/job/RoomPicker';
 import EntryList from '@/components/job/EntryList';
 import { format } from 'date-fns';
@@ -36,12 +37,21 @@ export default function JobEquipment({ job }) {
       qc.invalidateQueries({ queryKey: ['equipment', job.id] });
       setAdding(false);
       setForm({ equipment_type: '', model: '', serial_number: '', quantity: 1, status: 'placed', notes: '' });
+      toast({ title: 'Equipment logged successfully' });
+    },
+    onError: (err) => {
+      const msg = err?.response?.data?.message || err?.response?.data?.error || err?.message || 'Failed to save equipment';
+      toast({ title: 'Error saving equipment', description: msg, variant: 'destructive' });
     },
   });
 
   const removeMutation = useMutation({
     mutationFn: (id) => base44.functions.invoke('softDeleteRecord', { entity_type: 'EquipmentLog', entity_id: id }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['equipment', job.id] }),
+    onError: (err) => {
+      const msg = err?.response?.data?.message || err?.message || 'Failed to remove equipment';
+      toast({ title: 'Error', description: msg, variant: 'destructive' });
+    },
   });
 
   const isTechnician = user?.role === 'technician';

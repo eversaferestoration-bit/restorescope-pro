@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { Plus, Save } from 'lucide-react';
+import { toast } from '@/components/ui/use-toast';
 import RoomPicker from '@/components/job/RoomPicker';
 import EntryList from '@/components/job/EntryList';
 import SelectBottomSheet from '@/components/mobile/SelectBottomSheet';
@@ -54,9 +55,12 @@ export default function JobObservations({ job }) {
       setAdding(false);
       setForm({ description: '', observation_type: '', severity: '' });
       setOptimisticData(null);
+      toast({ title: 'Observation saved' });
     },
-    onError: () => {
+    onError: (err) => {
       setOptimisticData(null);
+      const msg = err?.response?.data?.message || err?.response?.data?.error || err?.message || 'Failed to save observation';
+      toast({ title: 'Error saving observation', description: msg, variant: 'destructive' });
     },
   });
 

@@ -34,8 +34,8 @@ export default function JobSupplements({ job }) {
       if (data.error) {
         setError(data.error);
       } else {
-        qc.invalidateQueries(['supplements', job.id]);
-        qc.invalidateQueries(['estimates', job.id]);
+        qc.invalidateQueries({ queryKey: ['supplements', job.id] });
+        qc.invalidateQueries({ queryKey: ['estimates', job.id] });
       }
     } catch (err) {
       const msg = err?.response?.data?.error || err?.response?.data?.message || 'Failed to generate supplement.';

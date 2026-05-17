@@ -4,6 +4,7 @@ import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { Plus, Trash2, Save, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
 import LoadingSkeleton from '@/components/ui/LoadingSkeleton';
+import { toast } from '@/components/ui/use-toast';
 
 const ROOM_TYPES = ['Living Room', 'Bedroom', 'Bathroom', 'Kitchen', 'Hallway', 'Basement', 'Attic', 'Garage', 'Office', 'Other'];
 const FLOOR_LEVELS = ['Basement', '1st Floor', '2nd Floor', '3rd Floor', 'Attic'];
@@ -104,15 +105,24 @@ export default function JobRooms({ job }) {
   const addMutation = useMutation({
     mutationFn: (data) => base44.functions.invoke('createRoom', data),
     onSuccess: () => {
-      qc.invalidateQueries(['rooms', job.id]);
+      qc.invalidateQueries({ queryKey: ['rooms', job.id] });
       setAdding(false);
       setForm({ name: '', room_type: '', floor_level: '', size_sqft: '', ceiling_height_ft: '', status: '', notes: '' });
+      toast({ title: 'Room added successfully' });
+    },
+    onError: (err) => {
+      const msg = err?.response?.data?.message || err?.response?.data?.error || err?.message || 'Failed to add room';
+      toast({ title: 'Error adding room', description: msg, variant: 'destructive' });
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id) => base44.functions.invoke('softDeleteRecord', { entity_type: 'Room', entity_id: id }),
-    onSuccess: () => qc.invalidateQueries(['rooms', job.id]),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['rooms', job.id] }),
+    onError: (err) => {
+      const msg = err?.response?.data?.message || err?.message || 'Failed to delete room';
+      toast({ title: 'Error', description: msg, variant: 'destructive' });
+    },
   });
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));

@@ -5,6 +5,7 @@ import { ArrowLeft, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/AuthContext';
+import { toast } from '@/components/ui/use-toast';
 
 import JobOverview from '@/components/job/tabs/JobOverview';
 import JobInsuredClaim from '@/components/job/tabs/JobInsuredClaim';
@@ -52,9 +53,7 @@ export default function JobDetail() {
   const { jobId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
-
-  const companyId = user?.company_id;
+  const { userProfile } = useAuth();
 
   const tabFromUrl = new URLSearchParams(location.search).get('tab') || 'overview';
   const [activeTab, setActiveTab] = useState(tabFromUrl);
@@ -68,11 +67,9 @@ export default function JobDetail() {
   const { data: job, isLoading, isError } = useQuery({
     queryKey: ['job', jobId],
     enabled: !!jobId,
-    retry: false,
+    retry: 1,
     queryFn: async () => {
-      const filter = { id: jobId, is_deleted: false };
-      if (companyId) filter.company_id = companyId;
-      const results = await base44.entities.Job.filter(filter);
+      const results = await base44.entities.Job.filter({ id: jobId, is_deleted: false });
 
       if (!results || results.length === 0) return null;
 
