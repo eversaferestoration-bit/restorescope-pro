@@ -429,7 +429,7 @@ export default function NewJob() {
               {errors.insured && <p className="text-xs text-destructive">{errors.insured}</p>}
             </div>
 
-            <InsuredSelector value={insured} onChange={setInsured} jobId={null} />
+            <InsuredSelector value={insured} onChange={setInsured} jobId={null} companyId={companyId} />
           </div>
 
           <div className="bg-card rounded-xl border border-border p-5 space-y-3">
@@ -440,7 +440,7 @@ export default function NewJob() {
               {errors.property && <p className="text-xs text-destructive">{errors.property}</p>}
             </div>
 
-            <PropertySelector value={property} onChange={setProperty} jobId={null} />
+            <PropertySelector value={property} onChange={setProperty} jobId={null} companyId={companyId} />
           </div>
         </div>
       )}

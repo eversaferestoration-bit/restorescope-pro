@@ -5,8 +5,8 @@ import { User } from 'lucide-react';
 import SelectBottomSheet from '@/components/mobile/SelectBottomSheet';
 
 export default function UserSelector({ label, value, onChange }) {
-  const { user: currentUser } = useAuth();
-  const companyId = currentUser?.company_id;
+  const { userProfile } = useAuth();
+  const companyId = userProfile?.company_id;
 
   const { data: users = [] } = useQuery({
     queryKey: ['users-list', companyId],

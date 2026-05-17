@@ -29,7 +29,8 @@ function UsageBar({ label, used, limit, color }) {
 }
 
 export default function UsageStatsWidget() {
-  const { user } = useAuth();
+  const { userProfile } = useAuth();
+  const companyId = userProfile?.company_id;
 
   const { data: jobs = [] } = useQuery({
     queryKey: ['dashboard-usage-jobs'],
@@ -42,9 +43,9 @@ export default function UsageStatsWidget() {
   });
 
   const { data: company } = useQuery({
-    queryKey: ['dashboard-company', user?.company_id],
-    queryFn: () => base44.entities.Company.filter({ id: user?.company_id, is_deleted: false }).then(r => r[0]),
-    enabled: !!user?.company_id,
+    queryKey: ['dashboard-company', companyId],
+    queryFn: () => base44.entities.Company.list('-created_date', 1).then(r => r[0]),
+    enabled: !!companyId,
   });
 
   // Count jobs this month

@@ -17,11 +17,12 @@ const emptyForm = {
   year_built: '',
 };
 
-export default function PropertySelector({ value, onChange, jobId }) {
-  const { user } = useAuth();
+export default function PropertySelector({ value, onChange, jobId, companyId: companyIdProp }) {
+  const { userProfile } = useAuth();
   const queryClient = useQueryClient();
 
-  const companyId = user?.company_id;
+  // Accept companyId as prop (from NewJob which resolves it), or fall back to userProfile
+  const companyId = companyIdProp || userProfile?.company_id;
 
   const [mode, setMode] = useState('select');
   const [search, setSearch] = useState('');
