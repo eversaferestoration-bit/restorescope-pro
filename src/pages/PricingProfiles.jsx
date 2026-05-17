@@ -202,10 +202,14 @@ function NewProfileModal({ companyId, onClose }) {
       console.log('[NewProfileModal] creating profile with:', data);
       return base44.entities.PricingProfile.create(data);
     },
-    onSuccess: (result) => {
+    onSuccess: async (result) => {
       console.log('[NewProfileModal] created profile:', result);
-      qc.invalidateQueries({ queryKey: ['pricing-profiles', companyId] });
+      // Invalidate and await refetch to ensure list is updated before closing
+      await qc.invalidateQueries({ queryKey: ['pricing-profiles', companyId] });
+      await qc.refetchQueries({ queryKey: ['pricing-profiles', companyId] });
       toast({ title: 'Pricing profile created' });
+      setName('');
+      setDesc('');
       onClose();
     },
     onError: (err) => {

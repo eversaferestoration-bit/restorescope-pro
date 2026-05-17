@@ -109,6 +109,7 @@ export default function JobRooms({ job }) {
   const addMutation = useMutation({
     mutationFn: (data) => {
       console.log('[JobRooms] createRoom payload:', data);
+      console.log('[JobRooms] job object:', { id: job.id, company_id: job.company_id, job_number: job.job_number });
       return base44.functions.invoke('createRoom', data);
     },
     onSuccess: (res) => {
@@ -121,6 +122,8 @@ export default function JobRooms({ job }) {
 
     onError: (err) => {
       const msg = err?.response?.data?.message || err?.response?.data?.error || err?.message || 'Failed to add room';
+      const details = err?.response?.data || {};
+      console.error('[JobRooms] Error details:', details);
       toast({ title: 'Error adding room', description: msg, variant: 'destructive' });
     },
   });

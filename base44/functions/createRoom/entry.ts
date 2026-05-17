@@ -14,10 +14,19 @@ Deno.serve(async (req) => {
   let job;
   try {
     job = await base44.asServiceRole.entities.Job.get(job_id);
-  } catch {
+    console.log('[createRoom] Job lookup result:', { id: job?.id, company_id: job?.company_id, is_deleted: job?.is_deleted });
+  } catch (err) {
+    console.log('[createRoom] Job lookup failed:', err.message);
     job = null;
   }
-  if (!job || job.is_deleted) return Response.json({ error: 'Job not found', job_id }, { status: 404 });
+  if (!job) {
+    console.warn('[createRoom] Job not found for job_id:', job_id);
+    return Response.json({ error: 'Job not found', job_id }, { status: 404 });
+  }
+  if (job.is_deleted) {
+    console.warn('[createRoom] Job is deleted:', job_id);
+    return Response.json({ error: 'Job is deleted', job_id }, { status: 410 });
+  }
 
   // Strict company isolation — no role bypasses cross-tenant access
   const userProfiles = await base44.asServiceRole.entities.UserProfile.filter({ user_id: user.id, is_deleted: false });
