@@ -10,7 +10,7 @@ import UpgradeRequiredModal from '@/components/trial/UpgradeRequiredModal';
 import { ArrowLeft, ArrowRight, Check, Save } from 'lucide-react';
 import InsuredSelector from '@/components/job/InsuredSelector';
 import PropertySelector from '@/components/job/PropertySelector';
-import UserSelector from '@/components/job/UserSelector';
+import AssignmentStep from '@/components/job/AssignmentStep';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 
@@ -162,8 +162,11 @@ export default function NewJob() {
 
   const [insured, setInsured] = useState(null);
   const [property, setProperty] = useState(null);
-  const [assignedManagerId, setAssignedManagerId] = useState('');
-  const [assignedEstimatorId, setAssignedEstimatorId] = useState('');
+  const [assignment, setAssignment] = useState({
+    pmName: '', pmEmail: '', pmPhone: '',
+    estimatorName: '', estimatorEmail: '', estimatorPhone: '',
+    technicianNames: [],
+  });
 
   const set = (key) => (eventOrValue) => {
     const value = eventOrValue?.target?.value ?? eventOrValue;
@@ -233,8 +236,13 @@ export default function NewJob() {
         insured_id: insured.id,
         property_id: property.id,
         claim_id: null,
-        assigned_manager_id: assignedManagerId || null,
-        assigned_estimator_id: assignedEstimatorId || null,
+        project_manager_name: assignment.pmName || null,
+        project_manager_email: assignment.pmEmail || null,
+        project_manager_phone: assignment.pmPhone || null,
+        estimator_name: assignment.estimatorName || null,
+        estimator_email: assignment.estimatorEmail || null,
+        estimator_phone: assignment.estimatorPhone || null,
+        assigned_technician_names: assignment.technicianNames?.length ? assignment.technicianNames : null,
         company_id: companyId,
         created_by: user.email || user.id || null,
         is_deleted: false,
@@ -446,13 +454,7 @@ export default function NewJob() {
       )}
 
       {step === 2 && (
-        <div className="bg-card rounded-xl border border-border p-5 space-y-4">
-          <h2 className="text-sm font-semibold font-display text-muted-foreground uppercase tracking-wide">
-            Assign Team
-          </h2>
-          <UserSelector label="Project Manager" value={assignedManagerId} onChange={setAssignedManagerId} />
-          <UserSelector label="Estimator" value={assignedEstimatorId} onChange={setAssignedEstimatorId} />
-        </div>
+        <AssignmentStep assignment={assignment} onChange={setAssignment} />
       )}
 
       {step === 3 && (
@@ -495,6 +497,30 @@ export default function NewJob() {
               </span>
             </div>
           </div>
+
+          {(assignment.pmName || assignment.estimatorName || assignment.technicianNames?.length > 0) && (
+            <div className="bg-card rounded-xl border border-border p-5 space-y-2">
+              <h2 className="text-sm font-semibold font-display">Assignment</h2>
+              {assignment.pmName && (
+                <div className="flex justify-between">
+                  <span className="text-xs text-muted-foreground">Project Manager</span>
+                  <span className="text-sm font-medium">{assignment.pmName}</span>
+                </div>
+              )}
+              {assignment.estimatorName && (
+                <div className="flex justify-between">
+                  <span className="text-xs text-muted-foreground">Estimator</span>
+                  <span className="text-sm font-medium">{assignment.estimatorName}</span>
+                </div>
+              )}
+              {assignment.technicianNames?.length > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-xs text-muted-foreground">Technicians</span>
+                  <span className="text-sm font-medium text-right">{assignment.technicianNames.join(', ')}</span>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 

@@ -53,7 +53,7 @@ export default function JobDetail() {
   const { jobId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { userProfile } = useAuth();
+  const { user, userProfile } = useAuth();
 
   const tabFromUrl = new URLSearchParams(location.search).get('tab') || 'overview';
   const [activeTab, setActiveTab] = useState(tabFromUrl);
@@ -67,21 +67,29 @@ export default function JobDetail() {
   const { data: job, isLoading, isError } = useQuery({
     queryKey: ['job', jobId],
     enabled: !!jobId,
-    retry: 1,
+    retry: 2,
+    staleTime: 30 * 1000,
     queryFn: async () => {
       console.log('[JobDetail] Loading job, route param jobId:', jobId);
 
       let found = null;
+
+      // Try direct id lookup first
       try {
         found = await base44.entities.Job.get(jobId);
+        if (found?.is_deleted) found = null;
       } catch {
         found = null;
       }
 
-      // Fallback: route param might be a job_number slug instead of a DB id
-      if (!found || found.is_deleted) {
-        const results = await base44.entities.Job.filter({ job_number: jobId, is_deleted: false });
-        found = results?.[0] || null;
+      // Fallback: route param might be a job_number
+      if (!found) {
+        try {
+          const results = await base44.entities.Job.filter({ job_number: jobId, is_deleted: false });
+          found = results?.[0] || null;
+        } catch {
+          found = null;
+        }
       }
 
       if (!found) {
@@ -91,24 +99,38 @@ export default function JobDetail() {
 
       console.log('[JobDetail] Loaded job:', { id: found.id, job_number: found.job_number, company_id: found.company_id });
 
-      // Cache for instant re-render on tab switch
-      sessionStorage.setItem(`job_cache_${jobId}`, JSON.stringify(found));
+      // If route param was a job_number, redirect to the real id-based URL
+      if (found.id && found.id !== jobId) {
+        const tab = new URLSearchParams(location.search).get('tab') || 'overview';
+        navigate(`/jobs/${found.id}?tab=${tab}`, { replace: true });
+      }
+
+      // Cache by the real job id
+      sessionStorage.setItem(`job_cache_${found.id}`, JSON.stringify(found));
 
       return found;
     },
   });
 
+  // Only use cache keyed by the real job id (avoid stale job_number-keyed caches)
   const cachedJob = (() => {
     try {
-      return JSON.parse(sessionStorage.getItem(`job_cache_${jobId}`));
+      // Try the current param first (may be real id)
+      const direct = JSON.parse(sessionStorage.getItem(`job_cache_${jobId}`));
+      if (direct?.id) return direct;
+      return null;
     } catch {
       return null;
     }
   })();
 
-  const finalJob = job || cachedJob;
+  // finalJob must have a real DB id — never pass a stale or temporary object to tabs
+  const finalJob = job?.id ? job : (cachedJob?.id ? cachedJob : null);
 
-  if (isLoading && !cachedJob) {
+  // Resolve company_id for child tabs (from job, user profile, or user record)
+  const companyId = finalJob?.company_id || userProfile?.company_id || user?.company_id || '';
+
+  if (isLoading && !finalJob) {
     return (
       <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-4">
         <div className="h-8 w-40 rounded-lg bg-muted animate-pulse" />
@@ -134,6 +156,9 @@ export default function JobDetail() {
   }
 
   const ActiveComponent = TABS.find((t) => t.key === activeTab)?.component;
+
+  // Enrich job with resolved company_id so all child tabs have it
+  const jobForTabs = companyId && !finalJob.company_id ? { ...finalJob, company_id: companyId } : finalJob;
 
   return (
     <div className="flex flex-col min-h-full">
@@ -185,7 +210,7 @@ export default function JobDetail() {
       </div>
 
       <div className="flex-1 p-4 md:p-6 max-w-5xl mx-auto w-full">
-        {ActiveComponent && <ActiveComponent job={finalJob} />}
+        {ActiveComponent && <ActiveComponent job={jobForTabs} />}
       </div>
     </div>
   );

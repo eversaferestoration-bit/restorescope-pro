@@ -57,6 +57,36 @@
     "assigned_estimator_id": {
       "type": "string"
     },
+    "project_manager_name": {
+      "type": "string"
+    },
+    "project_manager_email": {
+      "type": "string"
+    },
+    "project_manager_phone": {
+      "type": "string"
+    },
+    "estimator_name": {
+      "type": "string"
+    },
+    "estimator_email": {
+      "type": "string"
+    },
+    "estimator_phone": {
+      "type": "string"
+    },
+    "assigned_technician_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "assigned_technician_names": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
     "created_by": {
       "type": "string"
     },
