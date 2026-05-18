@@ -56,7 +56,7 @@ export default function JobDetail() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, userProfile } = useAuth();
-  const { companyId: contextCompanyId } = useCompany();
+  const { companyId: contextCompanyId, companyLoading } = useCompany();
 
   const tabFromUrl = new URLSearchParams(location.search).get('tab') || 'overview';
   const [activeTab, setActiveTab] = useState(tabFromUrl);
@@ -69,7 +69,7 @@ export default function JobDetail() {
 
   const { data: job, isLoading, isError } = useQuery({
     queryKey: ['job', jobId],
-    enabled: !!jobId,
+    enabled: !!jobId && !companyLoading,
     retry: 2,
     staleTime: 30 * 1000,
     queryFn: async () => {
@@ -135,7 +135,7 @@ export default function JobDetail() {
   // Resolve company_id — job record is canonical, fall back to CompanyContext then userProfile
   const companyId = finalJob?.company_id || contextCompanyId || userProfile?.company_id || user?.company_id || '';
 
-  if (isLoading && !finalJob) {
+  if (companyLoading || (isLoading && !finalJob)) {
     return (
       <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-4">
         <div className="h-8 w-40 rounded-lg bg-muted animate-pulse" />
