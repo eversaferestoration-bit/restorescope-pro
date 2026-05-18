@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useAuth } from '@/lib/AuthContext';
+import { useCompany } from '@/lib/CompanyContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Building2, Edit, Save, X } from 'lucide-react';
+import { toast } from '@/components/ui/use-toast';
 
 const inputCls =
   'w-full px-3 py-2 rounded-lg border border-input bg-background text-sm';
@@ -16,10 +17,9 @@ const emptyProperty = {
 };
 
 export default function JobProperty({ job }) {
-  const { user } = useAuth();
+  const { companyId } = useCompany();
   const queryClient = useQueryClient();
 
-  const companyId = user?.company_id;
   const propertyId = job?.property_id;
 
   const [editing, setEditing] = useState(false);
@@ -28,14 +28,7 @@ export default function JobProperty({ job }) {
   const { data: property } = useQuery({
     queryKey: ['property', propertyId],
     enabled: !!propertyId,
-    queryFn: async () => {
-      const res = await base44.entities.Property.filter({
-        id: propertyId,
-        company_id: companyId,
-        is_deleted: false,
-      });
-      return res?.[0] || null;
-    },
+    queryFn: () => base44.entities.Property.get(propertyId),
   });
 
   useEffect(() => {
@@ -52,34 +45,30 @@ export default function JobProperty({ job }) {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      if (!companyId) throw new Error('Missing company');
+      if (!companyId) throw new Error('Missing company — complete company setup first.');
+      if (!job?.id) throw new Error('Job not loaded yet.');
 
-      let newPropertyId = propertyId;
-
-      const payload = {
-        ...form,
-        company_id: companyId,
-        is_deleted: false,
-      };
+      const payload = { ...form, company_id: companyId, is_deleted: false };
 
       if (propertyId) {
         await base44.entities.Property.update(propertyId, payload);
       } else {
         const newProperty = await base44.entities.Property.create(payload);
-        newPropertyId = newProperty.id;
-
-        // LINK TO JOB (THIS WAS MISSING)
-        await base44.entities.Job.update(job.id, {
-          property_id: newPropertyId,
+        // Link the new property to the job
+        await base44.functions.invoke('updateJob', {
+          job_id: job.id,
+          updates: { property_id: newProperty.id },
         });
       }
-
-      return newPropertyId;
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['job', job.id] });
-      await queryClient.invalidateQueries({ queryKey: ['property'] });
+      await queryClient.invalidateQueries({ queryKey: ['property', propertyId] });
       setEditing(false);
+      toast({ title: 'Property saved' });
+    },
+    onError: (err) => {
+      toast({ title: 'Failed to save property', description: err?.message || 'Please try again.', variant: 'destructive' });
     },
   });
 
@@ -98,12 +87,16 @@ export default function JobProperty({ job }) {
         <input className={inputCls} placeholder="State" value={form.state} onChange={update('state')} />
         <input className={inputCls} placeholder="ZIP" value={form.zip} onChange={update('zip')} />
 
-        <button
-          onClick={() => saveMutation.mutate()}
-          className="bg-primary text-white px-4 py-2 rounded"
-        >
-          <Save size={14} /> Save
-        </button>
+        <div className="flex gap-2">
+          <button type="button" onClick={() => setEditing(false)} className="px-3 h-9 rounded-lg border text-sm hover:bg-muted transition">Cancel</button>
+          <button
+            onClick={() => saveMutation.mutate()}
+            disabled={saveMutation.isPending}
+            className="inline-flex items-center gap-1.5 px-4 h-9 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition disabled:opacity-60"
+          >
+            <Save size={14} /> {saveMutation.isPending ? 'Saving…' : 'Save'}
+          </button>
+        </div>
       </div>
     );
   }

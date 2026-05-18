@@ -28,8 +28,16 @@ Deno.serve(async (req) => {
   const userProfiles = await base44.asServiceRole.entities.UserProfile.filter({
     user_id: user.id, is_deleted: false,
   });
-  const userCompanyId = userProfiles[0]?.company_id;
-  if (!userCompanyId || userCompanyId !== job.company_id) {
+  // Check all profiles — prefer one matching the job's company_id
+  const matchingProfile = userProfiles.find(p => p.company_id === job.company_id);
+  const userCompanyId = matchingProfile?.company_id
+    || userProfiles.find(p => p.company_id)?.company_id
+    || null;
+
+  // Also allow if user is the job creator (onboarding edge case)
+  const isJobCreator = job.created_by && (job.created_by === user.email || job.created_by === user.id);
+
+  if (!isJobCreator && (!userCompanyId || userCompanyId !== job.company_id)) {
     return Response.json({ error: 'Forbidden', message: 'Access denied: resource belongs to a different company.' }, { status: 403 });
   }
 
