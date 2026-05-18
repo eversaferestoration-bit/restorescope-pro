@@ -96,6 +96,8 @@ export default function JobDetail() {
       }
 
       if (!found) {
+        // Clear any stale sessionStorage cache for this ID so it doesn't keep serving stale data
+        sessionStorage.removeItem(`job_cache_${jobId}`);
         console.warn('[JobDetail] Job not found for param:', jobId);
         return null;
       }
@@ -115,10 +117,10 @@ export default function JobDetail() {
     },
   });
 
-  // Only use cache keyed by the real job id (avoid stale job_number-keyed caches)
+  // Only use cache while the query is still loading (not after it returns null/error)
   const cachedJob = (() => {
+    if (!isLoading) return null; // don't use cache once query has settled
     try {
-      // Try the current param first (may be real id)
       const direct = JSON.parse(sessionStorage.getItem(`job_cache_${jobId}`));
       if (direct?.id) return direct;
       return null;

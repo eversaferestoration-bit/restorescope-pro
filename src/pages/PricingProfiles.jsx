@@ -198,25 +198,30 @@ function NewProfileModal({ companyId, onClose }) {
   const qc = useQueryClient();
   const [name, setName] = useState('');
   const [desc, setDesc] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
 
   const createMutation = useMutation({
-    mutationFn: (data) => {
+    mutationFn: async (data) => {
+      if (!data.company_id) throw new Error('Company not resolved — please refresh and try again.');
       console.log('[NewProfileModal] creating profile with:', data);
-      return base44.entities.PricingProfile.create(data);
+      const result = await base44.entities.PricingProfile.create(data);
+      if (!result?.id) throw new Error('Profile was not saved — server returned no ID.');
+      return result;
     },
     onSuccess: async (result) => {
       console.log('[NewProfileModal] created profile:', result);
-      // Invalidate and await refetch to ensure list is updated before closing
       await qc.invalidateQueries({ queryKey: ['pricing-profiles', companyId] });
       await qc.refetchQueries({ queryKey: ['pricing-profiles', companyId] });
       toast({ title: 'Pricing profile created' });
       setName('');
       setDesc('');
+      setErrorMsg('');
       onClose();
     },
     onError: (err) => {
-      console.error('[NewProfileModal] create error:', err);
-      toast({ title: 'Failed to create profile', description: err?.message || 'Please try again.', variant: 'destructive' });
+      const msg = err?.response?.data?.message || err?.response?.data?.error || err?.message || 'Failed to create profile. Please try again.';
+      console.error('[NewProfileModal] create error:', err, msg);
+      setErrorMsg(msg);
     },
   });
 
@@ -230,18 +235,24 @@ function NewProfileModal({ companyId, onClose }) {
         <div className="space-y-3">
           <div>
             <label className="text-xs font-medium">Profile Name *</label>
-            <input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Standard Water Loss" />
+            <input className={inputCls} value={name} onChange={(e) => { setName(e.target.value); setErrorMsg(''); }} placeholder="e.g. Standard Water Loss" />
           </div>
           <div>
             <label className="text-xs font-medium">Description</label>
             <input className={inputCls} value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="Optional description…" />
           </div>
+          {!companyId && (
+            <p className="text-xs text-destructive">⚠ Company not detected. Please refresh the page.</p>
+          )}
+          {errorMsg && (
+            <p className="text-xs text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2">{errorMsg}</p>
+          )}
         </div>
         <div className="flex gap-2 justify-end">
           <button onClick={onClose} className="px-3 h-9 rounded-lg border text-sm hover:bg-muted transition">Cancel</button>
           <button
-            onClick={() => createMutation.mutate({ company_id: companyId, name, description: desc, line_items: [], ...DEFAULT_MODIFIERS, is_deleted: false })}
-            disabled={!name.trim() || createMutation.isPending}
+            onClick={() => createMutation.mutate({ company_id: companyId, name: name.trim(), description: desc.trim() || undefined, line_items: [], ...DEFAULT_MODIFIERS, is_deleted: false })}
+            disabled={!name.trim() || !companyId || createMutation.isPending}
             className="px-4 h-9 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition disabled:opacity-60"
           >
             {createMutation.isPending ? 'Creating…' : 'Create'}
@@ -283,20 +294,30 @@ export default function PricingProfiles() {
     enabled: !!companyId,
   });
 
-  // Auto-create default profile if none exist
-  const autoCreatedRef = useRef(false);
+  // Auto-create default profile if none exist — guarded by ref keyed to companyId
+  const autoCreatedRef = useRef(null);
   const autoCreateMutation = useMutation({
-    mutationFn: (data) => base44.entities.PricingProfile.create(data),
+    mutationFn: async (data) => {
+      if (!data.company_id) throw new Error('Missing company_id for auto-create');
+      const result = await base44.entities.PricingProfile.create(data);
+      if (!result?.id) throw new Error('Auto-create returned no ID');
+      return result;
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['pricing-profiles', companyId] });
       toast({ title: 'Default pricing profile created' });
     },
+    onError: (err) => {
+      console.error('[PricingProfiles] Auto-create failed:', err?.message);
+      autoCreatedRef.current = null; // allow retry on next render
+    },
   });
 
   useEffect(() => {
-    if (!isLoading && profiles.length === 0 && companyId && !autoCreatedRef.current) {
-      autoCreatedRef.current = true;
-      console.log('[PricingProfiles] No profiles found, auto-creating default...');
+    // Only auto-create once per companyId, and only after loading finishes
+    if (!isLoading && profiles.length === 0 && companyId && autoCreatedRef.current !== companyId) {
+      autoCreatedRef.current = companyId;
+      console.log('[PricingProfiles] No profiles found, auto-creating default for company:', companyId);
       autoCreateMutation.mutate({ ...DEFAULT_PROFILE_DATA, company_id: companyId });
     }
   }, [isLoading, profiles.length, companyId]);
@@ -321,6 +342,14 @@ export default function PricingProfiles() {
       toast({ title: 'Default profile updated' });
     },
   });
+
+  if (companyLoading) {
+    return (
+      <div className="p-4 md:p-6 max-w-4xl mx-auto">
+        <div className="space-y-2">{[1, 2].map((i) => <div key={i} className="h-16 rounded-xl bg-muted animate-pulse" />)}</div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto">
