@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
+import { useCompany } from '@/lib/CompanyContext';
 import { Plus, Trash2, Save, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
 import LoadingSkeleton from '@/components/ui/LoadingSkeleton';
 import { toast } from '@/components/ui/use-toast';
@@ -82,14 +83,19 @@ function RoomCard({ room, obsCount, onDelete }) {
 }
 
 export default function JobRooms({ job }) {
-  const { user, userProfile } = useAuth();
+  const { user } = useAuth();
+  const { companyId: contextCompanyId } = useCompany();
   const qc = useQueryClient();
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState({ name: '', room_type: '', floor_level: '', size_sqft: '', ceiling_height_ft: '', status: '', notes: '' });
 
-  // Guard: job must have an id (any non-empty string from the DB) and a company_id
-  const jobReady = !!job?.id && !!job?.company_id;
-  console.log('[JobRooms] job.id:', job?.id, '| company_id:', job?.company_id, '| jobReady:', jobReady);
+  // Use company_id from job record, fall back to context
+  const resolvedCompanyId = job?.company_id || contextCompanyId;
+
+  // Guard: job must have a real DB id and a company_id
+  const jobReady = !!job?.id && !!resolvedCompanyId;
+
+  console.log('[JobRooms] job.id:', job?.id, '| job.company_id:', job?.company_id, '| contextCompanyId:', contextCompanyId, '| resolvedCompanyId:', resolvedCompanyId, '| jobReady:', jobReady);
 
   const { data: rooms = [], isLoading } = useQuery({
     queryKey: ['rooms', job.id],
@@ -157,8 +163,22 @@ export default function JobRooms({ job }) {
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            if (!jobReady) { toast({ title: 'Job not ready', description: 'Please wait for the job to finish loading.', variant: 'destructive' }); return; }
-            addMutation.mutate({ job_id: job.id, name: form.name, room_type: form.room_type || undefined, floor_level: form.floor_level || undefined, size_sqft: form.size_sqft ? Number(form.size_sqft) : undefined, ceiling_height_ft: form.ceiling_height_ft ? Number(form.ceiling_height_ft) : undefined, status: form.status || undefined, notes: form.notes || undefined });
+            if (!jobReady) {
+              toast({ title: 'Job not ready', description: `Job ID: ${job?.id || 'missing'} | Company: ${resolvedCompanyId || 'missing'}`, variant: 'destructive' });
+              return;
+            }
+            const payload = {
+              job_id: job.id,
+              name: form.name,
+              room_type: form.room_type || undefined,
+              floor_level: form.floor_level || undefined,
+              size_sqft: form.size_sqft ? Number(form.size_sqft) : undefined,
+              ceiling_height_ft: form.ceiling_height_ft ? Number(form.ceiling_height_ft) : undefined,
+              status: form.status || undefined,
+              notes: form.notes || undefined,
+            };
+            console.log('[JobRooms] Submit payload:', payload);
+            addMutation.mutate(payload);
           }}
           className="bg-card rounded-xl border border-primary/40 p-4 grid grid-cols-2 gap-3"
         >

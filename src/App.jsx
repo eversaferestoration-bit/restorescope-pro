@@ -4,6 +4,7 @@ import { queryClientInstance } from '@/lib/query-client';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import PageNotFound from '@/lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
+import { CompanyProvider } from '@/lib/CompanyContext';
 import { DemoProvider } from '@/lib/DemoContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import ProtectedRoute from '@/lib/ProtectedRoute';
@@ -296,6 +297,7 @@ function AuthenticatedRoutes() {
 export default function App() {
   return (
     <AuthProvider>
+      <CompanyProvider>
       <DemoProvider>
         <QueryClientProvider client={queryClientInstance}>
           <Router>
@@ -304,6 +306,7 @@ export default function App() {
           <Toaster />
         </QueryClientProvider>
       </DemoProvider>
+      </CompanyProvider>
     </AuthProvider>
   );
 }

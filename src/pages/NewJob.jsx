@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
+import { useCompany } from '@/lib/CompanyContext';
 import { logAction } from '@/lib/auditLog';
 import UpgradeNudge from '@/components/trial/UpgradeNudge';
 import { useUpgradeTrigger } from '@/hooks/useUpgradeTrigger';
@@ -83,63 +84,10 @@ function cleanPayload(data) {
 
 export default function NewJob() {
   const navigate = useNavigate();
-  const { user, userProfile, refreshUserProfile } = useAuth();
-  const [resolvedCompanyId, setResolvedCompanyId] = useState(null);
-  const [companyLoading, setCompanyLoading] = useState(true);
-  const companyId = resolvedCompanyId;
+  const { user, userProfile } = useAuth();
+  const { companyId, companyLoading } = useCompany();
   const nudge = useUpgradeTrigger({ feature: 'estimate', checkLimits: true });
   const { isBlockedByExpiredBeta } = useBetaAccess();
-
-  // Resolve companyId — use userProfile first, then backfill from DB if missing
-  useEffect(() => {
-    let cancelled = false;
-    async function resolve() {
-      setCompanyLoading(true);
-      try {
-        // Fast path: userProfile already has company_id
-        if (userProfile?.company_id) {
-          if (!cancelled) { setResolvedCompanyId(userProfile.company_id); setCompanyLoading(false); }
-          return;
-        }
-        // Slow path: look up UserProfile from DB
-        if (user?.id) {
-          const profiles = await base44.entities.UserProfile.filter(
-            { user_id: user.id, is_deleted: false }, '-created_date', 1
-          ).catch(() => []);
-          const profile = profiles?.[0];
-          if (profile?.company_id) {
-            if (!cancelled) setResolvedCompanyId(profile.company_id);
-            await refreshUserProfile().catch(() => null);
-            return;
-          }
-          // Last resort: find company by creator email
-          if (user?.email) {
-            const companies = await base44.entities.Company.filter(
-              { created_by: user.email, is_deleted: false }, '-created_date', 1
-            ).catch(() => []);
-            const company = companies?.[0];
-            if (company?.id && profile?.id) {
-              await base44.entities.UserProfile.update(profile.id, { company_id: company.id }).catch(() => null);
-              await refreshUserProfile().catch(() => null);
-              if (!cancelled) setResolvedCompanyId(company.id);
-            }
-          }
-        }
-      } finally {
-        if (!cancelled) setCompanyLoading(false);
-      }
-    }
-    resolve();
-    return () => { cancelled = true; };
-  }, [user?.id, userProfile?.company_id]);
-
-  // Sync when userProfile refreshes
-  useEffect(() => {
-    if (userProfile?.company_id) {
-      setResolvedCompanyId(userProfile.company_id);
-      setCompanyLoading(false);
-    }
-  }, [userProfile?.company_id]);
 
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);

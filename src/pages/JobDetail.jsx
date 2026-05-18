@@ -5,8 +5,10 @@ import { ArrowLeft, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/AuthContext';
+import { useCompany } from '@/lib/CompanyContext';
 import { toast } from '@/components/ui/use-toast';
 
+import TenantDebugPanel from '@/components/debug/TenantDebugPanel';
 import JobOverview from '@/components/job/tabs/JobOverview';
 import JobInsuredClaim from '@/components/job/tabs/JobInsuredClaim';
 import JobProperty from '@/components/job/tabs/JobProperty';
@@ -54,6 +56,7 @@ export default function JobDetail() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, userProfile } = useAuth();
+  const { companyId: contextCompanyId } = useCompany();
 
   const tabFromUrl = new URLSearchParams(location.search).get('tab') || 'overview';
   const [activeTab, setActiveTab] = useState(tabFromUrl);
@@ -127,8 +130,8 @@ export default function JobDetail() {
   // finalJob must have a real DB id — never pass a stale or temporary object to tabs
   const finalJob = job?.id ? job : (cachedJob?.id ? cachedJob : null);
 
-  // Resolve company_id for child tabs (from job, user profile, or user record)
-  const companyId = finalJob?.company_id || userProfile?.company_id || user?.company_id || '';
+  // Resolve company_id — job record is canonical, fall back to CompanyContext then userProfile
+  const companyId = finalJob?.company_id || contextCompanyId || userProfile?.company_id || user?.company_id || '';
 
   if (isLoading && !finalJob) {
     return (
@@ -212,6 +215,8 @@ export default function JobDetail() {
       <div className="flex-1 p-4 md:p-6 max-w-5xl mx-auto w-full">
         {ActiveComponent && <ActiveComponent job={jobForTabs} />}
       </div>
+
+      <TenantDebugPanel job={jobForTabs} />
     </div>
   );
 }

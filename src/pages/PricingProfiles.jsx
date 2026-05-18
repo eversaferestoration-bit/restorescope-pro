@@ -2,7 +2,9 @@ import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
+import { useCompany } from '@/lib/CompanyContext';
 import { toast } from '@/components/ui/use-toast';
+import TenantDebugPanel from '@/components/debug/TenantDebugPanel';
 import { Tag, Plus, Trash2, ChevronDown, ChevronUp, Star, Save, X } from 'lucide-react';
 
 const inputCls = 'w-full h-9 px-3 rounded-lg border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring';
@@ -261,13 +263,14 @@ const DEFAULT_PROFILE_DATA = {
 
 export default function PricingProfiles() {
   const { user, userProfile } = useAuth();
+  const { companyId: contextCompanyId, activeCompany, companyLoading } = useCompany();
   const qc = useQueryClient();
   const [showNew, setShowNew] = useState(false);
 
-  // Resolve companyId from user.company_id (stamped by completeSignup) or userProfile
-  const companyId = user?.company_id || userProfile?.company_id || '';
+  // Canonical companyId — CompanyContext is the single source of truth
+  const companyId = contextCompanyId || user?.company_id || userProfile?.company_id || '';
 
-  console.log('[PricingProfiles] companyId:', companyId, '| user.company_id:', user?.company_id, '| userProfile.company_id:', userProfile?.company_id);
+  console.log('[PricingProfiles] companyId:', companyId, '| activeCompany:', activeCompany?.id, '| contextCompanyId:', contextCompanyId);
 
   const { data: profiles = [], isLoading } = useQuery({
     queryKey: ['pricing-profiles', companyId],
@@ -355,6 +358,8 @@ export default function PricingProfiles() {
       )}
 
       {showNew && <NewProfileModal companyId={companyId} onClose={() => setShowNew(false)} />}
+
+      <TenantDebugPanel />
     </div>
   );
 }
