@@ -1,0 +1,68 @@
+{
+  "name": "DamageScan",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string"
+    },
+    "customer_name": {
+      "type": "string"
+    },
+    "property_address": {
+      "type": "string"
+    },
+    "uploaded_photos": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "detected_damage_types": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "urgency_level": {
+      "type": "string",
+      "enum": [
+        "emergency",
+        "high",
+        "medium",
+        "low"
+      ],
+      "default": "medium"
+    },
+    "confidence_score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "ai_summary": {
+      "type": "string"
+    },
+    "recommended_next_steps": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "created_date": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "analyzed",
+        "lead_created",
+        "inspection_scheduled"
+      ],
+      "default": "pending"
+    }
+  },
+  "required": [
+    "company_id"
+  ]
+}

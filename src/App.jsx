@@ -50,6 +50,7 @@ import RRLeadCapture from '@/pages/restorereach/RRLeadCapture';
 import RRServiceAreas from '@/pages/restorereach/RRServiceAreas';
 import RRVisibilityScore from '@/pages/restorereach/RRVisibilityScore';
 import RRSettings from '@/pages/restorereach/RRSettings';
+import RRAIDamageScan from '@/pages/restorereach/RRAIDamageScan';
 
 function FullScreenLoader({ message = 'Loading RestoreScope Pro...' }) {
   return (
@@ -310,6 +311,7 @@ function AuthenticatedRoutes() {
         <Route path="leads" element={<RRLeadCapture />} />
         <Route path="areas" element={<RRServiceAreas />} />
         <Route path="visibility" element={<RRVisibilityScore />} />
+        <Route path="scan" element={<RRAIDamageScan />} />
         <Route path="settings" element={<RRSettings />} />
       </Route>
 
