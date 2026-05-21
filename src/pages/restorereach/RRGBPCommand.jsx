@@ -17,6 +17,7 @@ export default function RRGBPCommand() {
     queryFn: () => base44.entities.RRCompanyProfile.filter({ created_by: user?.email }),
   });
   const profile = profileArr[0];
+  const companyId = profile?.id || user?.email || 'default';
 
   const { data: areas = [] } = useQuery({
     queryKey: ['rr-areas'],
@@ -25,49 +26,35 @@ export default function RRGBPCommand() {
 
   const { data: gbpPosts = [] } = useQuery({
     queryKey: ['gbp-posts'],
-    queryFn: () => base44.entities.GBPPost.list('-created_date', 200),
+    queryFn: () => base44.entities.GBPPost.list('-created_date', 100),
   });
 
-  const companyId = profile?.id || user?.email || 'default';
-
   return (
-    <div className="p-5 md:p-7 max-w-6xl mx-auto space-y-6">
+    <div className="p-5 md:p-7 max-w-6xl mx-auto space-y-8">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-white flex items-center gap-2">
           <Building2 size={22} style={{ color: '#e05a1c' }} /> GBP Command Center
         </h1>
         <p className="text-sm mt-0.5" style={{ color: '#7ba3c8' }}>
-          Manage, optimize, and grow your Google Business Profile
+          Manage your Google Business Profile, generate posts, and monitor suspension risk
         </p>
       </div>
 
-      {/* Row 1: Profile Settings + Health Checklist */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        <div className="lg:col-span-2">
-          <GBPProfileSettings
-            profile={profile}
-            companyId={companyId}
-            userEmail={user?.email}
-          />
-        </div>
-        <div>
-          <GBPHealthChecklist
-            profile={profile}
-            serviceAreas={areas}
-            postsCount={gbpPosts.length}
-          />
-        </div>
+      {/* 2-col: Profile Settings + Health Checklist */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <GBPProfileSettings profile={profile} user={user} />
+        <GBPHealthChecklist profile={profile} gbpPosts={gbpPosts.length} areas={areas} />
       </div>
 
-      {/* Row 2: AI Post Generator */}
+      {/* AI Post Generator */}
       <GBPPostGenerator profile={profile} companyId={companyId} />
 
-      {/* Row 3: Post Calendar */}
+      {/* Post Calendar */}
       <GBPPostCalendar companyId={companyId} />
 
-      {/* Row 4: Suspension Risk Scanner */}
-      <GBPSuspensionScanner profile={profile} />
+      {/* Suspension Risk Scanner */}
+      <GBPSuspensionScanner profile={profile} gbpPosts={gbpPosts.length} areas={areas} />
     </div>
   );
 }
