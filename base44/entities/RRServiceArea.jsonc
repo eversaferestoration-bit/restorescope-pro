@@ -35,6 +35,12 @@
         "type": "string"
       }
     },
+    "target_keywords": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
     "seo_status": {
       "type": "string",
       "enum": [
@@ -47,6 +53,41 @@
     "last_content_created": {
       "type": "string",
       "format": "date-time"
+    },
+    "generated_pages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "service": {
+            "type": "string"
+          },
+          "h1": {
+            "type": "string"
+          },
+          "meta_title": {
+            "type": "string"
+          },
+          "meta_description": {
+            "type": "string"
+          },
+          "intro": {
+            "type": "string"
+          },
+          "faq": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "cta": {
+            "type": "string"
+          },
+          "generated_at": {
+            "type": "string"
+          }
+        }
+      }
     }
   },
   "required": [
