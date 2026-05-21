@@ -4,11 +4,12 @@ import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { useCompany } from '@/lib/CompanyContext';
 import { logAction } from '@/lib/auditLog';
+import { withRetry } from '@/lib/withRetry';
 import UpgradeNudge from '@/components/trial/UpgradeNudge';
 import { useUpgradeTrigger } from '@/hooks/useUpgradeTrigger';
 import { useBetaAccess } from '@/hooks/useBetaAccess';
 import UpgradeRequiredModal from '@/components/trial/UpgradeRequiredModal';
-import { ArrowLeft, ArrowRight, Check, Save } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Save, AlertCircle } from 'lucide-react';
 import InsuredSelector from '@/components/job/InsuredSelector';
 import PropertySelector from '@/components/job/PropertySelector';
 import AssignmentStep from '@/components/job/AssignmentStep';
@@ -91,8 +92,10 @@ export default function NewJob() {
 
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [retrying, setRetrying] = useState(false);
   const [errors, setErrors] = useState({});
   const [submitError, setSubmitError] = useState('');
+  const [retryCount, setRetryCount] = useState(0);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   const [form, setForm] = useState({
@@ -165,6 +168,8 @@ export default function NewJob() {
 
     setSaving(true);
     setSubmitError('');
+    setRetrying(false);
+    setRetryCount(0);
 
     try {
       if (!companyId) {
@@ -196,7 +201,20 @@ export default function NewJob() {
         is_deleted: false,
       };
 
-      const job = await base44.entities.Job.create(jobPayload);
+      // Submit with automatic retry on network errors
+      const job = await withRetry(
+        () => base44.entities.Job.create(jobPayload),
+        {
+          maxRetries: 2,
+          delay: 1000,
+          backoff: 2,
+          onRetry: (attempt) => {
+            setRetrying(true);
+            setRetryCount(attempt);
+            setSubmitError(`Network error. Retrying (${attempt}/2)...`);
+          },
+        }
+      );
 
       await logAction(user, 'Job', job.id, 'created', `Job ${job.job_number || job.id} created`, {
         loss_type: job.loss_type,
@@ -218,9 +236,15 @@ export default function NewJob() {
 
       navigate(`/jobs/${job.id}?tab=overview`);
     } catch (error) {
-      setSubmitError(error?.message || 'Failed to create job. Please try again.');
+      const errorMsg = error?.message || 'Failed to create job. Please try again.';
+      setSubmitError(errorMsg);
       setSaving(false);
+      setRetrying(false);
     }
+  };
+
+  const handleRetry = () => {
+    handleSubmit();
   };
 
   if (companyLoading) {
@@ -473,8 +497,14 @@ export default function NewJob() {
       )}
 
       {submitError && (
-        <div className="mt-4 px-4 py-2.5 bg-destructive/10 border border-destructive/30 rounded-lg text-sm text-destructive">
-          {submitError}
+        <div className="mt-4 px-4 py-2.5 bg-destructive/10 border border-destructive/30 rounded-lg text-sm text-destructive flex items-start gap-2">
+          <AlertCircle size={16} className="shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p>{submitError}</p>
+            {retrying && (
+              <p className="text-xs mt-1 opacity-75">If this continues, check your internet and try again.</p>
+            )}
+          </div>
         </div>
       )}
 
@@ -486,7 +516,8 @@ export default function NewJob() {
         <button
           type="button"
           onClick={() => (step === 0 ? navigate('/jobs') : back())}
-          className="px-4 min-h-touch rounded-lg border border-border text-sm font-medium hover:bg-muted transition"
+          disabled={saving}
+          className="px-4 min-h-touch rounded-lg border border-border text-sm font-medium hover:bg-muted transition disabled:opacity-50"
         >
           {step === 0 ? 'Cancel' : 'Back'}
         </button>
@@ -495,19 +526,31 @@ export default function NewJob() {
           <button
             type="button"
             onClick={next}
-            className="inline-flex items-center gap-2 px-5 min-h-touch rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition"
+            disabled={saving}
+            className="inline-flex items-center gap-2 px-5 min-h-touch rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition disabled:opacity-60"
           >
             Next <ArrowRight size={15} />
           </button>
         ) : (
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={saving}
-            className="inline-flex items-center gap-2 px-5 min-h-touch rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition disabled:opacity-60"
-          >
-            <Save size={15} /> {saving ? 'Creating…' : 'Create Job'}
-          </button>
+          <div className="flex gap-2">
+            {submitError && !saving && (
+              <button
+                type="button"
+                onClick={handleRetry}
+                className="inline-flex items-center gap-2 px-5 min-h-touch rounded-lg bg-destructive text-white text-sm font-semibold hover:bg-destructive/90 transition"
+              >
+                Retry
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={saving}
+              className="inline-flex items-center gap-2 px-5 min-h-touch rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition disabled:opacity-60"
+            >
+              <Save size={15} /> {saving ? (retrying ? 'Retrying…' : 'Creating…') : 'Create Job'}
+            </button>
+          </div>
         )}
       </div>
     </div>
