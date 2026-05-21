@@ -92,9 +92,18 @@ export default function LeadCaptureForm({ companyId, onCreated }) {
     mutationFn: (data) => base44.entities.EmergencyLead.create(data),
     onSuccess: (lead) => {
       qc.invalidateQueries({ queryKey: ['emergency-leads'] });
+      qc.invalidateQueries({ queryKey: ['leads-count'] });
+      qc.invalidateQueries({ queryKey: ['dashboard-metrics'] });
       toast({ title: '✅ Lead captured successfully!' });
       setForm({ ...DEFAULT_FORM });
       if (onCreated) onCreated(lead);
+    },
+    onError: (error) => {
+      toast({
+        title: '❌ Failed to capture lead',
+        description: error?.message || 'Please check your connection and try again',
+        variant: 'destructive',
+      });
     },
   });
 
@@ -118,9 +127,13 @@ export default function LeadCaptureForm({ companyId, onCreated }) {
 
   const removePhoto = (idx) => setForm(f => ({ ...f, photos: f.photos.filter((_, i) => i !== idx) }));
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!form.customer_name || !form.phone) {
       toast({ title: 'Customer name and phone are required', variant: 'destructive' });
+      return;
+    }
+    if (!companyId) {
+      toast({ title: 'Company not found', description: 'Please refresh and try again', variant: 'destructive' });
       return;
     }
     createMutation.mutate({

@@ -33,7 +33,16 @@ export default function GBPPostGenerator({ profile, companyId }) {
     mutationFn: (data) => base44.entities.GBPPost.create(data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['gbp-posts', companyId] });
+      qc.invalidateQueries({ queryKey: ['dashboard-metrics'] });
+      qc.invalidateQueries({ queryKey: ['marketing-activity'] });
       toast({ title: '✅ Post saved to calendar' });
+    },
+    onError: (error) => {
+      toast({
+        title: '❌ Failed to save post',
+        description: error?.message || 'Please try again',
+        variant: 'destructive',
+      });
     },
   });
 
@@ -209,13 +218,13 @@ Return ONLY valid JSON (no markdown, no code block) with this exact structure:
               </div>
 
               {/* Save */}
-              <button onClick={handleSave} disabled={savePost.isPending}
+              <button onClick={handleSave} disabled={savePost.isPending || !companyId}
                 className="w-full py-2 rounded-lg text-sm font-semibold text-white hover:opacity-90 transition disabled:opacity-50 flex items-center justify-center gap-2"
-                style={{ background: savePost.isSuccess ? '#10b981' : '#1e2d45' }}>
+                style={{ background: savePost.isSuccess ? '#10b981' : savePost.isError ? '#ef4444' : '#1e2d45' }}>
                 {savePost.isPending
                   ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   : savePost.isSuccess ? <CheckCircle size={14} /> : <Save size={14} />}
-                {savePost.isPending ? 'Saving…' : savePost.isSuccess ? 'Saved!' : 'Save to Post Calendar'}
+                {savePost.isPending ? 'Saving…' : savePost.isSuccess ? 'Saved!' : savePost.isError ? 'Try again' : 'Save to Post Calendar'}
               </button>
             </div>
           )}
