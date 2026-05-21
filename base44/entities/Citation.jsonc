@@ -1,0 +1,70 @@
+{
+  "name": "Citation",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string"
+    },
+    "directory_name": {
+      "type": "string"
+    },
+    "listing_url": {
+      "type": "string"
+    },
+    "business_name": {
+      "type": "string"
+    },
+    "address": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "website": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "consistent",
+        "inconsistent",
+        "missing",
+        "unchecked"
+      ],
+      "default": "unchecked"
+    },
+    "last_checked": {
+      "type": "string",
+      "format": "date"
+    },
+    "consistency_score": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100,
+      "default": 0
+    },
+    "notes": {
+      "type": "string"
+    },
+    "is_deleted": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "company_id",
+    "directory_name"
+  ],
+  "rls": {
+    "create": true,
+    "read": {
+      "company_id": "{{user_company_id}}"
+    },
+    "update": {
+      "company_id": "{{user_company_id}}"
+    },
+    "delete": {
+      "company_id": "{{user_company_id}}"
+    }
+  }
+}

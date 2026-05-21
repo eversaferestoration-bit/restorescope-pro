@@ -52,6 +52,7 @@ import RRVisibilityScore from '@/pages/restorereach/RRVisibilityScore';
 import RRSettings from '@/pages/restorereach/RRSettings';
 import RRAIDamageScan from '@/pages/restorereach/RRAIDamageScan';
 import RRCompetitorTracker from '@/pages/restorereach/RRCompetitorTracker';
+import RRCitationManager from '@/pages/restorereach/RRCitationManager';
 
 function FullScreenLoader({ message = 'Loading RestoreScope Pro...' }) {
   return (
@@ -314,6 +315,7 @@ function AuthenticatedRoutes() {
         <Route path="visibility" element={<RRVisibilityScore />} />
         <Route path="scan" element={<RRAIDamageScan />} />
         <Route path="competitors" element={<RRCompetitorTracker />} />
+        <Route path="citations" element={<RRCitationManager />} />
         <Route path="settings" element={<RRSettings />} />
       </Route>
 
