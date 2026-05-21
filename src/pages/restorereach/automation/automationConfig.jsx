@@ -1,0 +1,116 @@
+export const TRIGGERS = [
+  {
+    key: 'new_lead',
+    label: 'New Lead Captured',
+    icon: '📥',
+    color: '#3b82f6',
+    bg: '#3b82f620',
+    description: 'Fires when an emergency lead is submitted',
+  },
+  {
+    key: 'completed_job',
+    label: 'Job Completed',
+    icon: '✅',
+    color: '#10b981',
+    bg: '#10b98120',
+    description: 'Fires when a job status is marked complete',
+  },
+  {
+    key: 'storm_event_created',
+    label: 'Storm Event Created',
+    icon: '⛈',
+    color: '#8b5cf6',
+    bg: '#8b5cf620',
+    description: 'Fires when a new storm event is logged',
+  },
+  {
+    key: 'review_request_sent',
+    label: 'Review Request Sent',
+    icon: '⭐',
+    color: '#f59e0b',
+    bg: '#f59e0b20',
+    description: 'Fires when a review SMS is dispatched',
+  },
+  {
+    key: 'low_visibility_score',
+    label: 'Low Visibility Score',
+    icon: '📉',
+    color: '#ef4444',
+    bg: '#ef444420',
+    description: 'Fires when visibility score drops below threshold',
+  },
+  {
+    key: 'no_gbp_posts_7days',
+    label: 'No GBP Posts in 7 Days',
+    icon: '🗓',
+    color: '#e05a1c',
+    bg: '#e05a1c20',
+    description: 'Fires when no GBP post exists in the last 7 days',
+  },
+];
+
+export const ACTIONS = [
+  {
+    key: 'generate_gbp_post',
+    label: 'Generate GBP Post',
+    icon: '📝',
+    color: '#3b82f6',
+    bg: '#3b82f620',
+    description: 'AI-generate a Google Business Profile post',
+    params: [{ key: 'service', label: 'Service Type', placeholder: 'Water Damage', required: false }],
+  },
+  {
+    key: 'send_sms',
+    label: 'Send SMS',
+    icon: '💬',
+    color: '#10b981',
+    bg: '#10b98120',
+    description: 'Send an SMS to the lead or contact',
+    params: [{ key: 'message_template', label: 'Message Template', placeholder: 'Hi {name}, thanks for contacting us…', required: true }],
+  },
+  {
+    key: 'create_campaign',
+    label: 'Create Campaign',
+    icon: '🚀',
+    color: '#8b5cf6',
+    bg: '#8b5cf620',
+    description: 'Start a new marketing campaign',
+    params: [
+      { key: 'campaign_name', label: 'Campaign Name', placeholder: 'Storm Response Campaign', required: true },
+      { key: 'campaign_type', label: 'Type', placeholder: 'storm_alert', required: false },
+    ],
+  },
+  {
+    key: 'generate_city_page',
+    label: 'Generate City Page',
+    icon: '📍',
+    color: '#f59e0b',
+    bg: '#f59e0b20',
+    description: 'AI-generate a local SEO landing page',
+    params: [{ key: 'city', label: 'City', placeholder: 'Nashville', required: true }],
+  },
+  {
+    key: 'send_email_alert',
+    label: 'Send Email Alert',
+    icon: '📧',
+    color: '#e05a1c',
+    bg: '#e05a1c20',
+    description: 'Send an internal email notification',
+    params: [
+      { key: 'to_email', label: 'To Email', placeholder: 'owner@company.com', required: true },
+      { key: 'subject', label: 'Subject', placeholder: 'Action Required: New Lead', required: true },
+    ],
+  },
+  {
+    key: 'create_review_request',
+    label: 'Create Review Request',
+    icon: '⭐',
+    color: '#fbbf24',
+    bg: '#fbbf2420',
+    description: 'Auto-queue a review request for the customer',
+    params: [{ key: 'delay_hours', label: 'Delay (hours after trigger)', placeholder: '24', required: false }],
+  },
+];
+
+export const getTrigger = (key) => TRIGGERS.find(t => t.key === key) || { label: key, icon: '⚡', color: '#3a5a7c', bg: '#1e2d45' };
+export const getAction = (key) => ACTIONS.find(a => a.key === key) || { label: key, icon: '⚙️', color: '#3a5a7c', bg: '#1e2d45' };

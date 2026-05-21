@@ -1,7 +1,7 @@
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, Star, Zap, CloudLightning, PhoneCall, MapPin, TrendingUp,
-  Settings, Building2, FileText, ScanLine, Users, Link2
+  Settings, Building2, FileText, ScanLine, Users, Link2, Cpu
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -17,6 +17,7 @@ const NAV = [
   { label: 'Visibility Score', path: '/restorereach/visibility', icon: TrendingUp },
   { label: 'Competitors', path: '/restorereach/competitors', icon: Users },
   { label: 'Citations', path: '/restorereach/citations', icon: Link2 },
+  { label: 'Automation', path: '/restorereach/automation', icon: Cpu },
   { label: 'Settings', path: '/restorereach/settings', icon: Settings },
 ];
 
