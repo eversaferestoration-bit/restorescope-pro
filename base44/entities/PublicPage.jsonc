@@ -1,0 +1,154 @@
+{
+  "name": "PublicPage",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string",
+      "description": "Company ID"
+    },
+    "city": {
+      "type": "string",
+      "description": "City name"
+    },
+    "service": {
+      "type": "string",
+      "enum": [
+        "water_damage",
+        "mold_remediation",
+        "sewage_cleanup",
+        "flood_cleanup",
+        "emergency_drying"
+      ],
+      "description": "Service type"
+    },
+    "slug": {
+      "type": "string",
+      "description": "URL slug (e.g., chicago-water-damage-repair)"
+    },
+    "meta_title": {
+      "type": "string",
+      "description": "SEO page title (50-60 chars)"
+    },
+    "meta_description": {
+      "type": "string",
+      "description": "SEO meta description (150-160 chars)"
+    },
+    "keywords": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Target keywords"
+    },
+    "content": {
+      "type": "object",
+      "properties": {
+        "h1": {
+          "type": "string",
+          "description": "Main heading"
+        },
+        "intro": {
+          "type": "string",
+          "description": "Intro paragraph"
+        },
+        "service_overview": {
+          "type": "string",
+          "description": "Service overview section"
+        },
+        "why_choose_us": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "title": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "process_steps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "step": {
+                "type": "integer"
+              },
+              "title": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "faq": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "question": {
+                "type": "string"
+              },
+              "answer": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "cta_text": {
+          "type": "string",
+          "description": "Call-to-action text"
+        },
+        "cta_button": {
+          "type": "string",
+          "description": "CTA button text"
+        }
+      }
+    },
+    "published": {
+      "type": "boolean",
+      "default": false,
+      "description": "Is page published"
+    },
+    "published_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Publication timestamp"
+    },
+    "last_updated": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last update timestamp"
+    },
+    "is_deleted": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "company_id",
+    "city",
+    "service",
+    "slug",
+    "meta_title",
+    "meta_description",
+    "content"
+  ],
+  "rls": {
+    "create": true,
+    "read": {
+      "company_id": "{{user_company_id}}"
+    },
+    "update": {
+      "company_id": "{{user_company_id}}"
+    },
+    "delete": {
+      "company_id": "{{user_company_id}}"
+    }
+  }
+}

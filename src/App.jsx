@@ -55,6 +55,8 @@ import RRCompetitorTracker from '@/pages/restorereach/RRCompetitorTracker';
 import RRCitationManager from '@/pages/restorereach/RRCitationManager';
 import RRAutomationEngine from '@/pages/restorereach/RRAutomationEngine';
 import RRAnalytics from '@/pages/restorereach/RRAnalytics';
+import RRPublicPages from '@/pages/restorereach/RRPublicPages';
+import PublicLanding from '@/pages/public/PublicLanding';
 
 import CRM from '@/pages/CRM';
 import LeadDetail from '@/pages/LeadDetail';
@@ -354,6 +356,7 @@ function AuthenticatedRoutes() {
         <Route path="storm" element={<RRStormMode />} />
         <Route path="leads" element={<RRLeadCapture />} />
         <Route path="areas" element={<RRServiceAreas />} />
+        <Route path="pages" element={<RRPublicPages />} />
         <Route path="visibility" element={<RRVisibilityScore />} />
         <Route path="scan" element={<RRAIDamageScan />} />
         <Route path="competitors" element={<RRCompetitorTracker />} />
@@ -362,6 +365,9 @@ function AuthenticatedRoutes() {
         <Route path="automation" element={<RRAutomationEngine />} />
         <Route path="settings" element={<RRSettings />} />
       </Route>
+
+      {/* Public Landing Pages */}
+      <Route path="/public/:slug" element={<PublicLanding />} />
 
       <Route path="*" element={<PageNotFound />} />
     </Routes>
