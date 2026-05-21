@@ -1,0 +1,86 @@
+{
+  "name": "Competitor",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string"
+    },
+    "competitor_name": {
+      "type": "string"
+    },
+    "city": {
+      "type": "string"
+    },
+    "website": {
+      "type": "string"
+    },
+    "google_review_count": {
+      "type": "integer",
+      "default": 0
+    },
+    "google_rating": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 5
+    },
+    "estimated_post_frequency": {
+      "type": "string",
+      "enum": [
+        "daily",
+        "weekly",
+        "biweekly",
+        "monthly",
+        "rarely",
+        "unknown"
+      ],
+      "default": "unknown"
+    },
+    "service_categories": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "visibility_score": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100,
+      "default": 0
+    },
+    "strengths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "weaknesses": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "notes": {
+      "type": "string"
+    },
+    "is_deleted": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "company_id",
+    "competitor_name"
+  ],
+  "rls": {
+    "create": true,
+    "read": {
+      "company_id": "{{user_company_id}}"
+    },
+    "update": {
+      "company_id": "{{user_company_id}}"
+    },
+    "delete": {
+      "company_id": "{{user_company_id}}"
+    }
+  }
+}
