@@ -1,5 +1,5 @@
 import { useLocation } from 'react-router-dom';
-import { Droplets, Bell } from 'lucide-react';
+import { Droplets } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import { base44 } from '@/api/base44Client';
 import {
@@ -9,6 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import NotificationDropdown from '@/components/notifications/NotificationDropdown';
 
 const pageTitles = {
   '/dashboard': 'Dashboard',
@@ -52,9 +53,7 @@ export default function TopBar() {
 
       {/* Right actions */}
       <div className="flex items-center gap-2">
-        <button className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
-          <Bell size={17} />
-        </button>
+        <NotificationDropdown />
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
