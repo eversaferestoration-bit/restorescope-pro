@@ -247,11 +247,22 @@
   }
 
   /* Responsive spacing helpers */
-  .p-responsive { @apply p-4 sm:p-6 md:p-8; }
+  .p-responsive { @apply p-4 sm:p-6 md:p-8 lg:p-10; }
   .gap-responsive { @apply gap-4 sm:gap-6 md:gap-8; }
+  .section-padding { @apply px-4 sm:px-6 md:px-8 py-6 sm:py-8 md:py-10; }
 
   /* Grid layouts */
   .grid-responsive { @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-responsive; }
+  .grid-cards { @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6; }
+
+  /* Container sizes */
+  .container-sm { @apply max-w-2xl mx-auto; }
+  .container-md { @apply max-w-4xl mx-auto; }
+  .container-lg { @apply max-w-6xl mx-auto; }
+
+  /* Card and elevation helpers */
+  .card-hover { @apply transition-all duration-200 hover:shadow-lg hover:scale-[1.02]; }
+  .card-interactive-alt { @apply bg-card text-card-foreground rounded-lg border border-border/50 transition-all cursor-pointer hover:border-primary/30 hover:shadow-md; }
 
   /* Focus ring polish */
   .focus-ring {

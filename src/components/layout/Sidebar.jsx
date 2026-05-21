@@ -1,79 +1,117 @@
-import { Link, useLocation } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
+import { ChevronDown, X } from 'lucide-react';
+import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { primaryNavItems, secondaryNavItems, settingsNavItems } from './navItems';
-import { Droplets } from 'lucide-react';
-import { useAuth } from '@/lib/AuthContext';
 
-function NavItem({ item, collapsed }) {
-  const location = useLocation();
-  const isActive = location.pathname === item.path ||
-    (item.path !== '/dashboard' && location.pathname.startsWith(item.path));
-  const Icon = item.icon;
+const MAIN_NAV = [
+  { label: 'Dashboard', icon: '📊', path: '/dashboard' },
+  { label: 'Jobs', icon: '🛠️', path: '/jobs' },
+  { label: 'CRM', icon: '👥', path: '/crm' },
+  { label: 'RestoreReach AI', icon: '✨', path: '/restorereach' },
+];
+
+const SECONDARY_NAV = [
+  { label: 'Settings', icon: '⚙️', path: '/settings' },
+  { label: 'Users', icon: '👨‍💼', path: '/users' },
+  { label: 'Billing', icon: '💳', path: '/billing' },
+];
+
+export default function Sidebar({ isOpen, onClose }) {
+  const [expandedGroup, setExpandedGroup] = useState(null);
 
   return (
-    <Link
-      to={item.path}
-      className={cn(
-        'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150',
-        isActive
-          ? 'bg-primary text-primary-foreground shadow-sm'
-          : 'text-slate-300 hover:bg-white/8 hover:text-white'
+    <>
+      {/* Mobile Backdrop */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-30 lg:hidden"
+          onClick={onClose}
+        />
       )}
-    >
-      <Icon className="w-4.5 h-4.5 shrink-0" size={18} />
-      <span className="truncate">{item.label}</span>
-    </Link>
-  );
-}
 
-function NavSection({ title, items }) {
-  return (
-    <div className="space-y-0.5">
-      {title && (
-        <p className="px-3 py-1 text-xs font-semibold uppercase tracking-wider text-slate-500 mt-4 mb-1">
-          {title}
-        </p>
-      )}
-      {items.map((item) => (
-        <NavItem key={item.path} item={item} />
-      ))}
-    </div>
-  );
-}
-
-export default function Sidebar() {
-  const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
-
-  const filteredSecondary = secondaryNavItems.filter((i) => !i.adminOnly || isAdmin);
-  const filteredSettings = settingsNavItems.filter((i) => !i.adminOnly || isAdmin);
-
-  return (
-    <aside className="hidden lg:flex flex-col w-60 shrink-0 h-screen overflow-y-auto"
-      style={{ background: 'hsl(220, 22%, 13%)' }}>
-      {/* Logo */}
-      <div className="flex items-center gap-2.5 px-4 py-5 border-b"
-        style={{ borderColor: 'hsl(220, 16%, 20%)' }}>
-        <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shrink-0">
-          <Droplets size={16} className="text-white" />
+      {/* Sidebar */}
+      <aside
+        className={cn(
+          'fixed lg:relative inset-y-0 left-0 z-40 w-64 bg-card border-r border-border flex flex-col transition-transform duration-200 lg:translate-x-0',
+          isOpen ? 'translate-x-0' : '-translate-x-full'
+        )}
+      >
+        {/* Header */}
+        <div className="h-16 border-b border-border flex items-center justify-between px-6">
+          <h1 className="text-lg font-bold text-foreground">RestoreScope</h1>
+          <button
+            onClick={onClose}
+            className="lg:hidden p-1 rounded-lg hover:bg-muted transition-colors"
+          >
+            <X size={20} />
+          </button>
         </div>
-        <div>
-          <p className="text-white text-sm font-semibold font-display leading-tight">RestoreScope</p>
-          <p className="text-slate-400 text-xs leading-tight">Pro</p>
+
+        {/* Navigation */}
+        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+          {/* Main Navigation */}
+          <div className="mb-6">
+            <p className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+              Main
+            </p>
+            <div className="space-y-1">
+              {MAIN_NAV.map((item) => (
+                <NavLink
+                  key={item.path}
+                  to={item.path}
+                  onClick={onClose}
+                  className={({ isActive }) =>
+                    cn(
+                      'flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                      isActive
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-foreground/70 hover:text-foreground hover:bg-muted'
+                    )
+                  }
+                >
+                  <span>{item.icon}</span>
+                  <span>{item.label}</span>
+                </NavLink>
+              ))}
+            </div>
+          </div>
+
+          {/* Secondary Navigation */}
+          <div>
+            <p className="px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+              Admin
+            </p>
+            <div className="space-y-1">
+              {SECONDARY_NAV.map((item) => (
+                <NavLink
+                  key={item.path}
+                  to={item.path}
+                  onClick={onClose}
+                  className={({ isActive }) =>
+                    cn(
+                      'flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                      isActive
+                        ? 'bg-primary/10 text-primary'
+                        : 'text-foreground/70 hover:text-foreground hover:bg-muted'
+                    )
+                  }
+                >
+                  <span>{item.icon}</span>
+                  <span>{item.label}</span>
+                </NavLink>
+              ))}
+            </div>
+          </div>
+        </nav>
+
+        {/* Footer */}
+        <div className="border-t border-border p-4 space-y-3">
+          <div className="px-3 text-xs text-muted-foreground">
+            <p className="font-semibold mb-1">Version 1.0</p>
+            <p>Enterprise SaaS Platform</p>
+          </div>
         </div>
-      </div>
-
-      {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5">
-        <NavSection items={primaryNavItems} />
-        <NavSection title="Manage" items={filteredSecondary} />
-        <NavSection title="Account" items={filteredSettings} />
-      </nav>
-
-      {/* Footer */}
-      <div className="px-3 py-4 border-t" style={{ borderColor: 'hsl(220, 16%, 20%)' }}>
-        <p className="text-xs text-slate-500 px-3">RestoreScope Pro v1.0</p>
-      </div>
-    </aside>
+      </aside>
+    </>
   );
 }

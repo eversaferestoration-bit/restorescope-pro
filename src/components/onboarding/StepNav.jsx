@@ -1,24 +1,20 @@
-import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
-export default function StepNav({ onBack, onContinue, continueLabel = 'Continue', disabled = false, loading = false, showBack = true }) {
+export default function StepNav({ onBack, onNext, backLabel = 'Back', nextLabel = 'Next', disableNext = false }) {
   return (
-    <div className={`flex mt-8 ${showBack ? 'justify-between' : 'justify-end'}`}>
-      {showBack && (
-        <button
-          onClick={onBack}
-          className="inline-flex items-center gap-1.5 px-4 h-10 rounded-lg border border-border text-sm font-medium hover:bg-muted transition"
-        >
-          <ArrowLeft size={14} /> Back
-        </button>
-      )}
+    <div className="flex gap-3 pt-6 border-t border-border mt-8">
       <button
-        onClick={onContinue}
-        disabled={disabled || loading}
-        className="inline-flex items-center gap-2 px-5 h-10 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary/90 transition disabled:opacity-60"
+        onClick={onBack}
+        className="flex items-center gap-2 px-6 py-2.5 rounded-lg border border-border text-foreground hover:bg-muted transition-colors font-medium"
       >
-        {loading ? <Loader2 size={14} className="animate-spin" /> : null}
-        {continueLabel}
-        {!loading && <ArrowRight size={14} />}
+        <ChevronLeft size={18} /> {backLabel}
+      </button>
+      <button
+        onClick={onNext}
+        disabled={disableNext}
+        className="flex-1 flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors font-medium disabled:opacity-50 disabled:pointer-events-none"
+      >
+        {nextLabel} <ChevronRight size={18} />
       </button>
     </div>
   );

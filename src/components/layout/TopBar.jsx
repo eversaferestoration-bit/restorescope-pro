@@ -1,78 +1,72 @@
-import { useLocation } from 'react-router-dom';
-import { Droplets } from 'lucide-react';
-import { useAuth } from '@/lib/AuthContext';
+import { Menu, Bell, Settings, LogOut, User } from 'lucide-react';
+import { useState } from 'react';
 import { base44 } from '@/api/base44Client';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import NotificationDropdown from '@/components/notifications/NotificationDropdown';
 
-const pageTitles = {
-  '/dashboard': 'Dashboard',
-  '/jobs': 'Jobs',
-  '/jobs/new': 'New Job',
-  '/settings': 'Settings',
-  '/billing': 'Billing',
-  '/users': 'Team',
-  '/templates': 'Templates',
-  '/pricing-profiles': 'Pricing Profiles',
-  '/audit-log': 'Audit Log',
-};
+export default function TopBar({ onMenuClick, userInitials, userName }) {
+  const [menuOpen, setMenuOpen] = useState(false);
 
-function getPageTitle(pathname) {
-  if (pageTitles[pathname]) return pageTitles[pathname];
-  if (pathname.startsWith('/jobs/')) return 'Job Detail';
-  return 'RestoreScope Pro';
-}
-
-export default function TopBar() {
-  const location = useLocation();
-  const { user } = useAuth();
-  const title = getPageTitle(location.pathname);
-
-  const initials = user?.full_name
-    ? user.full_name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
-    : 'RS';
+  const handleLogout = async () => {
+    await base44.auth.logout();
+  };
 
   return (
-    <header className="h-14 border-b border-border bg-card/80 backdrop-blur-sm flex items-center px-4 gap-3 shrink-0 safe-top">
-      {/* Mobile logo */}
-      <div className="flex items-center gap-2 lg:hidden">
-        <div className="w-7 h-7 rounded-lg bg-primary flex items-center justify-center">
-          <Droplets size={14} className="text-white" />
+    <div className="h-16 border-b border-border bg-card flex items-center justify-between px-4 sm:px-6 sticky top-0 z-40">
+      {/* Left: Menu Toggle */}
+      <button
+        onClick={onMenuClick}
+        className="lg:hidden p-2 rounded-lg hover:bg-muted transition-colors"
+      >
+        <Menu size={20} className="text-foreground" />
+      </button>
+
+      {/* Center: Logo/Brand (optional) */}
+      <div className="hidden sm:flex items-center flex-1 ml-4 lg:ml-0">
+        <h1 className="text-lg font-bold text-foreground">RestoreScope Pro</h1>
+      </div>
+
+      {/* Right: User Actions */}
+      <div className="flex items-center gap-2 sm:gap-4">
+        <button className="p-2 rounded-lg hover:bg-muted transition-colors relative">
+          <Bell size={20} className="text-foreground" />
+          <div className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full" />
+        </button>
+
+        <div className="hidden sm:block h-6 w-px bg-border" />
+
+        {/* User Menu */}
+        <div className="relative">
+          <button
+            onClick={() => setMenuOpen(!menuOpen)}
+            className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted transition-colors"
+          >
+            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+              <span className="text-xs font-bold text-primary">{userInitials}</span>
+            </div>
+            <div className="hidden sm:block text-left">
+              <p className="text-sm font-medium text-foreground">{userName}</p>
+              <p className="text-xs text-muted-foreground">Admin</p>
+            </div>
+          </button>
+
+          {menuOpen && (
+            <div className="absolute right-0 mt-2 w-48 bg-card border border-border rounded-lg shadow-lg overflow-hidden z-50">
+              <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-muted transition-colors text-foreground">
+                <User size={16} /> Profile
+              </button>
+              <button className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-muted transition-colors text-foreground">
+                <Settings size={16} /> Settings
+              </button>
+              <div className="border-t border-border" />
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-muted transition-colors text-destructive"
+              >
+                <LogOut size={16} /> Logout
+              </button>
+            </div>
+          )}
         </div>
       </div>
-
-      <h1 className="text-base font-semibold font-display flex-1 lg:flex-none">{title}</h1>
-
-      <div className="flex-1 hidden lg:block" />
-
-      {/* Right actions */}
-      <div className="flex items-center gap-2">
-        <NotificationDropdown />
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button className="w-8 h-8 rounded-full bg-primary/10 text-primary text-xs font-semibold flex items-center justify-center hover:bg-primary/20 transition-colors">
-              {initials}
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
-            <div className="px-3 py-2">
-              <p className="text-sm font-medium truncate">{user?.full_name || 'User'}</p>
-              <p className="text-xs text-muted-foreground truncate">{user?.email || ''}</p>
-            </div>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => base44.auth.logout()}>
-              Sign out
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    </header>
+    </div>
   );
 }
