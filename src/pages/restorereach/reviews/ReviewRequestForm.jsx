@@ -1,14 +1,12 @@
-import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { Zap, Save, Send, MessageSquare } from 'lucide-react';
+import { Zap, Save, MessageSquare } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 
 const inp = 'w-full px-3 py-2 rounded-lg border text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-orange-500 transition bg-[#0a1020] border-[#1e2d45]';
 
 const JOB_TYPES = ['Water Damage', 'Fire Damage', 'Mold Remediation', 'Storm Damage', 'Smoke Damage', 'Sewage Cleanup', 'Emergency Services', 'Reconstruction'];
-
-const DEFAULT_REVIEW_LINK = 'https://g.page/r/review';
 
 function Field({ label, req, children }) {
   return (
@@ -24,6 +22,13 @@ function Field({ label, req, children }) {
 export default function ReviewRequestForm({ companyId, userEmail }) {
   const qc = useQueryClient();
 
+  const { data: profileArr = [] } = useQuery({
+    queryKey: ['rr-profile'],
+    queryFn: () => base44.entities.RRCompanyProfile.filter({ created_by: userEmail }),
+    enabled: !!userEmail,
+  });
+  const profile = profileArr[0];
+
   const [form, setForm] = useState({
     customer_name: '',
     phone: '',
@@ -31,8 +36,14 @@ export default function ReviewRequestForm({ companyId, userEmail }) {
     job_type: 'Water Damage',
     city: '',
     technician: '',
-    review_link: DEFAULT_REVIEW_LINK,
+    review_link: '',
   });
+
+  useEffect(() => {
+    if (profile?.google_review_link) {
+      setForm(f => ({ ...f, review_link: profile.google_review_link }));
+    }
+  }, [profile?.google_review_link]);
   const [generatedSms, setGeneratedSms] = useState('');
   const [generating, setGenerating] = useState(false);
 
@@ -77,7 +88,7 @@ Return ONLY the SMS message text, nothing else.`;
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['review-requests'] });
       toast({ title: '✅ Review request saved' });
-      setForm({ customer_name: '', phone: '', email: '', job_type: 'Water Damage', city: '', technician: '', review_link: DEFAULT_REVIEW_LINK });
+      setForm({ customer_name: '', phone: '', email: '', job_type: 'Water Damage', city: '', technician: '', review_link: profile?.google_review_link || '' });
       setGeneratedSms('');
     },
   });

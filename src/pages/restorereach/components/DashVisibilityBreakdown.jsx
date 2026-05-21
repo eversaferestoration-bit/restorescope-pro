@@ -29,53 +29,50 @@ function ScoreRing({ score, color, size = 96 }) {
   );
 }
 
-export default function DashVisibilityBreakdown({ score, companyProfile, areas, campaigns, leads }) {
-  const gbpPosts = campaigns.filter(c => c.campaign_type === 'gbp_post').length;
-  const reviews = campaigns.filter(c => c.campaign_type === 'review_request').length;
-  const seoContent = campaigns.filter(c => c.campaign_type === 'seo_content').length;
+export default function DashVisibilityBreakdown({ score, companyProfile, areas, gbpPostsCount = 0, reviewsData = [], leads = [] }) {
+  const reviewCount = reviewsData.filter(r => r.status === 'reviewed').length;
+  const seoPagesCount = areas.reduce((sum, a) => sum + (a.seo_pages?.length || 0), 0);
 
-  // Compute sub-scores (0-100)
+  // Compute sub-scores as percentages (0-100) matching the real score engine
   const subScores = [
     {
-      label: 'GBP Optimization',
-      value: Math.min(100, Math.round(
-        ((companyProfile?.google_business_profile_url ? 50 : 0) + Math.min(gbpPosts * 10, 50))
-      )),
+      label: 'GBP Completeness',
+      value: Math.round(([
+        companyProfile?.company_name, companyProfile?.phone, companyProfile?.website,
+        companyProfile?.google_business_profile_url, companyProfile?.google_review_link,
+        companyProfile?.address, companyProfile?.city,
+      ].filter(Boolean).length / 7) * 100),
       color: '#3b82f6',
     },
     {
       label: 'Reviews',
-      value: Math.min(100, Math.round(
-        ((companyProfile?.google_review_link ? 50 : 0) + Math.min(reviews * 10, 50))
-      )),
+      value: reviewCount >= 20 ? 100 : reviewCount >= 10 ? 80 : reviewCount >= 5 ? 60 : reviewCount >= 1 ? 30 : 0,
       color: '#f59e0b',
     },
     {
-      label: 'Local Content',
-      value: Math.min(100, Math.round(
-        ((seoContent > 0 ? 50 : 0) + Math.min(seoContent * 10, 50))
-      )),
-      color: '#10b981',
-    },
-    {
-      label: 'Service Area Coverage',
-      value: Math.min(100, Math.round(areas.length * 20)),
+      label: 'Posting Activity',
+      value: gbpPostsCount >= 20 ? 100 : gbpPostsCount >= 10 ? 80 : gbpPostsCount >= 5 ? 60 : gbpPostsCount >= 1 ? 27 : 0,
       color: '#8b5cf6',
     },
     {
+      label: 'Local SEO Content',
+      value: Math.min(100, seoPagesCount >= 10 ? 100 : seoPagesCount >= 5 ? 75 : seoPagesCount >= 1 ? 40 : 0),
+      color: '#10b981',
+    },
+    {
       label: 'Citation Consistency',
-      value: Math.min(100, Math.round(
-        ((companyProfile?.website ? 25 : 0) +
+      value: Math.min(100,
+        (companyProfile?.company_name ? 25 : 0) +
         (companyProfile?.phone ? 25 : 0) +
         (companyProfile?.address ? 25 : 0) +
-        (companyProfile?.google_business_profile_url ? 25 : 0))
-      )),
+        (companyProfile?.website ? 25 : 0)
+      ),
       color: '#e05a1c',
     },
   ];
 
-  const scoreColor = score >= 80 ? '#10b981' : score >= 50 ? '#f59e0b' : '#ef4444';
-  const scoreLabel = score >= 80 ? 'Excellent' : score >= 50 ? 'Good' : 'Needs Work';
+  const scoreColor = score >= 80 ? '#10b981' : score >= 60 ? '#3b82f6' : score >= 40 ? '#f59e0b' : '#ef4444';
+  const scoreLabel = score >= 80 ? 'Excellent' : score >= 60 ? 'Strong' : score >= 40 ? 'Needs Work' : 'Poor';
 
   return (
     <div className="rounded-xl border overflow-hidden h-full" style={{ background: '#0d1829', borderColor: '#1e2d45' }}>

@@ -30,7 +30,7 @@ export default function DashMetricCards({ totalLeads, newLeadsMonth, gbpPosts, r
     { label: 'GBP Posts Created', value: gbpPosts, icon: Building2, color: '#3b82f6', sub: 'Published to Google' },
     { label: 'Review Requests Sent', value: reviewRequests, icon: Star, color: '#f59e0b', sub: 'Review campaigns' },
     { label: 'Active Service Areas', value: activeAreas, icon: MapPin, color: '#8b5cf6', sub: 'Tracked zones' },
-    { label: 'Visibility Score', value: `${visibilityScore}%`, icon: TrendingUp, color: '#10b981', sub: visibilityScore >= 80 ? 'Excellent' : visibilityScore >= 50 ? 'Good' : 'Needs Work' },
+    { label: 'Visibility Score', value: `${visibilityScore}/100`, icon: TrendingUp, color: '#10b981', sub: visibilityScore >= 80 ? 'Excellent' : visibilityScore >= 60 ? 'Strong' : visibilityScore >= 40 ? 'Needs Work' : 'Poor' },
   ];
 
   return (

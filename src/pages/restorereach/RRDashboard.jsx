@@ -20,9 +20,10 @@ export default function RRDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
+  // EmergencyLead is the live lead entity used across the app
   const { data: leads = [], isLoading: leadsLoading } = useQuery({
-    queryKey: ['rr-leads'],
-    queryFn: () => base44.entities.RRLeadCapture.list('-created_date', 200),
+    queryKey: ['emergency-leads'],
+    queryFn: () => base44.entities.EmergencyLead.list('-created_date', 200),
   });
 
   const { data: areas = [] } = useQuery({
@@ -35,43 +36,55 @@ export default function RRDashboard() {
     queryFn: () => base44.entities.RRMarketingCampaign.list('-created_date', 100),
   });
 
+  const { data: gbpPostsData = [] } = useQuery({
+    queryKey: ['gbp-posts'],
+    queryFn: () => base44.entities.GBPPost.list('-created_date', 200),
+  });
+
+  const { data: reviewsData = [] } = useQuery({
+    queryKey: ['review-requests'],
+    queryFn: () => base44.entities.ReviewRequest.list('-created_date', 200),
+  });
+
   const { data: profile } = useQuery({
     queryKey: ['rr-profile'],
     queryFn: () => base44.entities.RRCompanyProfile.filter({ created_by: user?.email }),
   });
   const companyProfile = profile?.[0];
 
-  // Derived metrics
+  // Derived metrics — all from correct entities
   const now = new Date();
   const monthStart = startOfMonth(now);
   const totalLeads = leads.length;
-  const newLeadsMonth = leads.filter(l => new Date(l.created_date || l.created_at || 0) >= monthStart).length;
-  const gbpPosts = campaigns.filter(c => c.campaign_type === 'gbp_post').length;
-  const reviewRequests = campaigns.filter(c => c.campaign_type === 'review_request').length;
+  const newLeadsMonth = leads.filter(l => new Date(l.created_date || 0) >= monthStart).length;
+  const gbpPosts = gbpPostsData.length;
+  const reviewRequests = reviewsData.length;
   const activeAreas = areas.length;
 
-  // Visibility score calculation (same logic as visibility page)
-  const visChecks = [
-    companyProfile?.company_name,
-    companyProfile?.google_business_profile_url,
-    companyProfile?.google_review_link,
-    areas.length >= 3,
-    gbpPosts >= 5,
-    campaigns.filter(c => c.campaign_type === 'seo_content').length > 0,
-    campaigns.filter(c => c.campaign_type === 'storm_alert').length > 0,
-    leads.length > 0,
+  // Visibility score using same weighted formula as RRVisibilityScore page
+  const reviewCount = reviewsData.filter(r => r.status === 'reviewed').length;
+  const seoPagesCount = areas.reduce((sum, a) => sum + (a.seo_pages?.length || 0), 0);
+  const gbpScore = Math.round(([
+    companyProfile?.company_name, companyProfile?.phone, companyProfile?.website,
+    companyProfile?.google_business_profile_url, companyProfile?.google_review_link,
+    companyProfile?.address, companyProfile?.city, companyProfile?.state,
+    companyProfile?.primary_services?.length > 0,
     companyProfile?.facebook_url || companyProfile?.instagram_url,
-    companyProfile?.website,
-  ];
-  const visScore = Math.round((visChecks.filter(Boolean).length / visChecks.length) * 100);
+  ].filter(Boolean).length / 10) * 20);
+  const reviewScore = Math.min(20, reviewCount >= 20 ? 20 : reviewCount >= 10 ? 16 : reviewCount >= 5 ? 12 : reviewCount >= 1 ? 6 : 0);
+  const postScore = Math.min(15, gbpPosts >= 20 ? 15 : gbpPosts >= 10 ? 12 : gbpPosts >= 5 ? 9 : gbpPosts >= 1 ? 4 : 0);
+  const contentScore = Math.min(20, (seoPagesCount >= 10 ? 12 : seoPagesCount >= 5 ? 8 : seoPagesCount >= 1 ? 4 : 0) + (areas.length >= 5 ? 8 : areas.length >= 3 ? 5 : areas.length >= 1 ? 2 : 0));
+  const citationScore = (!!(companyProfile?.company_name && companyProfile?.phone && companyProfile?.address) ? 6 : 0) + (!!(companyProfile?.facebook_url && companyProfile?.instagram_url) ? 4 : 0);
+  const photoScore = (companyProfile?.logo_url ? 5 : 0) + Math.min(10, leads.filter(l => l.photos?.length > 0).length >= 5 ? 10 : leads.filter(l => l.photos?.length > 0).length >= 3 ? 7 : leads.filter(l => l.photos?.length > 0).length >= 1 ? 3 : 0);
+  const visScore = gbpScore + reviewScore + postScore + contentScore + citationScore + photoScore;
 
-  // Storm mode status: active if there's an active storm_alert campaign created in last 48hrs
-  const recentStorm = campaigns.find(c => {
-    if (c.campaign_type !== 'storm_alert') return false;
-    const age = now - new Date(c.created_date || c.created_at || 0);
+  // Storm mode status
+  const stormEvents = campaigns.filter(c => c.campaign_type === 'storm_alert');
+  const recentStorm = stormEvents.find(c => {
+    const age = now - new Date(c.created_date || 0);
     return c.status === 'active' && age < 48 * 3600 * 1000;
   });
-  const stormStatus = recentStorm ? 'active' : campaigns.some(c => c.campaign_type === 'storm_alert') ? 'monitoring' : 'inactive';
+  const stormStatus = recentStorm ? 'active' : stormEvents.length > 0 ? 'monitoring' : 'inactive';
 
   return (
     <div className="p-5 md:p-7 max-w-7xl mx-auto space-y-8">
@@ -111,7 +124,7 @@ export default function RRDashboard() {
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Lead Pipeline — 2 cols */}
         <div className="xl:col-span-2">
-          <DashLeadPipeline leads={leads} loading={leadsLoading} />
+          <DashLeadPipeline leads={leads} loading={leadsLoading} isEmergencyLeads={true} />
         </div>
         {/* Visibility Score Breakdown */}
         <div>
@@ -119,7 +132,8 @@ export default function RRDashboard() {
             score={visScore}
             companyProfile={companyProfile}
             areas={areas}
-            campaigns={campaigns}
+            gbpPostsCount={gbpPosts}
+            reviewsData={reviewsData}
             leads={leads}
           />
         </div>

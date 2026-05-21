@@ -132,6 +132,15 @@
   .scrollable-container {
     overscroll-behavior: none;
   }
+
+  /* Hide scrollbar but keep scroll behavior */
+  .no-scrollbar {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 /* Scrollbar */

@@ -71,13 +71,13 @@ export default function RRLayout() {
           <Zap size={14} className="text-white" />
         </div>
         <span className="text-white text-sm font-bold">RestoreReach AI</span>
-        <div className="ml-auto flex gap-1 overflow-x-auto">
-          {NAV.slice(0, 5).map((item) => {
+        <div className="ml-auto flex gap-0.5 overflow-x-auto no-scrollbar">
+          {NAV.map((item) => {
             const isActive = item.exact ? location.pathname === item.path : location.pathname.startsWith(item.path);
             const Icon = item.icon;
             return (
               <NavLink key={item.path} to={item.path}>
-                <div className={cn('p-1.5 rounded-lg', isActive ? 'text-white' : 'text-slate-400')}
+                <div className={cn('p-1.5 rounded-lg shrink-0', isActive ? 'text-white' : 'text-slate-400')}
                   style={isActive ? { background: '#e05a1c' } : {}}>
                   <Icon size={15} />
                 </div>
