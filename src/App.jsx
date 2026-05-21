@@ -29,6 +29,8 @@ import Billing from '@/pages/Billing';
 import Users from '@/pages/Users';
 import Templates from '@/pages/Templates';
 import PricingProfiles from '@/pages/PricingProfiles';
+import Pricing from '@/pages/Pricing';
+import BillingDashboard from '@/pages/BillingDashboard';
 import AuditLog from '@/pages/AuditLog';
 import Analytics from '@/pages/Analytics';
 import EnterpriseSettings from '@/pages/EnterpriseSettings';
@@ -211,6 +213,24 @@ function AuthenticatedRoutes() {
           element={
             <PageTransition>
               <PricingProfiles />
+            </PageTransition>
+          }
+        />
+
+        <Route
+          path="/pricing"
+          element={
+            <PageTransition>
+              <Pricing />
+            </PageTransition>
+          }
+        />
+
+        <Route
+          path="/billing"
+          element={
+            <PageTransition>
+              <BillingDashboard />
             </PageTransition>
           }
         />
