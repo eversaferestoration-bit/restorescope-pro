@@ -1,166 +1,139 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
-import { useQuery } from '@tanstack/react-query';
-import { Bell, Check, CheckCheck, Filter, X } from 'lucide-react';
+import { Bell, Check, CheckCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import NotificationItem from './NotificationItem';
-import NotificationDetailPanel from './NotificationDetailPanel';
+import { useNotifications } from '@/hooks/useNotifications';
 
 export default function NotificationDropdown() {
-  const [open, setOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const [filter, setFilter] = useState('all');
-  const [selectedNotification, setSelectedNotification] = useState(null);
-  const [user, setUser] = useState(null);
+  const dropdownRef = useRef(null);
 
+  const { notifications, unreadCount, refetch } = useNotifications();
+
+  // Close dropdown on outside click
   useEffect(() => {
-    base44.auth.me().then(setUser);
-  }, []);
-
-  const { data: notifications = [], refetch } = useQuery({
-    queryKey: ['notifications', user?.id],
-    queryFn: () =>
-      base44.entities.Notification.filter(
-        { user_id: user?.id, is_deleted: false },
-        '-created_date',
-        100
-      ),
-    enabled: !!user?.id,
-  });
-
-  // Real-time subscription
-  useEffect(() => {
-    if (!user?.id) return;
-    const unsubscribe = base44.entities.Notification.subscribe((event) => {
-      if (event.data.user_id === user.id) {
-        refetch();
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setIsOpen(false);
       }
-    });
-    return unsubscribe;
-  }, [user?.id, refetch]);
+    };
 
-  const unreadCount = notifications.filter((n) => !n.read_status).length;
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [isOpen]);
+
   const filteredNotifications =
     filter === 'all'
       ? notifications
-      : notifications.filter((n) => n.type === filter);
+      : filter === 'unread'
+        ? notifications.filter((n) => !n.read_status)
+        : notifications.filter((n) => n.type === filter);
 
-  const handleMarkRead = async (notificationId) => {
+  const handleMarkRead = async (notificationId, currentStatus) => {
     await base44.entities.Notification.update(notificationId, {
-      read_status: true,
+      read_status: !currentStatus,
     });
-    refetch();
   };
 
   const handleMarkAllRead = async () => {
-    for (const notif of notifications.filter((n) => !n.read_status)) {
+    const unreadNotifications = notifications.filter((n) => !n.read_status);
+    for (const notif of unreadNotifications) {
       await base44.entities.Notification.update(notif.id, {
         read_status: true,
       });
     }
-    refetch();
   };
-
-  const handleDelete = async (notificationId) => {
-    await base44.entities.Notification.update(notificationId, {
-      is_deleted: true,
-    });
-    refetch();
-  };
-
-  if (selectedNotification) {
-    return (
-      <NotificationDetailPanel
-        notification={selectedNotification}
-        onClose={() => setSelectedNotification(null)}
-        onMarkRead={() => {
-          handleMarkRead(selectedNotification.id);
-          setSelectedNotification(null);
-        }}
-      />
-    );
-  }
 
   return (
-    <div className="relative">
+    <div ref={dropdownRef} className="relative">
+      {/* Bell Icon Button */}
       <button
-        onClick={() => setOpen(!open)}
-        className={cn(
-          'relative p-2 rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center',
-          open
-            ? 'bg-primary/10 text-primary'
-            : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
-        )}
+        onClick={() => setIsOpen(!isOpen)}
+        className="relative p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition"
+        title="Notifications"
       >
-        <Bell size={18} />
+        <Bell size={20} />
         {unreadCount > 0 && (
-          <span className="absolute top-0 right-0 w-5 h-5 bg-destructive text-white text-xs font-bold rounded-full flex items-center justify-center">
-            {unreadCount > 9 ? '9+' : unreadCount}
-          </span>
+          <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-destructive flex items-center justify-center">
+            <span className="text-xs font-bold text-white">
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </span>
+          </div>
         )}
       </button>
 
-      {open && (
-        <>
-          <div
-            className="fixed inset-0 z-40"
-            onClick={() => setOpen(false)}
-          />
-          <div className="absolute top-12 right-0 w-96 max-h-96 bg-card border rounded-lg shadow-lg z-50 flex flex-col overflow-hidden">
-            {/* Header */}
-            <div className="px-4 py-3 border-b flex items-center justify-between shrink-0">
-              <h3 className="font-semibold text-sm">Notifications</h3>
-              {unreadCount > 0 && (
-                <button
-                  onClick={handleMarkAllRead}
-                  className="text-xs text-primary hover:underline flex items-center gap-1"
-                >
-                  <CheckCheck size={12} /> Mark all read
-                </button>
-              )}
-            </div>
+      {/* Dropdown Panel */}
+      {isOpen && (
+        <div className="absolute right-0 top-full mt-2 w-96 max-h-[600px] bg-card border rounded-lg shadow-lg z-50 flex flex-col">
+          {/* Header */}
+          <div className="border-b p-4 flex items-center justify-between">
+            <h2 className="text-sm font-bold">Notifications</h2>
+            {unreadCount > 0 && (
+              <button
+                onClick={handleMarkAllRead}
+                className="text-xs text-primary hover:underline flex items-center gap-1"
+              >
+                <CheckCheck size={14} /> Mark all read
+              </button>
+            )}
+          </div>
 
-            {/* Filter */}
-            <div className="px-4 py-2 border-b bg-muted/50 shrink-0">
-              <div className="flex items-center gap-2 text-xs">
-                <Filter size={12} className="text-muted-foreground" />
-                <select
-                  value={filter}
-                  onChange={(e) => setFilter(e.target.value)}
-                  className="bg-background border rounded px-2 py-1 text-xs"
-                >
-                  <option value="all">All</option>
-                  <option value="new_lead">New Lead</option>
-                  <option value="storm_event">Storm Event</option>
-                  <option value="review_request">Review Request</option>
-                  <option value="task_assignment">Task Assignment</option>
-                  <option value="estimate_approval">Estimate Approval</option>
-                  <option value="invoice_overdue">Invoice Overdue</option>
-                  <option value="failed_save">Failed Save</option>
-                  <option value="automation_completed">Automation Completed</option>
-                </select>
+          {/* Filter Tabs */}
+          <div className="border-b px-3 py-2 flex gap-1 overflow-x-auto">
+            {[
+              { value: 'all', label: 'All' },
+              { value: 'unread', label: 'Unread' },
+              { value: 'new_lead', label: 'Leads' },
+              { value: 'task_assignment', label: 'Tasks' },
+            ].map((tab) => (
+              <button
+                key={tab.value}
+                onClick={() => setFilter(tab.value)}
+                className={cn(
+                  'text-xs px-2.5 py-1 rounded-full whitespace-nowrap transition',
+                  filter === tab.value
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:bg-secondary'
+                )}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Notification List */}
+          <div className="flex-1 overflow-y-auto">
+            {filteredNotifications.length === 0 ? (
+              <div className="flex items-center justify-center h-32 text-muted-foreground text-sm">
+                No notifications
               </div>
-            </div>
-
-            {/* Notifications List */}
-            <div className="overflow-y-auto flex-1">
-              {filteredNotifications.length === 0 ? (
-                <div className="p-8 text-center text-muted-foreground text-sm">
-                  No notifications
-                </div>
-              ) : (
-                filteredNotifications.map((notif) => (
+            ) : (
+              <div className="divide-y">
+                {filteredNotifications.map((notif) => (
                   <NotificationItem
                     key={notif.id}
                     notification={notif}
-                    onMarkRead={() => handleMarkRead(notif.id)}
-                    onDelete={() => handleDelete(notif.id)}
-                    onSelect={() => setSelectedNotification(notif)}
+                    onMarkRead={handleMarkRead}
+                    onClose={() => refetch()}
                   />
-                ))
-              )}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
-        </>
+
+          {/* Footer */}
+          {notifications.length > 0 && (
+            <div className="border-t p-3 text-center">
+              <button className="text-xs text-muted-foreground hover:text-foreground">
+                View all notifications
+              </button>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
