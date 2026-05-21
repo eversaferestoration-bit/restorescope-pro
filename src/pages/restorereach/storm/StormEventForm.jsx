@@ -53,7 +53,7 @@ export default function StormEventForm({ companyId, userEmail, onCreated }) {
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.StormEvent.create(data),
     onSuccess: (event) => {
-      qc.invalidateQueries({ queryKey: ['storm-events'] });
+      qc.invalidateQueries({ queryKey: ['storm-events'], exact: false });
       toast({ title: '⚡ Storm event created — generating content…' });
       if (onCreated) onCreated(event);
       setForm({ event_type: 'flood', affected_city: '', county: '', severity: 'moderate', event_date: new Date().toISOString().split('T')[0], notes: '' });

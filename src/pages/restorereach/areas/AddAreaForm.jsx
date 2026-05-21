@@ -59,7 +59,7 @@ export default function AddAreaForm({ companyId, onClose }) {
   const createMutation = useMutation({
     mutationFn: (data) => base44.entities.RRServiceArea.create(data),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['rr-areas'] });
+      qc.invalidateQueries({ queryKey: ['rr-areas'], exact: false });
       toast({ title: '✅ Service area added' });
       if (onClose) onClose();
     },

@@ -121,13 +121,13 @@ export default function AreaCard({ area }) {
 
   const updateMutation = useMutation({
     mutationFn: (data) => base44.entities.RRServiceArea.update(area.id, data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['rr-areas'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['rr-areas'], exact: false }),
   });
 
   const deleteMutation = useMutation({
     mutationFn: () => base44.entities.RRServiceArea.delete(area.id),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['rr-areas'] });
+      qc.invalidateQueries({ queryKey: ['rr-areas'], exact: false });
       toast({ title: 'Service area removed' });
     },
   });
