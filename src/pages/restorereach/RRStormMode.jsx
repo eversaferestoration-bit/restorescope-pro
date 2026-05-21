@@ -1,196 +1,195 @@
 import { useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
-import { CloudLightning, Zap, AlertTriangle, Copy, CheckCircle, Radio } from 'lucide-react';
+import { CloudLightning, Zap } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 
-const STORM_TYPES = ['Hurricane', 'Tornado', 'Severe Thunderstorm', 'Hail Storm', 'Flash Flood', 'Ice Storm', 'Wildfire', 'High Wind Event'];
-const inp = 'w-full px-3 py-2 rounded-lg border text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 transition';
-const inpStyle = { background: '#0a1020', borderColor: '#1e2d45', '--tw-ring-color': '#e05a1c' };
+import StormEventForm from './storm/StormEventForm';
+import StormGeneratedContent from './storm/StormGeneratedContent';
+import StormEventList from './storm/StormEventList';
+
+async function generateStormContent(event) {
+  const location = [event.affected_city, event.county].filter(Boolean).join(', ');
+  const eventLabel = event.event_type?.replace(/_/g, ' ') || 'storm';
+  const severity = event.severity || 'moderate';
+
+  const prompt = `You are an emergency marketing expert for a restoration company.
+
+A ${severity} ${eventLabel} has hit ${location} on ${event.event_date || 'today'}.
+${event.notes ? `Additional context: ${event.notes}` : ''}
+
+Generate emergency marketing content. Never use: "trauma", "compassionate", "junk".
+
+Return ONLY valid JSON (no markdown):
+{
+  "gbp_post": "Emergency GBP post (150-250 words, urgent, local, ends with Call 636-219-9302)",
+  "facebook_post": "Facebook emergency post (100-180 words, emoji-friendly, urgent)",
+  "landing_page_outline": "Landing page outline with: H1 headline, 3 benefit bullets, trust signals, CTA",
+  "ad_headline": ["Headline 1 (30 chars max)", "Headline 2 (30 chars max)", "Headline 3 (30 chars max)", "Headline 4 (30 chars max)"],
+  "service_keywords": ["keyword 1", "keyword 2", "keyword 3", "keyword 4", "keyword 5", "keyword 6", "keyword 7", "keyword 8"]
+}`;
+
+  return base44.integrations.Core.InvokeLLM({
+    prompt,
+    response_json_schema: {
+      type: 'object',
+      properties: {
+        gbp_post: { type: 'string' },
+        facebook_post: { type: 'string' },
+        landing_page_outline: { type: 'string' },
+        ad_headline: { type: 'array', items: { type: 'string' } },
+        service_keywords: { type: 'array', items: { type: 'string' } },
+      },
+    },
+  });
+}
 
 export default function RRStormMode() {
   const { user } = useAuth();
   const qc = useQueryClient();
-  const [active, setActive] = useState(false);
-  const [stormType, setStormType] = useState('Severe Thunderstorm');
-  const [affectedCity, setAffectedCity] = useState('');
-  const [generating, setGenerating] = useState(false);
-  const [results, setResults] = useState(null);
-  const [copied, setCopied] = useState('');
+  const companyId = user?.email || 'default';
 
-  const { data: profile } = useQuery({
-    queryKey: ['rr-profile'],
-    queryFn: () => base44.entities.RRCompanyProfile.filter({ created_by: user?.email }),
-  });
-  const companyProfile = profile?.[0];
-  const companyId = companyProfile?.id || user?.email || 'default';
+  const [saving, setSaving] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [activating, setActivating] = useState(null);
 
-  const saveCampaign = useMutation({
-    mutationFn: (data) => base44.entities.RRMarketingCampaign.create(data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['rr-campaigns'] }),
+  const { data: events = [], isLoading } = useQuery({
+    queryKey: ['storm-events'],
+    queryFn: () => base44.entities.StormEvent.list('-created_date', 50),
   });
 
-  const generate = async () => {
-    setGenerating(true);
-    setResults(null);
+  const activeCount = events.filter(e => e.status === 'active').length;
+
+  // Save new storm + auto-generate content
+  const handleSave = async (formData) => {
+    setSaving(true);
     try {
-      const name = companyProfile?.company_name || 'our restoration company';
-      const phone = companyProfile?.phone || 'CALL NOW';
-      const city = affectedCity || 'your area';
-
-      const prompt = `You are a restoration company marketing expert. Generate a complete storm response marketing package.
-
-Company: ${name} | Phone: ${phone} | Storm Type: ${stormType} | Affected Area: ${city}
-
-Generate ALL of the following (clearly labeled with headers):
-
-1. **GBP EMERGENCY POST** (200 words - urgent, local, professional)
-
-2. **FACEBOOK POST** (150 words with emoji - community-focused, helpful)
-
-3. **GOOGLE ADS HEADLINES** (5 headlines, max 30 chars each - urgent, local)
-
-4. **SMS BLAST TEMPLATE** (max 160 chars - urgent CTA with phone)
-
-5. **DOOR HANGER COPY** (50 words - brief, professional, clear CTA)
-
-6. **NEXTDOOR POST** (100 words - neighbor-to-neighbor tone, helpful)
-
-Make all content urgent but professional. Focus on helping homeowners in crisis. Include ${phone} in each piece.`;
-
-      const generated = await base44.integrations.Core.InvokeLLM({ prompt });
-      setResults(generated);
-      setActive(true);
-
-      saveCampaign.mutate({
+      const content = await generateStormContent(formData);
+      const event = await base44.entities.StormEvent.create({
+        ...formData,
         company_id: companyId,
-        campaign_name: `Storm Mode - ${stormType} - ${city}`,
-        campaign_type: 'storm_alert',
-        status: 'active',
-        target_city: affectedCity,
-        target_service: 'Storm Damage',
-        content_generated: [{ type: 'storm_pack', content: generated, created_at: new Date().toISOString() }],
-        posts_created: 6,
+        status: 'monitoring',
+        generated_content: content,
+        marketing_triggered: false,
       });
-
-      toast({ title: '⚡ Storm Mode Activated!', description: 'All content generated and campaign saved.' });
+      qc.invalidateQueries({ queryKey: ['storm-events'] });
+      setSelectedEvent({ ...event, generated_content: content });
+      toast({ title: '⛈️ Storm event saved with generated content' });
     } catch (err) {
-      toast({ title: 'Failed', description: err?.message, variant: 'destructive' });
+      toast({ title: 'Save failed', description: err?.message, variant: 'destructive' });
     } finally {
-      setGenerating(false);
+      setSaving(false);
     }
   };
 
-  const copy = (text, key) => {
-    navigator.clipboard.writeText(text);
-    setCopied(key);
-    setTimeout(() => setCopied(''), 2000);
-    toast({ title: 'Copied!' });
+  // Activate Storm Campaign
+  const handleActivate = async (event) => {
+    setActivating(event.id);
+    try {
+      const content = event.generated_content || await generateStormContent(event);
+
+      // 1. Create marketing campaign
+      const campaign = await base44.entities.RRMarketingCampaign.create({
+        company_id: companyId,
+        campaign_name: `Storm Response — ${event.affected_city} ${event.event_type?.replace(/_/g, ' ')}`,
+        campaign_type: 'storm_alert',
+        status: 'active',
+        target_city: event.affected_city,
+        target_service: event.event_type,
+        content_generated: [content],
+      });
+
+      // 2. Create GBP post
+      const gbpPost = await base44.entities.GBPPost.create({
+        company_id: companyId,
+        title: `Emergency ${event.event_type?.replace(/_/g, ' ')} Response — ${event.affected_city}`,
+        body: content.gbp_post || '',
+        service: event.event_type,
+        city: event.affected_city,
+        post_type: 'Storm Alert',
+        status: 'scheduled',
+      });
+
+      // 3. Mark storm event as triggered + active
+      await base44.entities.StormEvent.update(event.id, {
+        status: 'active',
+        marketing_triggered: true,
+        campaign_id: campaign.id,
+        gbp_post_id: gbpPost.id,
+        generated_content: content,
+      });
+
+      qc.invalidateQueries({ queryKey: ['storm-events'] });
+      toast({ title: `🚨 Storm campaign activated for ${event.affected_city}` });
+    } catch (err) {
+      toast({ title: 'Activation failed', description: err?.message, variant: 'destructive' });
+    } finally {
+      setActivating(null);
+    }
   };
 
   return (
-    <div className="p-5 md:p-7 max-w-5xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-          <CloudLightning size={22} style={{ color: '#e05a1c' }} /> Storm Mode
-        </h1>
-        <p className="text-sm mt-0.5" style={{ color: '#7ba3c8' }}>Deploy instant storm response marketing across all channels</p>
+    <div className="p-5 md:p-7 max-w-6xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+            <CloudLightning size={22} style={{ color: '#e05a1c' }} /> Storm Mode
+          </h1>
+          <p className="text-sm mt-0.5" style={{ color: '#7ba3c8' }}>
+            Log storm events, auto-generate emergency content, and activate campaigns instantly
+          </p>
+        </div>
+        {activeCount > 0 && (
+          <div className="flex items-center gap-2 px-4 py-2 rounded-xl border" style={{ background: '#ef444415', borderColor: '#ef444440' }}>
+            <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#ef4444' }} />
+            <span className="text-sm font-bold" style={{ color: '#ef4444' }}>{activeCount} Active Storm{activeCount > 1 ? 's' : ''}</span>
+          </div>
+        )}
       </div>
 
-      {/* Storm Mode toggle */}
-      <div className={`rounded-2xl border p-6 mb-6 transition-all ${active ? 'border-orange-500/50' : 'border-slate-700'}`}
-        style={{ background: active ? '#1a0a00' : '#0d1829' }}>
-        <div className="flex items-start gap-4">
-          <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${active ? 'bg-orange-500' : 'bg-slate-700'}`}>
-            <CloudLightning size={22} className="text-white" />
+      {/* Stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { label: 'Total Events', value: events.length, color: '#7ba3c8' },
+          { label: 'Active', value: events.filter(e => e.status === 'active').length, color: '#ef4444' },
+          { label: 'Monitoring', value: events.filter(e => e.status === 'monitoring').length, color: '#f59e0b' },
+          { label: 'Campaigns Live', value: events.filter(e => e.marketing_triggered).length, color: '#10b981' },
+        ].map(s => (
+          <div key={s.label} className="rounded-xl border p-4 text-center" style={{ background: '#0d1829', borderColor: '#1e2d45' }}>
+            <p className="text-2xl font-bold" style={{ color: s.color }}>{s.value}</p>
+            <p className="text-xs mt-1" style={{ color: '#7ba3c8' }}>{s.label}</p>
           </div>
-          <div className="flex-1">
-            <div className="flex items-center gap-3 mb-1">
-              <h2 className="text-lg font-bold text-white">Storm Response</h2>
-              {active && (
-                <span className="flex items-center gap-1.5 text-xs font-semibold text-orange-400 px-2.5 py-1 rounded-full bg-orange-500/20 border border-orange-500/30">
-                  <Radio size={10} className="animate-pulse" /> ACTIVE
-                </span>
-              )}
-            </div>
-            <p className="text-sm" style={{ color: '#7ba3c8' }}>Generate a complete multi-channel storm response campaign in seconds</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-5">
-          <div>
-            <label className="text-xs font-medium text-slate-400 mb-1.5 block">Storm Type</label>
-            <select className={inp} style={inpStyle} value={stormType} onChange={e => setStormType(e.target.value)}>
-              {STORM_TYPES.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="text-xs font-medium text-slate-400 mb-1.5 block">Affected City / Area</label>
-            <input className={inp} style={inpStyle} placeholder="Nashville, TN" value={affectedCity} onChange={e => setAffectedCity(e.target.value)} />
-          </div>
-        </div>
-
-        <button onClick={generate} disabled={generating}
-          className="mt-4 w-full py-3 rounded-xl text-sm font-bold text-white transition hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
-          style={{ background: generating ? '#7a3010' : '#e05a1c' }}>
-          <CloudLightning size={16} />
-          {generating ? 'Generating Storm Pack…' : '⚡ Activate Storm Mode — Generate All Content'}
-        </button>
+        ))}
       </div>
 
-      {/* Results */}
-      {generating && (
-        <div className="rounded-xl border p-8 text-center" style={{ background: '#0d1829', borderColor: '#1e2d45' }}>
-          <div className="w-10 h-10 border-2 border-orange-500/30 border-t-orange-500 rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-white font-semibold">Generating your Storm Response Pack…</p>
-          <p className="text-sm mt-1" style={{ color: '#7ba3c8' }}>Creating GBP post, Facebook, Google Ads, SMS, door hanger & Nextdoor content</p>
+      {/* Main grid: Form + Events List */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <StormEventForm onSave={handleSave} saving={saving} />
+        <StormEventList
+          events={events}
+          isLoading={isLoading}
+          onActivate={handleActivate}
+          activating={activating}
+          onSelect={(ev) => setSelectedEvent(ev)}
+          selectedId={selectedEvent?.id}
+        />
+      </div>
+
+      {/* Generated content viewer */}
+      {selectedEvent?.generated_content && (
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <div className="h-px flex-1" style={{ background: '#1e2d45' }} />
+            <span className="text-xs px-3 py-1 rounded-full" style={{ background: '#1e2d45', color: '#7ba3c8' }}>
+              Content for: {selectedEvent.affected_city}
+            </span>
+            <div className="h-px flex-1" style={{ background: '#1e2d45' }} />
+          </div>
+          <StormGeneratedContent content={selectedEvent.generated_content} />
         </div>
       )}
-
-      {results && !generating && (
-        <div className="rounded-xl border overflow-hidden" style={{ background: '#0d1829', borderColor: '#1e2d45' }}>
-          <div className="flex items-center gap-2 px-5 py-3 border-b" style={{ borderColor: '#1e2d45', background: '#0a1020' }}>
-            <CheckCircle size={16} className="text-green-400" />
-            <p className="text-sm font-semibold text-white">Storm Response Pack Generated</p>
-            <button onClick={() => copy(results, 'all')}
-              className="ml-auto flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg transition"
-              style={{ background: copied === 'all' ? '#10b98133' : '#1e2d45', color: copied === 'all' ? '#10b981' : '#7ba3c8' }}>
-              {copied === 'all' ? <CheckCircle size={11} /> : <Copy size={11} />}
-              Copy All
-            </button>
-          </div>
-          <div className="p-5">
-            <div className="rounded-lg p-4 overflow-y-auto max-h-[500px]" style={{ background: '#0a1020' }}>
-              <p className="text-sm whitespace-pre-wrap leading-relaxed" style={{ color: '#c8d9eb' }}>{results}</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Checklist */}
-      <div className="mt-6 rounded-xl border p-5" style={{ background: '#0d1829', borderColor: '#1e2d45' }}>
-        <h2 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-          <AlertTriangle size={14} style={{ color: '#f59e0b' }} /> Storm Response Checklist
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {[
-            'Post GBP emergency update immediately',
-            'Activate Google Ads storm campaign',
-            'Send SMS blast to previous customers',
-            'Post on Facebook community groups',
-            'Deploy Nextdoor posts in affected areas',
-            'Brief your team on surge capacity',
-            'Set up call routing for overflow',
-            'Document all storm leads separately',
-          ].map((item, i) => (
-            <label key={i} className="flex items-center gap-2.5 cursor-pointer group">
-              <input type="checkbox" className="w-4 h-4 accent-orange-500" />
-              <span className="text-sm" style={{ color: '#7ba3c8' }}>{item}</span>
-            </label>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }

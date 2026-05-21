@@ -1,0 +1,73 @@
+{
+  "name": "StormEvent",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string"
+    },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "hurricane",
+        "tornado",
+        "flood",
+        "hail",
+        "wind",
+        "ice_storm",
+        "fire",
+        "severe_thunderstorm",
+        "other"
+      ],
+      "default": "flood"
+    },
+    "affected_city": {
+      "type": "string"
+    },
+    "county": {
+      "type": "string"
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "low",
+        "moderate",
+        "high",
+        "catastrophic"
+      ],
+      "default": "moderate"
+    },
+    "event_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "monitoring",
+        "active",
+        "paused"
+      ],
+      "default": "monitoring"
+    },
+    "marketing_triggered": {
+      "type": "boolean",
+      "default": false
+    },
+    "campaign_id": {
+      "type": "string"
+    },
+    "gbp_post_id": {
+      "type": "string"
+    },
+    "generated_content": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "event_type",
+    "affected_city"
+  ]
+}
