@@ -1,0 +1,104 @@
+{
+  "name": "EmergencyLead",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string"
+    },
+    "customer_name": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string",
+      "format": "email"
+    },
+    "address": {
+      "type": "string"
+    },
+    "city": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string"
+    },
+    "zip": {
+      "type": "string"
+    },
+    "service_needed": {
+      "type": "string"
+    },
+    "what_happened": {
+      "type": "string"
+    },
+    "standing_water": {
+      "type": "boolean",
+      "default": false
+    },
+    "visible_mold": {
+      "type": "boolean",
+      "default": false
+    },
+    "sewage_involved": {
+      "type": "boolean",
+      "default": false
+    },
+    "insurance_involved": {
+      "type": "boolean",
+      "default": false
+    },
+    "insurance_company": {
+      "type": "string"
+    },
+    "photos": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "urgency_score": {
+      "type": "integer",
+      "default": 0
+    },
+    "urgency_level": {
+      "type": "string",
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "default": "medium"
+    },
+    "urgency_reasons": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "new",
+        "contacted",
+        "inspection_scheduled",
+        "estimate_sent",
+        "won",
+        "lost"
+      ],
+      "default": "new"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "assigned_to": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "customer_name",
+    "phone"
+  ]
+}
