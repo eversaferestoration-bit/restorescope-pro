@@ -16,11 +16,13 @@ import {
   Zap,
   Kanban,
   Bell,
+  FileCheck,
 } from 'lucide-react';
 
 export const primaryNavItems = [
   { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
   { label: 'Jobs', path: '/jobs', icon: FolderOpen },
+  { label: 'Estimates', path: '/estimates', icon: FileCheck },
   { label: 'CRM Pipeline', path: '/crm', icon: Kanban },
   { label: 'RestoreReach AI', path: '/restorereach', icon: Zap },
 ];

@@ -58,6 +58,7 @@ import RRAnalytics from '@/pages/restorereach/RRAnalytics';
 
 import CRM from '@/pages/CRM';
 import LeadDetail from '@/pages/LeadDetail';
+import EstimateBuilder from '@/pages/EstimateBuilder';
 
 function FullScreenLoader({ message = 'Loading RestoreScope Pro...' }) {
   return (
@@ -321,6 +322,24 @@ function AuthenticatedRoutes() {
           element={
             <PageTransition>
               <LeadDetail />
+            </PageTransition>
+          }
+        />
+
+        <Route
+          path="/estimate/new"
+          element={
+            <PageTransition>
+              <EstimateBuilder />
+            </PageTransition>
+          }
+        />
+
+        <Route
+          path="/estimate/job/:jobId"
+          element={
+            <PageTransition>
+              <EstimateBuilder />
             </PageTransition>
           }
         />
