@@ -1,0 +1,46 @@
+{
+  "name": "LeadFile",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string"
+    },
+    "lead_id": {
+      "type": "string"
+    },
+    "file_name": {
+      "type": "string"
+    },
+    "file_url": {
+      "type": "string"
+    },
+    "file_type": {
+      "type": "string"
+    },
+    "file_size_mb": {
+      "type": "number"
+    },
+    "uploaded_by": {
+      "type": "string"
+    },
+    "is_deleted": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "company_id",
+    "lead_id",
+    "file_url"
+  ],
+  "rls": {
+    "create": true,
+    "read": {
+      "company_id": "{{user_company_id}}"
+    },
+    "update": false,
+    "delete": {
+      "company_id": "{{user_company_id}}"
+    }
+  }
+}

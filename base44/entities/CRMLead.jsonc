@@ -1,0 +1,109 @@
+{
+  "name": "CRMLead",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string"
+    },
+    "customer_name": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string",
+      "format": "email"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "property_address": {
+      "type": "string"
+    },
+    "city": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string"
+    },
+    "zip": {
+      "type": "string"
+    },
+    "pipeline_stage": {
+      "type": "string",
+      "enum": [
+        "new",
+        "contacted",
+        "inspection_scheduled",
+        "estimate_sent",
+        "follow_up",
+        "won",
+        "lost"
+      ],
+      "default": "new"
+    },
+    "stage_changed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "stage_order": {
+      "type": "integer",
+      "default": 0
+    },
+    "assigned_to": {
+      "type": "string"
+    },
+    "service_type": {
+      "type": "string"
+    },
+    "estimated_value": {
+      "type": "number"
+    },
+    "linked_job_id": {
+      "type": "string"
+    },
+    "linked_estimate_id": {
+      "type": "string"
+    },
+    "linked_invoice_id": {
+      "type": "string"
+    },
+    "last_activity_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_contacted_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "internal_notes": {
+      "type": "string"
+    },
+    "follow_up_needed": {
+      "type": "boolean",
+      "default": false
+    },
+    "follow_up_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "is_deleted": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "company_id",
+    "customer_name"
+  ],
+  "rls": {
+    "create": true,
+    "read": {
+      "company_id": "{{user_company_id}}"
+    },
+    "update": {
+      "company_id": "{{user_company_id}}"
+    },
+    "delete": {
+      "company_id": "{{user_company_id}}"
+    }
+  }
+}

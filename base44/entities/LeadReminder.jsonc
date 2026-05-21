@@ -1,0 +1,61 @@
+{
+  "name": "LeadReminder",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string"
+    },
+    "lead_id": {
+      "type": "string"
+    },
+    "reminder_type": {
+      "type": "string",
+      "enum": [
+        "estimate_followup",
+        "no_response",
+        "unpaid_invoice",
+        "missing_review"
+      ],
+      "default": "estimate_followup"
+    },
+    "description": {
+      "type": "string"
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "is_dismissed": {
+      "type": "boolean",
+      "default": false
+    },
+    "dismissed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "dismissed_by": {
+      "type": "string"
+    },
+    "is_deleted": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "company_id",
+    "lead_id",
+    "reminder_type"
+  ],
+  "rls": {
+    "create": true,
+    "read": {
+      "company_id": "{{user_company_id}}"
+    },
+    "update": {
+      "company_id": "{{user_company_id}}"
+    },
+    "delete": {
+      "company_id": "{{user_company_id}}"
+    }
+  }
+}

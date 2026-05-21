@@ -1,0 +1,54 @@
+{
+  "name": "LeadActivity",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string"
+    },
+    "lead_id": {
+      "type": "string"
+    },
+    "activity_type": {
+      "type": "string",
+      "enum": [
+        "stage_change",
+        "note_added",
+        "task_created",
+        "file_uploaded",
+        "email_sent",
+        "call_logged",
+        "estimate_sent",
+        "follow_up_scheduled"
+      ],
+      "default": "note_added"
+    },
+    "description": {
+      "type": "string"
+    },
+    "metadata": {
+      "type": "object"
+    },
+    "actor_email": {
+      "type": "string"
+    },
+    "is_deleted": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "company_id",
+    "lead_id",
+    "activity_type"
+  ],
+  "rls": {
+    "create": true,
+    "read": {
+      "company_id": "{{user_company_id}}"
+    },
+    "update": false,
+    "delete": {
+      "company_id": "{{user_company_id}}"
+    }
+  }
+}

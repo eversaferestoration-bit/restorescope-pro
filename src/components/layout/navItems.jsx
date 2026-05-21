@@ -14,15 +14,19 @@ import {
   Shield,
   FlaskConical,
   Zap,
+  Kanban,
+  Bell,
 } from 'lucide-react';
 
 export const primaryNavItems = [
   { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
   { label: 'Jobs', path: '/jobs', icon: FolderOpen },
+  { label: 'CRM Pipeline', path: '/crm', icon: Kanban },
   { label: 'RestoreReach AI', path: '/restorereach', icon: Zap },
 ];
 
 export const secondaryNavItems = [
+  { label: 'Reminders', path: '/crm/reminders', icon: Bell, adminOnly: false },
   { label: 'Templates', path: '/templates', icon: FileText, adminOnly: false },
   { label: 'Analytics', path: '/analytics', icon: BarChart3, adminOnly: false },
   { label: 'Team Performance', path: '/team-performance', icon: TrendingUp, adminOnly: true },

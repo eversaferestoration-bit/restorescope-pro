@@ -56,6 +56,9 @@ import RRCitationManager from '@/pages/restorereach/RRCitationManager';
 import RRAutomationEngine from '@/pages/restorereach/RRAutomationEngine';
 import RRAnalytics from '@/pages/restorereach/RRAnalytics';
 
+import CRM from '@/pages/CRM';
+import LeadDetail from '@/pages/LeadDetail';
+
 function FullScreenLoader({ message = 'Loading RestoreScope Pro...' }) {
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-background">
@@ -296,14 +299,32 @@ function AuthenticatedRoutes() {
         />
 
         <Route
-        path="/beta-feedback"
-        element={
-          <PageTransition>
-            <BetaFeedbackAdmin />
-          </PageTransition>
-        }
+          path="/beta-feedback"
+          element={
+            <PageTransition>
+              <BetaFeedbackAdmin />
+            </PageTransition>
+          }
         />
-      </Route>
+
+        <Route
+          path="/crm"
+          element={
+            <PageTransition>
+              <CRM />
+            </PageTransition>
+          }
+        />
+
+        <Route
+          path="/crm/:leadId"
+          element={
+            <PageTransition>
+              <LeadDetail />
+            </PageTransition>
+          }
+        />
+        </Route>
 
       {/* RestoreReach AI Module */}
       <Route path="/restorereach" element={<RRLayout />}>

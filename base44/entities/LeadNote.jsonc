@@ -1,0 +1,45 @@
+{
+  "name": "LeadNote",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string"
+    },
+    "lead_id": {
+      "type": "string"
+    },
+    "content": {
+      "type": "string"
+    },
+    "note_type": {
+      "type": "string",
+      "enum": [
+        "internal_comment",
+        "customer_facing",
+        "reminder"
+      ],
+      "default": "internal_comment"
+    },
+    "is_deleted": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "company_id",
+    "lead_id",
+    "content"
+  ],
+  "rls": {
+    "create": true,
+    "read": {
+      "company_id": "{{user_company_id}}"
+    },
+    "update": {
+      "company_id": "{{user_company_id}}"
+    },
+    "delete": {
+      "company_id": "{{user_company_id}}"
+    }
+  }
+}
