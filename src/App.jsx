@@ -318,6 +318,7 @@ function AuthenticatedRoutes() {
         <Route path="competitors" element={<RRCompetitorTracker />} />
         <Route path="citations" element={<RRCitationManager />} />
         <Route path="automation" element={<RRAutomationEngine />} />
+        <Route path="automation" element={<RRAutomationEngine />} />
         <Route path="settings" element={<RRSettings />} />
       </Route>
 

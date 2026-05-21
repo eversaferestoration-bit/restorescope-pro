@@ -1,60 +1,48 @@
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useRRCompany } from '@/hooks/useRRCompany';
 import RRAccessGate from './components/RRAccessGate';
 import AutomationRuleCard from './automation/AutomationRuleCard';
 import AutomationBuilder from './automation/AutomationBuilder';
-import { toast } from '@/components/ui/use-toast';
-import { Cpu, PlusCircle, Zap, Play, Pause } from 'lucide-react';
-import { TRIGGERS, ACTIONS } from './automation/automationConfig';
+import { TRIGGERS, ACTIONS, getTrigger, getAction } from './automation/automationConfig';
+import { Zap, PlusCircle, Play, Pause, ChevronRight } from 'lucide-react';
 
-const STARTER_TEMPLATES = [
+const TEMPLATE_RULES = [
   {
     rule_name: 'Auto GBP Post on New Lead',
     trigger_type: 'new_lead',
-    conditions: [],
     actions: [{ action_type: 'generate_gbp_post', params: { service: 'Emergency Restoration' } }],
-    enabled: true,
+    enabled: true, conditions: [],
   },
   {
-    rule_name: 'Review Request After Completed Job',
+    rule_name: 'Review Request After Job',
     trigger_type: 'completed_job',
-    conditions: [],
     actions: [{ action_type: 'create_review_request', params: { delay_hours: '24' } }],
-    enabled: true,
+    enabled: true, conditions: [],
   },
   {
     rule_name: 'Storm Alert Campaign',
     trigger_type: 'storm_event_created',
-    conditions: [],
     actions: [
       { action_type: 'create_campaign', params: { campaign_name: 'Storm Response', campaign_type: 'storm_alert' } },
       { action_type: 'generate_gbp_post', params: { service: 'Storm Damage' } },
     ],
-    enabled: true,
+    enabled: true, conditions: [],
   },
   {
-    rule_name: 'Low Visibility Alert',
+    rule_name: 'Low Visibility Email Alert',
     trigger_type: 'low_visibility_score',
-    conditions: [],
-    actions: [{ action_type: 'send_email_alert', params: { subject: 'Action Required: Low Visibility Score' } }],
-    enabled: true,
-  },
-  {
-    rule_name: 'Weekly GBP Post Reminder',
-    trigger_type: 'no_gbp_posts_7days',
-    conditions: [],
-    actions: [{ action_type: 'generate_gbp_post', params: { service: 'Water Damage Restoration' } }],
-    enabled: true,
+    actions: [{ action_type: 'send_email_alert', params: { to_email: '', subject: 'Action Required: Low Visibility Score' } }],
+    enabled: false, conditions: [],
   },
 ];
 
 export default function RRAutomationEngine() {
   const { companyId, profileLoading, isReady } = useRRCompany();
-  const qc = useQueryClient();
   const [showBuilder, setShowBuilder] = useState(false);
   const [editingRule, setEditingRule] = useState(null);
+  const [filter, setFilter] = useState('all'); // all | active | paused
 
   const { data: rules = [], isLoading } = useQuery({
     queryKey: ['automation-rules', companyId],
@@ -62,35 +50,26 @@ export default function RRAutomationEngine() {
     enabled: !!companyId,
   });
 
-  const saveMutation = useMutation({
-    mutationFn: async (rule) => {
-      if (rule.id) {
-        return base44.entities.AutomationRule.update(rule.id, rule);
-      }
-      return base44.entities.AutomationRule.create({ ...rule, company_id: companyId });
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['automation-rules'], exact: false });
-      toast({ title: editingRule?.id ? '✅ Automation updated' : '✅ Automation created' });
-      setShowBuilder(false);
-      setEditingRule(null);
-    },
-  });
+  const stats = useMemo(() => ({
+    total: rules.length,
+    active: rules.filter(r => r.enabled).length,
+    paused: rules.filter(r => !r.enabled).length,
+    totalRuns: rules.reduce((s, r) => s + (r.run_count || 0), 0),
+  }), [rules]);
 
-  const createTemplate = useMutation({
-    mutationFn: t => base44.entities.AutomationRule.create({ ...t, company_id: companyId }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['automation-rules'], exact: false });
-      toast({ title: '✅ Template added' });
-    },
-  });
+  const filtered = filter === 'active' ? rules.filter(r => r.enabled)
+    : filter === 'paused' ? rules.filter(r => !r.enabled)
+    : rules;
 
   const handleEdit = (rule) => { setEditingRule(rule); setShowBuilder(true); };
-  const handleNew = () => { setEditingRule(null); setShowBuilder(true); };
-  const handleCancel = () => { setShowBuilder(false); setEditingRule(null); };
+  const handleNew  = () => { setEditingRule(null); setShowBuilder(true); };
+  const handleClose = () => { setShowBuilder(false); setEditingRule(null); };
 
-  const activeCount = rules.filter(r => r.enabled).length;
-  const totalRuns = rules.reduce((s, r) => s + (r.run_count || 0), 0);
+  const handleUseTemplate = async (tpl) => {
+    await base44.entities.AutomationRule.create({ ...tpl, company_id: companyId });
+    // refetch is handled by query invalidation in builder — trigger manually
+    window.location.reload(); // simple approach
+  };
 
   return (
     <RRAccessGate isReady={isReady} profileLoading={profileLoading}>
@@ -100,10 +79,10 @@ export default function RRAutomationEngine() {
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-              <Cpu size={22} style={{ color: '#e05a1c' }} /> Automation Engine
+              <Zap size={22} style={{ color: '#e05a1c' }} /> Automation Engine
             </h1>
             <p className="text-sm mt-0.5" style={{ color: '#7ba3c8' }}>
-              Build trigger-based workflows that run your marketing on autopilot
+              Build event-driven rules that auto-execute marketing actions
             </p>
           </div>
           <button onClick={handleNew}
@@ -114,112 +93,129 @@ export default function RRAutomationEngine() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
-            { label: 'Total Rules', value: rules.length, color: '#3b82f6' },
-            { label: 'Active', value: activeCount, color: '#10b981', icon: Play },
-            { label: 'Total Runs', value: totalRuns, color: '#e05a1c', icon: Zap },
+            { label: 'Total Rules',  value: stats.total,    color: '#c8d9eb', bg: '#1e2d4580' },
+            { label: 'Active',       value: stats.active,   color: '#10b981', bg: '#10b98120' },
+            { label: 'Paused',       value: stats.paused,   color: '#f59e0b', bg: '#f59e0b20' },
+            { label: 'Total Runs',   value: stats.totalRuns,color: '#3b82f6', bg: '#3b82f620' },
           ].map(s => (
-            <div key={s.label} className="rounded-2xl border p-4 text-center"
-              style={{ background: '#0d1829', borderColor: '#1e2d45' }}>
+            <div key={s.label} className="rounded-2xl border p-4 text-center" style={{ background: s.bg, borderColor: s.color + '30' }}>
               <p className="text-2xl font-bold" style={{ color: s.color }}>{s.value}</p>
-              <p className="text-xs mt-0.5" style={{ color: '#7ba3c8' }}>{s.label}</p>
+              <p className="text-xs mt-0.5" style={{ color: s.color }}>{s.label}</p>
             </div>
           ))}
         </div>
 
         {/* Builder */}
         {showBuilder && (
-          <AutomationBuilder
-            initial={editingRule}
-            onSave={rule => saveMutation.mutate(rule)}
-            onCancel={handleCancel}
-            saving={saveMutation.isPending}
-          />
+          <AutomationBuilder companyId={companyId} editing={editingRule} onClose={handleClose} />
+        )}
+
+        {/* Templates (show only when no rules exist) */}
+        {!isLoading && rules.length === 0 && !showBuilder && (
+          <div className="rounded-2xl border overflow-hidden" style={{ background: '#0d1829', borderColor: '#1e2d45' }}>
+            <div className="px-5 py-4 border-b" style={{ borderColor: '#1e2d45', background: '#0a1020' }}>
+              <p className="text-sm font-bold text-white">🚀 Starter Templates</p>
+              <p className="text-xs mt-0.5" style={{ color: '#7ba3c8' }}>Click to add a pre-built automation to your account</p>
+            </div>
+            <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {TEMPLATE_RULES.map((tpl, i) => {
+                const trig = getTrigger(tpl.trigger_type);
+                return (
+                  <button key={i} onClick={() => handleUseTemplate(tpl)}
+                    className="flex items-start gap-3 p-3.5 rounded-xl border text-left hover:border-orange-500/50 transition group"
+                    style={{ background: '#0a1020', borderColor: '#1e2d45' }}>
+                    <span className="text-xl">{trig.icon}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-white mb-1">{tpl.rule_name}</p>
+                      <div className="flex items-center gap-1 flex-wrap">
+                        <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: trig.bg, color: trig.color }}>{trig.label}</span>
+                        {tpl.actions.map((a, j) => {
+                          const ac = getAction(a.action_type);
+                          return (
+                            <span key={j} className="flex items-center gap-0.5 text-xs" style={{ color: '#3a5a7c' }}>
+                              <ChevronRight size={10} />
+                              <span style={{ color: ac.color }}>{ac.label}</span>
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    <PlusCircle size={14} className="shrink-0 mt-1 opacity-0 group-hover:opacity-100 transition" style={{ color: '#e05a1c' }} />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Filter tabs */}
+        {rules.length > 0 && (
+          <div className="flex items-center gap-1 p-1 rounded-xl border" style={{ background: '#0a1020', borderColor: '#1e2d45' }}>
+            {[
+              { key: 'all',    label: `All (${stats.total})` },
+              { key: 'active', label: `Active (${stats.active})`,  icon: Play,  color: '#10b981' },
+              { key: 'paused', label: `Paused (${stats.paused})`,  icon: Pause, color: '#f59e0b' },
+            ].map(t => (
+              <button key={t.key} onClick={() => setFilter(t.key)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition"
+                style={filter === t.key
+                  ? { background: t.color || '#e05a1c', color: '#fff' }
+                  : { color: '#7ba3c8' }}>
+                {t.icon && <t.icon size={10} />}
+                {t.label}
+              </button>
+            ))}
+          </div>
         )}
 
         {/* Loading */}
         {isLoading && (
           <div className="space-y-3">
-            {[1, 2, 3].map(i => <div key={i} className="h-28 rounded-2xl animate-pulse" style={{ background: '#1e2d45' }} />)}
+            {[1, 2, 3].map(i => <div key={i} className="h-24 rounded-2xl animate-pulse" style={{ background: '#1e2d45' }} />)}
           </div>
         )}
 
-        {/* Rules */}
-        {!isLoading && rules.length > 0 && (
+        {/* Empty */}
+        {!isLoading && rules.length === 0 && (
+          <div className="rounded-2xl border py-16 text-center" style={{ background: '#0d1829', borderColor: '#1e2d45' }}>
+            <Zap size={36} className="mx-auto mb-3" style={{ color: '#3a5a7c' }} />
+            <p className="text-base font-bold text-white mb-1">No automations yet</p>
+            <p className="text-sm mb-5" style={{ color: '#7ba3c8' }}>
+              Create your first rule to automate marketing actions
+            </p>
+            <button onClick={handleNew}
+              className="px-5 py-2.5 rounded-xl text-sm font-bold text-white"
+              style={{ background: '#e05a1c' }}>
+              <PlusCircle size={14} className="inline mr-1.5" /> Create First Automation
+            </button>
+          </div>
+        )}
+
+        {/* Rule cards */}
+        {!isLoading && filtered.length > 0 && (
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-bold uppercase tracking-wider" style={{ color: '#3a5a7c' }}>
-                Your Automations ({rules.length})
-              </h2>
-            </div>
-            {rules.map(r => (
-              <AutomationRuleCard key={r.id} rule={r} onEdit={handleEdit} />
+            {filtered.map(rule => (
+              <AutomationRuleCard key={rule.id} rule={rule} onEdit={handleEdit} />
             ))}
-          </div>
-        )}
-
-        {/* Empty + Templates */}
-        {!isLoading && rules.length === 0 && !showBuilder && (
-          <div className="space-y-4">
-            <div className="rounded-2xl border py-12 text-center" style={{ background: '#0d1829', borderColor: '#1e2d45' }}>
-              <Cpu size={40} className="mx-auto mb-3" style={{ color: '#3a5a7c' }} />
-              <p className="text-base font-bold text-white mb-1">No automations yet</p>
-              <p className="text-sm mb-5" style={{ color: '#7ba3c8' }}>
-                Set up trigger-based workflows to automate your marketing
-              </p>
-              <button onClick={handleNew}
-                className="px-5 py-2.5 rounded-xl text-sm font-bold text-white"
-                style={{ background: '#e05a1c' }}>
-                <PlusCircle size={14} className="inline mr-1.5" /> Create First Automation
-              </button>
-            </div>
-
-            {/* Starter templates */}
-            <div>
-              <h2 className="text-sm font-bold uppercase tracking-wider mb-3" style={{ color: '#3a5a7c' }}>
-                Starter Templates
-              </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {STARTER_TEMPLATES.map((t, i) => {
-                  const trigger = TRIGGERS.find(tr => tr.key === t.trigger_type);
-                  return (
-                    <div key={i} className="rounded-xl border p-4 flex items-start gap-3"
-                      style={{ background: '#0d1829', borderColor: '#1e2d45' }}>
-                      <span className="text-xl mt-0.5">{trigger?.icon}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-white mb-0.5">{t.rule_name}</p>
-                        <p className="text-xs mb-2" style={{ color: '#7ba3c8' }}>
-                          {trigger?.label} → {t.actions.map(a => ACTIONS.find(ac => ac.key === a.action_type)?.label).filter(Boolean).join(' + ')}
-                        </p>
-                        <button onClick={() => createTemplate.mutate(t)}
-                          disabled={createTemplate.isPending}
-                          className="text-xs px-3 py-1.5 rounded-lg font-semibold text-white transition hover:opacity-90"
-                          style={{ background: '#e05a1c' }}>
-                          Use Template
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
           </div>
         )}
 
         {/* Trigger reference */}
         <div className="rounded-2xl border overflow-hidden" style={{ background: '#0d1829', borderColor: '#1e2d45' }}>
-          <div className="px-5 py-3 border-b" style={{ borderColor: '#1e2d45', background: '#0a1020' }}>
-            <p className="text-sm font-bold text-white">Trigger & Action Reference</p>
+          <div className="px-5 py-3.5 border-b" style={{ borderColor: '#1e2d45', background: '#0a1020' }}>
+            <p className="text-sm font-bold text-white">Supported Triggers & Actions</p>
           </div>
-          <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: '#3a5a7c' }}>Triggers</p>
               <div className="space-y-1.5">
                 {TRIGGERS.map(t => (
-                  <div key={t.key} className="flex items-center gap-2 text-xs">
-                    <span>{t.icon}</span>
-                    <span style={{ color: '#c8d9eb' }}>{t.label}</span>
+                  <div key={t.key} className="flex items-center gap-2.5 text-xs">
+                    <span className="w-5 text-center">{t.icon}</span>
+                    <span className="font-semibold" style={{ color: t.color }}>{t.label}</span>
+                    <span className="ml-auto" style={{ color: '#3a5a7c' }}>{t.description}</span>
                   </div>
                 ))}
               </div>
@@ -228,9 +224,10 @@ export default function RRAutomationEngine() {
               <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: '#3a5a7c' }}>Actions</p>
               <div className="space-y-1.5">
                 {ACTIONS.map(a => (
-                  <div key={a.key} className="flex items-center gap-2 text-xs">
-                    <span>{a.icon}</span>
-                    <span style={{ color: '#c8d9eb' }}>{a.label}</span>
+                  <div key={a.key} className="flex items-center gap-2.5 text-xs">
+                    <span className="w-5 text-center">{a.icon}</span>
+                    <span className="font-semibold" style={{ color: a.color }}>{a.label}</span>
+                    <span className="ml-auto" style={{ color: '#3a5a7c' }}>{a.description}</span>
                   </div>
                 ))}
               </div>

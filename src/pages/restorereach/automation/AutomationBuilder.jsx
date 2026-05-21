@@ -1,253 +1,211 @@
 import { useState } from 'react';
-import { TRIGGERS, ACTIONS } from './automationConfig';
-import { ArrowRight, Plus, Trash2, X, Save, ChevronDown } from 'lucide-react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { base44 } from '@/api/base44Client';
+import { toast } from '@/components/ui/use-toast';
+import { TRIGGERS, ACTIONS, getTrigger, getAction } from './automationConfig';
+import { PlusCircle, Trash2, X, Save, ArrowRight, PlusSquare } from 'lucide-react';
 
-const inp = 'w-full px-3 py-2 rounded-xl border text-sm text-white placeholder-slate-500 focus:outline-none focus:border-orange-500 transition';
-const inpStyle = { background: '#080f1a', borderColor: '#1e2d45' };
+const inp = 'w-full px-3 py-2.5 rounded-xl border text-sm text-white placeholder-slate-500 focus:outline-none focus:border-orange-500 transition';
+const inpStyle = { background: '#0a1020', borderColor: '#1e2d45' };
 
 function TriggerPicker({ value, onChange }) {
-  const [open, setOpen] = useState(false);
-  const selected = TRIGGERS.find(t => t.key === value);
   return (
-    <div className="relative">
-      <button type="button" onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border transition text-left"
-        style={{ background: '#0a1020', borderColor: selected ? selected.color + '60' : '#1e2d45' }}>
-        <span className="text-xl">{selected?.icon || '⚡'}</span>
-        <div className="flex-1 min-w-0">
-          <p className="text-xs font-bold" style={{ color: selected?.color || '#3a5a7c' }}>TRIGGER</p>
-          <p className="text-sm font-semibold text-white">{selected?.label || 'Select a trigger…'}</p>
-        </div>
-        <ChevronDown size={14} style={{ color: '#3a5a7c' }} />
-      </button>
-      {open && (
-        <div className="absolute z-20 left-0 right-0 mt-1 rounded-xl border overflow-hidden shadow-2xl"
-          style={{ background: '#0d1829', borderColor: '#1e2d45' }}>
-          {TRIGGERS.map(t => (
-            <button key={t.key} type="button"
-              onClick={() => { onChange(t.key); setOpen(false); }}
-              className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-white/5 transition text-left border-b last:border-0"
-              style={{ borderColor: '#1e2d4560' }}>
-              <span>{t.icon}</span>
-              <div>
-                <p className="text-sm font-semibold text-white">{t.label}</p>
-                <p className="text-xs" style={{ color: '#7ba3c8' }}>{t.description}</p>
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
+    <div>
+      <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: '#7ba3c8' }}>1. Choose Trigger</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        {TRIGGERS.map(t => (
+          <button key={t.key} type="button" onClick={() => onChange(t.key)}
+            className="flex items-start gap-3 p-3 rounded-xl border text-left transition"
+            style={value === t.key
+              ? { background: t.bg, borderColor: t.color + '80' }
+              : { background: '#0a1020', borderColor: '#1e2d45' }}>
+            <span className="text-xl">{t.icon}</span>
+            <div>
+              <p className="text-xs font-bold" style={{ color: value === t.key ? t.color : '#c8d9eb' }}>{t.label}</p>
+              <p className="text-xs mt-0.5" style={{ color: '#3a5a7c' }}>{t.description}</p>
+            </div>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
 
 function ActionBlock({ action, index, onChange, onRemove }) {
-  const [open, setOpen] = useState(false);
-  const selected = ACTIONS.find(a => a.key === action.action_type);
-
-  const setParam = (key, val) => onChange({ ...action, params: { ...(action.params || {}), [key]: val } });
+  const a = getAction(action.action_type);
+  const params = ACTIONS.find(ac => ac.key === action.action_type)?.params || [];
 
   return (
-    <div className="rounded-xl border overflow-hidden" style={{ background: '#080f1a', borderColor: selected ? selected.color + '40' : '#1e2d45' }}>
-      <div className="flex items-center gap-3 px-3 py-2.5">
-        <span className="text-base">{selected?.icon || '⚙️'}</span>
-        <div className="flex-1 min-w-0">
-          <p className="text-xs font-bold" style={{ color: selected?.color || '#3a5a7c' }}>ACTION {index + 1}</p>
-          <button type="button" onClick={() => setOpen(o => !o)}
-            className="text-sm font-semibold text-white hover:underline text-left">
-            {selected?.label || 'Select action…'}
-          </button>
+    <div className="rounded-xl border p-3 space-y-2.5" style={{ background: '#0a1020', borderColor: a.color + '50' }}>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-base">{a.icon}</span>
+          <p className="text-xs font-bold" style={{ color: a.color }}>Action {index + 1}: {a.label}</p>
         </div>
-        <button type="button" onClick={onRemove} className="p-1 rounded hover:bg-white/10 transition" style={{ color: '#ef4444' }}>
+        <button type="button" onClick={onRemove} className="p-1 hover:bg-white/10 rounded transition" style={{ color: '#ef4444' }}>
           <Trash2 size={12} />
         </button>
       </div>
-
-      {open && (
-        <div className="border-t px-3 pb-3 space-y-2" style={{ borderColor: '#1e2d45' }}>
-          {/* Action type picker */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 pt-2">
-            {ACTIONS.map(a => (
-              <button key={a.key} type="button"
-                onClick={() => { onChange({ action_type: a.key, params: {} }); setOpen(false); }}
-                className="flex items-center gap-1.5 px-2.5 py-2 rounded-lg border text-left transition"
-                style={action.action_type === a.key
-                  ? { background: a.bg, borderColor: a.color, color: a.color }
-                  : { background: '#0a1020', borderColor: '#1e2d45', color: '#7ba3c8' }}>
-                <span className="text-sm">{a.icon}</span>
-                <span className="text-xs font-semibold truncate">{a.label}</span>
-              </button>
-            ))}
-          </div>
+      {params.map(p => (
+        <div key={p.key}>
+          <label className="text-xs font-semibold block mb-1" style={{ color: '#7ba3c8' }}>
+            {p.label}{p.required && <span style={{ color: '#ef4444' }}>*</span>}
+          </label>
+          <input className={inp} style={inpStyle} placeholder={p.placeholder}
+            value={action.params?.[p.key] || ''}
+            onChange={e => onChange({ ...action, params: { ...(action.params || {}), [p.key]: e.target.value } })} />
         </div>
-      )}
-
-      {/* Params */}
-      {selected?.params?.length > 0 && (
-        <div className="border-t px-3 pb-3 pt-2 space-y-2" style={{ borderColor: '#1e2d4560' }}>
-          {selected.params.map(p => (
-            <div key={p.key}>
-              <label className="text-xs font-semibold block mb-1" style={{ color: '#7ba3c8' }}>
-                {p.label}{p.required && <span style={{ color: '#ef4444' }}>*</span>}
-              </label>
-              <input className={inp} style={inpStyle} placeholder={p.placeholder}
-                value={action.params?.[p.key] || ''}
-                onChange={e => setParam(p.key, e.target.value)} />
-            </div>
-          ))}
-        </div>
-      )}
+      ))}
     </div>
   );
 }
 
-function ConditionRow({ condition, onChange, onRemove }) {
-  const set = k => e => onChange({ ...condition, [k]: e.target.value });
+function ActionPicker({ onAdd }) {
+  const [open, setOpen] = useState(false);
+  if (!open) return (
+    <button type="button" onClick={() => setOpen(true)}
+      className="flex items-center gap-2 px-3 py-2.5 rounded-xl border text-sm transition w-full"
+      style={{ borderColor: '#1e2d45', borderStyle: 'dashed', color: '#7ba3c8' }}>
+      <PlusSquare size={14} /> Add Action
+    </button>
+  );
   return (
-    <div className="flex items-center gap-2 flex-wrap">
-      <input className={inp + ' flex-1 min-w-0'} style={{ ...inpStyle, minWidth: 90 }}
-        placeholder="field (e.g. urgency_level)" value={condition.field || ''} onChange={set('field')} />
-      <select className={inp} style={{ ...inpStyle, width: 120 }} value={condition.operator || 'equals'} onChange={set('operator')}>
-        <option value="equals">equals</option>
-        <option value="not_equals">not equals</option>
-        <option value="contains">contains</option>
-        <option value="greater_than">greater than</option>
-        <option value="less_than">less than</option>
-      </select>
-      <input className={inp + ' flex-1 min-w-0'} style={{ ...inpStyle, minWidth: 80 }}
-        placeholder="value" value={condition.value || ''} onChange={set('value')} />
-      <button type="button" onClick={onRemove} className="p-1.5 rounded hover:bg-white/10 transition shrink-0" style={{ color: '#ef4444' }}>
-        <X size={12} />
-      </button>
+    <div className="rounded-xl border p-3" style={{ background: '#0a1020', borderColor: '#1e2d45' }}>
+      <p className="text-xs font-bold mb-2" style={{ color: '#7ba3c8' }}>Choose action to add:</p>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+        {ACTIONS.map(a => (
+          <button key={a.key} type="button"
+            onClick={() => { onAdd({ action_type: a.key, params: {} }); setOpen(false); }}
+            className="flex items-center gap-1.5 px-2.5 py-2 rounded-xl border text-xs transition text-left"
+            style={{ background: a.bg, borderColor: a.color + '50', color: '#fff' }}>
+            <span>{a.icon}</span> {a.label}
+          </button>
+        ))}
+      </div>
+      <button type="button" onClick={() => setOpen(false)} className="mt-2 text-xs" style={{ color: '#3a5a7c' }}>Cancel</button>
     </div>
   );
 }
 
-const BLANK_RULE = { rule_name: '', trigger_type: '', conditions: [], actions: [] };
+const BLANK_RULE = { rule_name: '', trigger_type: 'new_lead', conditions: [], actions: [], enabled: true };
 
-export default function AutomationBuilder({ initial, onSave, onCancel, saving }) {
-  const [rule, setRule] = useState(initial || BLANK_RULE);
-  const set = k => v => setRule(r => ({ ...r, [k]: v }));
+export default function AutomationBuilder({ companyId, editing, onClose }) {
+  const qc = useQueryClient();
+  const [form, setForm] = useState(editing
+    ? { rule_name: editing.rule_name, trigger_type: editing.trigger_type, conditions: editing.conditions || [], actions: editing.actions || [], enabled: editing.enabled }
+    : { ...BLANK_RULE }
+  );
 
-  const addAction = () => setRule(r => ({ ...r, actions: [...r.actions, { action_type: '', params: {} }] }));
-  const updateAction = (i, val) => setRule(r => { const a = [...r.actions]; a[i] = val; return { ...r, actions: a }; });
-  const removeAction = i => setRule(r => ({ ...r, actions: r.actions.filter((_, idx) => idx !== i) }));
+  const set = k => v => setForm(f => ({ ...f, [k]: v }));
 
-  const addCondition = () => setRule(r => ({ ...r, conditions: [...(r.conditions || []), { field: '', operator: 'equals', value: '' }] }));
-  const updateCondition = (i, val) => setRule(r => { const c = [...(r.conditions || [])]; c[i] = val; return { ...r, conditions: c }; });
-  const removeCondition = i => setRule(r => ({ ...r, conditions: r.conditions.filter((_, idx) => idx !== i) }));
+  const mutation = useMutation({
+    mutationFn: data => editing
+      ? base44.entities.AutomationRule.update(editing.id, data)
+      : base44.entities.AutomationRule.create({ ...data, company_id: companyId }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['automation-rules'], exact: false });
+      toast({ title: editing ? 'Automation updated' : 'Automation created' });
+      onClose();
+    },
+  });
 
   const handleSave = () => {
-    if (!rule.rule_name.trim()) return;
-    if (!rule.trigger_type) return;
-    onSave(rule);
+    if (!form.rule_name.trim()) { toast({ title: 'Rule name is required', variant: 'destructive' }); return; }
+    if (!form.trigger_type) { toast({ title: 'Choose a trigger', variant: 'destructive' }); return; }
+    if (!form.actions.length) { toast({ title: 'Add at least one action', variant: 'destructive' }); return; }
+    mutation.mutate(form);
   };
 
+  const updateAction = (i, val) => setForm(f => ({ ...f, actions: f.actions.map((a, idx) => idx === i ? val : a) }));
+  const removeAction = i => setForm(f => ({ ...f, actions: f.actions.filter((_, idx) => idx !== i) }));
+  const addAction = act => setForm(f => ({ ...f, actions: [...f.actions, act] }));
+
+  const trigger = getTrigger(form.trigger_type);
+
   return (
-    <div className="rounded-2xl border overflow-hidden" style={{ background: '#0d1829', borderColor: '#1e2d45' }}>
+    <div className="rounded-2xl border overflow-hidden" style={{ background: '#0d1829', borderColor: '#2a3f5f' }}>
+      {/* Header */}
       <div className="px-5 py-4 border-b flex items-center justify-between" style={{ borderColor: '#1e2d45', background: '#0a1020' }}>
-        <p className="text-sm font-bold text-white">{initial?.id ? 'Edit Automation' : 'New Automation'}</p>
-        <button onClick={onCancel} className="p-1.5 rounded-lg hover:bg-white/10 transition" style={{ color: '#3a5a7c' }}>
+        <div className="flex items-center gap-2">
+          <span className="text-lg">⚡</span>
+          <span className="text-sm font-bold text-white">{editing ? 'Edit Automation' : 'New Automation'}</span>
+        </div>
+        <button onClick={onClose} className="p-1.5 hover:bg-white/10 rounded-lg transition" style={{ color: '#3a5a7c' }}>
           <X size={15} />
         </button>
       </div>
 
-      <div className="p-5 space-y-5">
+      <div className="p-5 space-y-6">
         {/* Name */}
         <div>
-          <label className="text-xs font-bold block mb-1.5" style={{ color: '#7ba3c8' }}>Automation Name *</label>
-          <input className={inp} style={inpStyle} placeholder="e.g. Auto GBP post after new lead"
-            value={rule.rule_name} onChange={e => set('rule_name')(e.target.value)} />
+          <label className="text-xs font-bold uppercase tracking-wider block mb-1.5" style={{ color: '#7ba3c8' }}>Rule Name</label>
+          <input className={inp} style={inpStyle} placeholder="e.g. Auto follow-up after new lead"
+            value={form.rule_name} onChange={e => setForm(f => ({ ...f, rule_name: e.target.value }))} />
         </div>
 
-        {/* Trigger */}
-        <div>
-          <label className="text-xs font-bold block mb-1.5" style={{ color: '#7ba3c8' }}>Trigger *</label>
-          <TriggerPicker value={rule.trigger_type} onChange={set('trigger_type')} />
-        </div>
-
-        {/* Conditions */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <label className="text-xs font-bold" style={{ color: '#7ba3c8' }}>Conditions (optional)</label>
-            <button type="button" onClick={addCondition}
-              className="text-xs flex items-center gap-1 px-2.5 py-1 rounded-lg border transition"
-              style={{ background: '#0a1020', borderColor: '#1e2d45', color: '#7ba3c8' }}>
-              <Plus size={10} /> Add
-            </button>
-          </div>
-          {(rule.conditions || []).length === 0 && (
-            <p className="text-xs" style={{ color: '#3a5a7c' }}>No conditions — automation runs on every trigger</p>
-          )}
-          <div className="space-y-2">
-            {(rule.conditions || []).map((c, i) => (
-              <ConditionRow key={i} condition={c} onChange={v => updateCondition(i, v)} onRemove={() => removeCondition(i)} />
-            ))}
-          </div>
-        </div>
+        {/* Trigger picker */}
+        <TriggerPicker value={form.trigger_type} onChange={set('trigger_type')} />
 
         {/* Actions */}
         <div>
-          <div className="flex items-center justify-between mb-2">
-            <label className="text-xs font-bold" style={{ color: '#7ba3c8' }}>Actions *</label>
-            <button type="button" onClick={addAction}
-              className="text-xs flex items-center gap-1 px-2.5 py-1 rounded-lg border transition"
-              style={{ background: '#0a1020', borderColor: '#e05a1c60', color: '#e05a1c' }}>
-              <Plus size={10} /> Add Action
-            </button>
-          </div>
+          <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: '#7ba3c8' }}>2. Configure Actions</p>
 
-          {rule.actions.length === 0 && (
-            <div className="rounded-xl border border-dashed py-6 text-center" style={{ borderColor: '#1e2d45' }}>
-              <p className="text-xs" style={{ color: '#3a5a7c' }}>Click "Add Action" to define what happens when this rule triggers</p>
-            </div>
-          )}
-
-          {/* Flow preview */}
-          {rule.actions.length > 0 && (
-            <div className="flex items-center gap-2 mb-3 flex-wrap">
-              {rule.trigger_type && (
-                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold"
-                  style={{ background: '#1e2d45', color: '#c8d9eb' }}>
-                  {TRIGGERS.find(t => t.key === rule.trigger_type)?.icon} Trigger
-                </div>
-              )}
-              {rule.actions.map((_, i) => (
-                <div key={i} className="flex items-center gap-1.5">
-                  <ArrowRight size={12} style={{ color: '#3a5a7c' }} />
-                  <div className="px-2.5 py-1.5 rounded-lg text-xs font-semibold" style={{ background: '#1e2d45', color: '#c8d9eb' }}>
-                    Action {i + 1}
+          {/* Preview flow */}
+          {(form.actions.length > 0) && (
+            <div className="flex items-center gap-2 flex-wrap mb-3 p-3 rounded-xl border"
+              style={{ background: '#0a1020', borderColor: '#1e2d45' }}>
+              <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-semibold"
+                style={{ background: trigger.bg, borderColor: trigger.color + '60', color: trigger.color }}>
+                {trigger.icon} {trigger.label}
+              </div>
+              {form.actions.map((act, i) => {
+                const a = getAction(act.action_type);
+                return (
+                  <div key={i} className="flex items-center gap-1.5">
+                    <ArrowRight size={12} style={{ color: '#3a5a7c' }} />
+                    <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-semibold"
+                      style={{ background: a.bg, borderColor: a.color + '60', color: a.color }}>
+                      {a.icon} {a.label}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
           <div className="space-y-2">
-            {rule.actions.map((act, i) => (
+            {form.actions.map((act, i) => (
               <ActionBlock key={i} action={act} index={i}
-                onChange={v => updateAction(i, v)}
+                onChange={val => updateAction(i, val)}
                 onRemove={() => removeAction(i)} />
             ))}
+            <ActionPicker onAdd={addAction} />
           </div>
         </div>
 
-        {/* Save */}
-        <div className="flex gap-2 pt-1">
-          <button onClick={handleSave} disabled={saving || !rule.rule_name || !rule.trigger_type}
-            className="flex-1 py-3 rounded-xl text-sm font-bold text-white transition disabled:opacity-50 flex items-center justify-center gap-2"
-            style={{ background: '#e05a1c' }}>
-            {saving
-              ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              : <Save size={13} />}
-            {saving ? 'Saving…' : 'Save Automation'}
-          </button>
-          <button onClick={onCancel}
-            className="px-5 py-3 rounded-xl text-sm font-semibold transition"
-            style={{ background: '#1e2d45', color: '#7ba3c8' }}>
-            Cancel
+        {/* Enable toggle */}
+        <div className="flex items-center justify-between py-2 px-3 rounded-xl border" style={{ borderColor: '#1e2d45' }}>
+          <div>
+            <p className="text-sm font-semibold text-white">Enable automation</p>
+            <p className="text-xs mt-0.5" style={{ color: '#3a5a7c' }}>Active automations fire when conditions are met</p>
+          </div>
+          <button type="button" onClick={() => setForm(f => ({ ...f, enabled: !f.enabled }))}
+            className="relative w-10 h-6 rounded-full transition-colors"
+            style={{ background: form.enabled ? '#10b981' : '#1e2d45' }}>
+            <span className="absolute top-1 transition-all w-4 h-4 rounded-full bg-white shadow"
+              style={{ left: form.enabled ? '22px' : '4px' }} />
           </button>
         </div>
+
+        {/* Save */}
+        <button onClick={handleSave} disabled={mutation.isPending}
+          className="w-full py-3 rounded-xl text-sm font-bold text-white hover:opacity-90 transition disabled:opacity-50 flex items-center justify-center gap-2"
+          style={{ background: '#e05a1c' }}>
+          {mutation.isPending
+            ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            : <Save size={14} />}
+          {mutation.isPending ? 'Saving…' : editing ? 'Update Automation' : 'Create Automation'}
+        </button>
       </div>
     </div>
   );

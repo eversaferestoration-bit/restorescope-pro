@@ -13,12 +13,12 @@ export const TRIGGERS = [
     icon: '✅',
     color: '#10b981',
     bg: '#10b98120',
-    description: 'Fires when a job status is marked complete',
+    description: 'Fires when a job is marked complete',
   },
   {
     key: 'storm_event_created',
     label: 'Storm Event Created',
-    icon: '⛈',
+    icon: '⛈️',
     color: '#8b5cf6',
     bg: '#8b5cf620',
     description: 'Fires when a new storm event is logged',
@@ -42,7 +42,7 @@ export const TRIGGERS = [
   {
     key: 'no_gbp_posts_7days',
     label: 'No GBP Posts in 7 Days',
-    icon: '🗓',
+    icon: '🗓️',
     color: '#e05a1c',
     bg: '#e05a1c20',
     description: 'Fires when no GBP post exists in the last 7 days',
@@ -57,7 +57,9 @@ export const ACTIONS = [
     color: '#3b82f6',
     bg: '#3b82f620',
     description: 'AI-generate a Google Business Profile post',
-    params: [{ key: 'service', label: 'Service Type', placeholder: 'Water Damage', required: false }],
+    params: [
+      { key: 'service', label: 'Service Type', placeholder: 'Water Damage', required: false },
+    ],
   },
   {
     key: 'send_sms',
@@ -66,7 +68,9 @@ export const ACTIONS = [
     color: '#10b981',
     bg: '#10b98120',
     description: 'Send an SMS to the lead or contact',
-    params: [{ key: 'message_template', label: 'Message Template', placeholder: 'Hi {name}, thanks for contacting us…', required: true }],
+    params: [
+      { key: 'message_template', label: 'Message Template', placeholder: 'Hi {name}, thanks for contacting us…', required: true },
+    ],
   },
   {
     key: 'create_campaign',
@@ -87,7 +91,9 @@ export const ACTIONS = [
     color: '#f59e0b',
     bg: '#f59e0b20',
     description: 'AI-generate a local SEO landing page',
-    params: [{ key: 'city', label: 'City', placeholder: 'Nashville', required: true }],
+    params: [
+      { key: 'city', label: 'City', placeholder: 'Nashville', required: true },
+    ],
   },
   {
     key: 'send_email_alert',
@@ -108,9 +114,11 @@ export const ACTIONS = [
     color: '#fbbf24',
     bg: '#fbbf2420',
     description: 'Auto-queue a review request for the customer',
-    params: [{ key: 'delay_hours', label: 'Delay (hours after trigger)', placeholder: '24', required: false }],
+    params: [
+      { key: 'delay_hours', label: 'Delay (hours after trigger)', placeholder: '24', required: false },
+    ],
   },
 ];
 
-export const getTrigger = (key) => TRIGGERS.find(t => t.key === key) || { label: key, icon: '⚡', color: '#3a5a7c', bg: '#1e2d45' };
-export const getAction = (key) => ACTIONS.find(a => a.key === key) || { label: key, icon: '⚙️', color: '#3a5a7c', bg: '#1e2d45' };
+export const getTrigger = (key) => TRIGGERS.find(t => t.key === key) || { label: key, icon: '⚡', color: '#3a5a7c', bg: '#1e2d4560' };
+export const getAction  = (key) => ACTIONS.find(a => a.key === key)  || { label: key, icon: '⚙️', color: '#3a5a7c', bg: '#1e2d4560' };
