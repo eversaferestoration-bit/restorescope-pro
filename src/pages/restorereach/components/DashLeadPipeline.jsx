@@ -44,27 +44,27 @@ function LeadRow({ lead }) {
 
   return (
     <tr className="border-b last:border-0 hover:bg-white/3 transition-colors" style={{ borderColor: '#1e2d45' }}>
-      <td className="px-4 py-3">
-        <p className="text-sm font-semibold text-white">{lead.customer_name}</p>
+      <td className="px-3 md:px-4 py-3">
+        <p className="text-xs md:text-sm font-semibold text-white">{lead.customer_name}</p>
         <p className="text-xs" style={{ color: '#7ba3c8' }}>{lead.phone || lead.email || '—'}</p>
       </td>
-      <td className="px-4 py-3 text-sm hidden sm:table-cell" style={{ color: '#c8d9eb' }}>
+      <td className="px-3 md:px-4 py-3 text-xs md:text-sm hidden sm:table-cell" style={{ color: '#c8d9eb' }}>
         {lead.service_needed || '—'}
       </td>
-      <td className="px-4 py-3 text-sm hidden md:table-cell" style={{ color: '#7ba3c8' }}>
+      <td className="px-3 md:px-4 py-3 text-xs md:text-sm hidden md:table-cell" style={{ color: '#7ba3c8' }}>
         {city}
       </td>
-      <td className="px-4 py-3 hidden sm:table-cell">
-        <span className="text-xs px-2 py-0.5 rounded-full font-medium"
+      <td className="px-3 md:px-4 py-3 hidden sm:table-cell">
+        <span className="text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap"
           style={{ background: urgencyCfg.bg, color: urgencyCfg.color }}>
           {urgencyCfg.label}
         </span>
       </td>
-      <td className="px-4 py-3">
+      <td className="px-3 md:px-4 py-3">
         <select
           value={lead.status || 'new'}
           onChange={(e) => updateStatus.mutate({ id: lead.id, status: e.target.value })}
-          className="text-xs px-2 py-1.5 rounded-lg border focus:outline-none cursor-pointer"
+          className="text-xs px-1.5 md:px-2 py-1.5 rounded-lg border focus:outline-none cursor-pointer min-h-[36px]"
           style={{ background: statusCfg.bg, borderColor: statusCfg.color + '80', color: statusCfg.color }}>
           {STATUSES.map(s => (
             <option key={s} value={s} style={{ background: '#0d1829', color: '#fff' }}>
@@ -73,10 +73,10 @@ function LeadRow({ lead }) {
           ))}
         </select>
       </td>
-      <td className="px-4 py-3 text-xs hidden lg:table-cell" style={{ color: '#3a5a7c' }}>{dateLabel}</td>
-      <td className="px-4 py-3">
+      <td className="px-3 md:px-4 py-3 text-xs hidden lg:table-cell" style={{ color: '#3a5a7c' }}>{dateLabel}</td>
+      <td className="px-3 md:px-4 py-3">
         <Link to="/restorereach/leads"
-          className="text-xs px-2.5 py-1.5 rounded-lg transition hover:text-orange-400"
+          className="text-xs px-2.5 py-1.5 rounded-lg transition hover:text-orange-400 whitespace-nowrap min-h-[36px] inline-flex items-center"
           style={{ background: '#1e2d45', color: '#7ba3c8' }}>
           View
         </Link>
@@ -90,7 +90,7 @@ export default function DashLeadPipeline({ leads, loading }) {
   const visible = showAll ? leads : leads.slice(0, 8);
 
   return (
-    <div className="rounded-xl border overflow-hidden" style={{ background: '#0d1829', borderColor: '#1e2d45' }}>
+    <div className="rounded-xl border overflow-hidden min-w-0" style={{ background: '#0d1829', borderColor: '#1e2d45' }}>
       <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: '#1e2d45', background: '#0a1020' }}>
         <div className="flex items-center gap-2">
           <Phone size={15} style={{ color: '#e05a1c' }} />
@@ -119,17 +119,17 @@ export default function DashLeadPipeline({ leads, loading }) {
         </div>
       ) : (
         <>
-          <div className="overflow-x-auto">
-            <table className="w-full">
+          <div className="overflow-x-auto -mx-0">
+            <table className="w-full min-w-[340px]">
               <thead>
                 <tr className="border-b text-xs uppercase tracking-wider" style={{ borderColor: '#1e2d45', color: '#3a5a7c' }}>
-                  <th className="px-4 py-3 text-left">Name</th>
-                  <th className="px-4 py-3 text-left hidden sm:table-cell">Service</th>
-                  <th className="px-4 py-3 text-left hidden md:table-cell">City</th>
-                  <th className="px-4 py-3 text-left hidden sm:table-cell">Urgency</th>
-                  <th className="px-4 py-3 text-left">Status</th>
-                  <th className="px-4 py-3 text-left hidden lg:table-cell">Date</th>
-                  <th className="px-4 py-3 text-left">Action</th>
+                  <th className="px-3 md:px-4 py-3 text-left">Name</th>
+                  <th className="px-3 md:px-4 py-3 text-left hidden sm:table-cell">Service</th>
+                  <th className="px-3 md:px-4 py-3 text-left hidden md:table-cell">City</th>
+                  <th className="px-3 md:px-4 py-3 text-left hidden sm:table-cell">Urgency</th>
+                  <th className="px-3 md:px-4 py-3 text-left">Status</th>
+                  <th className="px-3 md:px-4 py-3 text-left hidden lg:table-cell">Date</th>
+                  <th className="px-3 md:px-4 py-3 text-left">Action</th>
                 </tr>
               </thead>
               <tbody>

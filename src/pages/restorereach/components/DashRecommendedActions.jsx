@@ -148,7 +148,7 @@ export default function DashRecommendedActions({ companyProfile, areas, campaign
           {recs.map((rec, i) => {
             const Icon = rec.icon;
             return (
-              <div key={i} className="flex items-start gap-3 px-5 py-4 hover:bg-white/3 transition-colors" style={{ borderColor: '#1e2d45' }}>
+              <div key={i} className="flex items-start gap-3 px-4 py-4 hover:bg-white/3 transition-colors" style={{ borderColor: '#1e2d45' }}>
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5" style={{ background: rec.color + '22' }}>
                   <Icon size={14} style={{ color: rec.color }} />
                 </div>
@@ -160,7 +160,7 @@ export default function DashRecommendedActions({ companyProfile, areas, campaign
                   <p className="text-xs" style={{ color: '#7ba3c8' }}>{rec.desc}</p>
                 </div>
                 <Link to={rec.path}
-                  className="shrink-0 text-xs px-3 py-1.5 rounded-lg font-semibold text-white hover:opacity-90 transition whitespace-nowrap"
+                  className="shrink-0 text-xs px-3 py-2 rounded-lg font-semibold text-white hover:opacity-90 transition whitespace-nowrap min-h-[36px] inline-flex items-center"
                   style={{ background: rec.color }}>
                   {rec.cta}
                 </Link>

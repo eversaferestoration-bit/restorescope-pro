@@ -66,7 +66,7 @@ export default function RRCitationManager() {
 
   return (
     <RRAccessGate isReady={isReady} profileLoading={profileLoading}>
-      <div className="p-5 md:p-7 max-w-5xl mx-auto space-y-6">
+      <div className="p-4 md:p-7 max-w-5xl mx-auto space-y-5 md:space-y-6">
 
         {/* Header */}
         <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -79,33 +79,33 @@ export default function RRCitationManager() {
             </p>
           </div>
           <button onClick={() => setShowForm(s => !s)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90 transition"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90 transition shrink-0 min-h-[44px]"
             style={{ background: '#e05a1c' }}>
             <PlusCircle size={14} /> Add Citation
           </button>
         </div>
 
         {/* Score + stats hero */}
-        <div className="rounded-2xl border p-5 flex flex-col sm:flex-row items-center gap-6"
+        <div className="rounded-2xl border p-4 md:p-5 flex flex-col sm:flex-row items-center gap-4 md:gap-6"
           style={{ background: '#0d1829', borderColor: '#1e2d45' }}>
-          <CitationScoreRing score={citationScore} size={120} />
+          <CitationScoreRing score={citationScore} size={100} />
 
-          <div className="flex-1 grid grid-cols-2 sm:grid-cols-4 gap-4 w-full">
+          <div className="flex-1 grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-4 w-full">
             {[
               { label: 'Consistent',   count: counts.consistent,   color: '#10b981', bg: '#10b98120' },
               { label: 'Inconsistent', count: counts.inconsistent, color: '#f59e0b', bg: '#f59e0b20' },
               { label: 'Missing',      count: counts.missing,      color: '#ef4444', bg: '#ef444420' },
               { label: 'Unchecked',    count: counts.unchecked,    color: '#3a5a7c', bg: '#1e2d4580' },
             ].map(s => (
-              <div key={s.label} className="rounded-xl p-3 text-center" style={{ background: s.bg }}>
-                <p className="text-xl font-bold" style={{ color: s.color }}>{s.count}</p>
+              <div key={s.label} className="rounded-xl p-2.5 md:p-3 text-center" style={{ background: s.bg }}>
+                <p className="text-lg md:text-xl font-bold" style={{ color: s.color }}>{s.count}</p>
                 <p className="text-xs mt-0.5" style={{ color: s.color }}>{s.label}</p>
               </div>
             ))}
           </div>
 
-          <div className="sm:border-l sm:pl-6 sm:min-w-[120px] text-center" style={{ borderColor: '#1e2d45' }}>
-            <p className="text-3xl font-bold text-white">{completionPct}%</p>
+          <div className="sm:border-l sm:pl-6 sm:min-w-[110px] text-center w-full sm:w-auto" style={{ borderColor: '#1e2d45' }}>
+            <p className="text-2xl md:text-3xl font-bold text-white">{completionPct}%</p>
             <p className="text-xs mt-0.5" style={{ color: '#7ba3c8' }}>Completion</p>
             <div className="w-full h-1.5 rounded-full mt-2" style={{ background: '#1e2d45' }}>
               <div className="h-1.5 rounded-full transition-all duration-700"

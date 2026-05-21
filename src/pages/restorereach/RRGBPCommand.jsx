@@ -27,7 +27,7 @@ export default function RRGBPCommand() {
 
   return (
     <RRAccessGate isReady={isReady} profileLoading={profileLoading}>
-    <div className="p-5 md:p-7 max-w-6xl mx-auto space-y-8">
+    <div className="p-4 md:p-7 max-w-6xl mx-auto space-y-5 md:space-y-8">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-white flex items-center gap-2">
@@ -39,7 +39,7 @@ export default function RRGBPCommand() {
       </div>
 
       {/* 2-col: Profile Settings + Health Checklist */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         <GBPProfileSettings profile={profile} user={user} />
         <GBPHealthChecklist profile={profile} gbpPosts={gbpPosts.length} areas={areas} />
       </div>

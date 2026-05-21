@@ -48,7 +48,7 @@ export default function RRCompetitorTracker() {
 
   return (
     <RRAccessGate isReady={isReady} profileLoading={profileLoading}>
-      <div className="p-5 md:p-7 max-w-6xl mx-auto space-y-6">
+      <div className="p-4 md:p-7 max-w-6xl mx-auto space-y-5 md:space-y-6">
 
         {/* Header */}
         <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -62,7 +62,7 @@ export default function RRCompetitorTracker() {
           </div>
           <button
             onClick={() => setShowForm(s => !s)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90 transition"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90 transition shrink-0 min-h-[44px]"
             style={{ background: '#e05a1c' }}
           >
             <PlusCircle size={14} /> Add Competitor
@@ -84,11 +84,11 @@ export default function RRCompetitorTracker() {
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center gap-1 p-1 rounded-xl border" style={{ background: '#0a1020', borderColor: '#1e2d45' }}>
               {[
-                { key: 'cards', label: 'Competitor Cards', icon: Users },
+                { key: 'cards', label: 'Cards', icon: Users },
                 { key: 'charts', label: 'Charts', icon: BarChart2 },
               ].map(t => (
                 <button key={t.key} onClick={() => setActiveTab(t.key)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition"
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition min-h-[36px]"
                   style={activeTab === t.key
                     ? { background: '#e05a1c', color: '#fff' }
                     : { color: '#7ba3c8' }}>
@@ -102,7 +102,7 @@ export default function RRCompetitorTracker() {
               <select
                 value={sort}
                 onChange={e => setSort(e.target.value)}
-                className="text-xs px-3 py-1.5 rounded-xl border focus:outline-none"
+                className="text-xs px-3 py-2 rounded-xl border focus:outline-none min-h-[36px]"
                 style={{ background: '#0a1020', borderColor: '#1e2d45', color: '#7ba3c8' }}
               >
                 {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -147,7 +147,7 @@ export default function RRCompetitorTracker() {
 
         {/* Charts view */}
         {!isLoading && activeTab === 'charts' && allCompetitors.length > 0 && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-5">
             <VisibilityBarChart competitors={sorted} myScore={myScore} myName={profile?.company_name || 'You'} />
             <ReviewsBarChart competitors={sorted} />
           </div>

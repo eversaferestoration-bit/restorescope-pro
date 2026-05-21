@@ -87,22 +87,22 @@ export default function RRDashboard() {
 
   return (
     <RRAccessGate isReady={isReady} profileLoading={profileLoading}>
-    <div className="p-5 md:p-7 max-w-7xl mx-auto space-y-8">
+    <div className="p-4 md:p-7 max-w-7xl mx-auto space-y-5 md:space-y-8">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex items-center justify-between gap-3">
         <div>
-          <div className="flex items-center gap-3 mb-1">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: '#e05a1c' }}>
-              <Zap size={17} className="text-white" />
+          <div className="flex items-center gap-2.5 mb-0.5">
+            <div className="w-8 h-8 md:w-9 md:h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: '#e05a1c' }}>
+              <Zap size={16} className="text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-white">RestoreReach AI</h1>
+            <h1 className="text-xl md:text-2xl font-bold text-white">RestoreReach AI</h1>
           </div>
-          <p className="text-sm ml-12" style={{ color: '#7ba3c8' }}>Local marketing command center — real-time data</p>
+          <p className="text-xs md:text-sm ml-11" style={{ color: '#7ba3c8' }}>Local marketing command center</p>
         </div>
         <Link to="/restorereach/leads"
-          className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white hover:opacity-90 transition"
+          className="flex items-center gap-2 px-3 py-2 md:px-4 md:py-2 rounded-lg text-xs md:text-sm font-semibold text-white hover:opacity-90 transition shrink-0 min-h-[44px]"
           style={{ background: '#e05a1c' }}>
-          <Phone size={14} /> Capture Lead
+          <Phone size={14} /> <span className="hidden sm:inline">Capture Lead</span><span className="sm:hidden">+ Lead</span>
         </Link>
       </div>
 
@@ -121,9 +121,9 @@ export default function RRDashboard() {
       <DashStormStatus status={stormStatus} recentStorm={recentStorm} />
 
       {/* Two-col layout */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 md:gap-6">
         {/* Lead Pipeline — 2 cols */}
-        <div className="xl:col-span-2">
+        <div className="lg:col-span-2 min-w-0">
           <DashLeadPipeline leads={leads} loading={leadsLoading} isEmergencyLeads={true} />
         </div>
         {/* Visibility Score Breakdown */}
@@ -140,7 +140,7 @@ export default function RRDashboard() {
       </div>
 
       {/* Marketing Activity + Recommended Actions */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 md:gap-6">
         <DashMarketingActivity campaigns={campaigns} loading={campaignsLoading} />
         <DashRecommendedActions
           companyProfile={companyProfile}

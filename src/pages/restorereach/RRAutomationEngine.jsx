@@ -73,7 +73,7 @@ export default function RRAutomationEngine() {
 
   return (
     <RRAccessGate isReady={isReady} profileLoading={profileLoading}>
-      <div className="p-5 md:p-7 max-w-5xl mx-auto space-y-6">
+      <div className="p-4 md:p-7 max-w-5xl mx-auto space-y-5 md:space-y-6">
 
         {/* Header */}
         <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -86,7 +86,7 @@ export default function RRAutomationEngine() {
             </p>
           </div>
           <button onClick={handleNew}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90 transition"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90 transition shrink-0 min-h-[44px]"
             style={{ background: '#e05a1c' }}>
             <PlusCircle size={14} /> New Automation
           </button>
@@ -210,24 +210,28 @@ export default function RRAutomationEngine() {
           <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: '#3a5a7c' }}>Triggers</p>
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 {TRIGGERS.map(t => (
-                  <div key={t.key} className="flex items-center gap-2.5 text-xs">
-                    <span className="w-5 text-center">{t.icon}</span>
-                    <span className="font-semibold" style={{ color: t.color }}>{t.label}</span>
-                    <span className="ml-auto" style={{ color: '#3a5a7c' }}>{t.description}</span>
+                  <div key={t.key} className="flex items-start gap-2.5 text-xs">
+                    <span className="w-5 text-center shrink-0 mt-0.5">{t.icon}</span>
+                    <div className="min-w-0">
+                      <span className="font-semibold block" style={{ color: t.color }}>{t.label}</span>
+                      <span className="block" style={{ color: '#3a5a7c' }}>{t.description}</span>
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
             <div>
               <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: '#3a5a7c' }}>Actions</p>
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 {ACTIONS.map(a => (
-                  <div key={a.key} className="flex items-center gap-2.5 text-xs">
-                    <span className="w-5 text-center">{a.icon}</span>
-                    <span className="font-semibold" style={{ color: a.color }}>{a.label}</span>
-                    <span className="ml-auto" style={{ color: '#3a5a7c' }}>{a.description}</span>
+                  <div key={a.key} className="flex items-start gap-2.5 text-xs">
+                    <span className="w-5 text-center shrink-0 mt-0.5">{a.icon}</span>
+                    <div className="min-w-0">
+                      <span className="font-semibold block" style={{ color: a.color }}>{a.label}</span>
+                      <span className="block" style={{ color: '#3a5a7c' }}>{a.description}</span>
+                    </div>
                   </div>
                 ))}
               </div>

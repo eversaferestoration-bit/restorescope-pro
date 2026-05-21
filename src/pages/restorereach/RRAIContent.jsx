@@ -152,19 +152,19 @@ Return ONLY valid JSON (no markdown) with this exact structure:
 
   return (
     <RRAccessGate isReady={isReady} profileLoading={profileLoading}>
-    <div className="p-5 md:p-7 max-w-7xl mx-auto space-y-6">
+    <div className="p-4 md:p-7 max-w-7xl mx-auto space-y-5 md:space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-          <Zap size={22} style={{ color: '#e05a1c' }} /> AI Content Engine
+        <h1 className="text-xl md:text-2xl font-bold text-white flex items-center gap-2">
+          <Zap size={20} style={{ color: '#e05a1c' }} /> AI Content Engine
         </h1>
-        <p className="text-sm mt-0.5" style={{ color: '#7ba3c8' }}>
+        <p className="text-xs md:text-sm mt-0.5" style={{ color: '#7ba3c8' }}>
           Generate local SEO content for GBP, social, blogs, city pages, and storm alerts
         </p>
       </div>
 
       {/* Main 2-col layout */}
-      <div className="grid grid-cols-1 xl:grid-cols-5 gap-5">
+      <div className="grid grid-cols-1 xl:grid-cols-5 gap-4 md:gap-5">
         {/* Left: Inputs */}
         <div className="xl:col-span-2">
           <ContentInputPanel

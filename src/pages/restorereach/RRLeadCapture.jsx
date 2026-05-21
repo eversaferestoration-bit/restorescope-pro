@@ -51,7 +51,7 @@ export default function RRLeadCapture() {
 
   return (
     <RRAccessGate isReady={isReady} profileLoading={profileLoading}>
-    <div className="p-5 md:p-7 max-w-5xl mx-auto space-y-6">
+    <div className="p-4 md:p-7 max-w-5xl mx-auto space-y-5 md:space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
@@ -63,7 +63,7 @@ export default function RRLeadCapture() {
           </p>
         </div>
         <button onClick={() => setShowForm(s => !s)}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white hover:opacity-90 transition"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-white hover:opacity-90 transition shrink-0 min-h-[44px]"
           style={{ background: '#e05a1c' }}>
           {showForm ? 'Hide Form' : '+ New Lead'}
         </button>
@@ -106,11 +106,11 @@ export default function RRLeadCapture() {
       )}
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-2 items-center">
+      <div className="space-y-2">
         <div className="flex flex-wrap gap-1.5">
           {STATUS_OPTIONS.map(s => (
             <button key={s.value} onClick={() => setStatusFilter(s.value)}
-              className="text-xs px-3 py-1.5 rounded-lg border transition"
+              className="text-xs px-3 py-2 rounded-lg border transition min-h-[36px]"
               style={statusFilter === s.value
                 ? { background: '#e05a1c25', borderColor: '#e05a1c', color: '#e05a1c' }
                 : { background: '#0a1020', borderColor: '#1e2d45', color: '#7ba3c8' }}>
@@ -118,11 +118,10 @@ export default function RRLeadCapture() {
             </button>
           ))}
         </div>
-        <div className="h-4 w-px mx-1 hidden sm:block" style={{ background: '#1e2d45' }} />
         <div className="flex flex-wrap gap-1.5">
           {URGENCY_FILTERS.map(u => (
             <button key={u.value} onClick={() => setUrgencyFilter(u.value)}
-              className="text-xs px-3 py-1.5 rounded-lg border transition"
+              className="text-xs px-3 py-2 rounded-lg border transition min-h-[36px]"
               style={urgencyFilter === u.value
                 ? { background: '#e05a1c25', borderColor: '#e05a1c', color: '#e05a1c' }
                 : { background: '#0a1020', borderColor: '#1e2d45', color: '#7ba3c8' }}>

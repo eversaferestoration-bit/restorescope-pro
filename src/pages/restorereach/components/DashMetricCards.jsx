@@ -3,7 +3,7 @@ import { Phone, Star, MapPin, TrendingUp, Building2, Activity } from 'lucide-rea
 function MetricCard({ label, value, icon: IconComp, color, sub, loading }) {
   const Icon = IconComp;
   return (
-    <div className="rounded-xl border p-5 flex flex-col gap-3" style={{ background: '#0d1829', borderColor: '#1e2d45' }}>
+    <div className="rounded-xl border p-4 md:p-5 flex flex-col gap-2.5 md:gap-3" style={{ background: '#0d1829', borderColor: '#1e2d45' }}>
       <div className="flex items-center justify-between">
         <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: color + '22' }}>
           <Icon size={17} style={{ color }} />
@@ -13,7 +13,7 @@ function MetricCard({ label, value, icon: IconComp, color, sub, loading }) {
       {loading ? (
         <div className="h-8 w-16 rounded animate-pulse" style={{ background: '#1e2d45' }} />
       ) : (
-        <p className="text-3xl font-bold text-white leading-none">{value ?? 0}</p>
+        <p className="text-2xl md:text-3xl font-bold text-white leading-none">{value ?? 0}</p>
       )}
       <div>
         <p className="text-sm font-medium text-white">{label}</p>
@@ -34,7 +34,7 @@ export default function DashMetricCards({ totalLeads, newLeadsMonth, gbpPosts, r
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+    <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 md:gap-4">
       {cards.map((c) => <MetricCard key={c.label} {...c} loading={loading} />)}
     </div>
   );

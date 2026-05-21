@@ -22,7 +22,7 @@ export default function RRStormMode() {
 
   return (
     <RRAccessGate isReady={isReady} profileLoading={profileLoading}>
-    <div className="p-5 md:p-7 max-w-5xl mx-auto space-y-6">
+    <div className="p-4 md:p-7 max-w-5xl mx-auto space-y-5 md:space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-white flex items-center gap-2">
@@ -50,14 +50,14 @@ export default function RRStormMode() {
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-2 md:gap-3">
         {[
           { label: 'Active', value: active.length, color: '#ef4444' },
           { label: 'Monitoring', value: monitoring.length, color: '#f59e0b' },
           { label: 'Campaigns Triggered', value: triggered.length, color: '#e05a1c' },
         ].map(s => (
-          <div key={s.label} className="rounded-xl border p-4 text-center" style={{ background: '#0d1829', borderColor: '#1e2d45' }}>
-            <p className="text-2xl font-bold" style={{ color: s.color }}>{s.value}</p>
+          <div key={s.label} className="rounded-xl border p-3 md:p-4 text-center" style={{ background: '#0d1829', borderColor: '#1e2d45' }}>
+            <p className="text-xl md:text-2xl font-bold" style={{ color: s.color }}>{s.value}</p>
             <p className="text-xs mt-1" style={{ color: '#7ba3c8' }}>{s.label}</p>
           </div>
         ))}

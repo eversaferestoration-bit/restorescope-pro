@@ -115,10 +115,10 @@ Return ONLY valid JSON (no markdown, no code block) with this exact structure:
         <h2 className="text-sm font-semibold text-white">AI GBP Post Generator</h2>
       </div>
 
-      <div className="p-5 grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="p-4 md:p-5 grid grid-cols-1 lg:grid-cols-2 gap-5 md:gap-6">
         {/* Inputs */}
         <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="text-xs font-medium text-slate-400 mb-1.5 block">Service</label>
               <select className={inp} style={inpStyle} value={inputs.service} onChange={set('service')}>

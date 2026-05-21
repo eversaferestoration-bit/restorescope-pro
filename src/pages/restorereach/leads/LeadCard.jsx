@@ -43,7 +43,7 @@ export default function LeadCard({ lead }) {
     <div className="rounded-xl border overflow-hidden transition"
       style={{ background: '#0d1829', borderColor: lead.urgency_level === 'critical' ? '#dc262660' : '#1e2d45' }}>
       {/* Header row */}
-      <div className="flex items-center gap-3 px-5 py-4">
+      <div className="flex items-start gap-3 px-4 py-4">
         {/* Urgency score circle */}
         <div className="w-11 h-11 rounded-xl flex flex-col items-center justify-center shrink-0"
           style={{ background: urgency.bg }}>
@@ -90,18 +90,18 @@ export default function LeadCard({ lead }) {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 mt-0.5">
           {/* Status selector */}
           <select
             value={lead.status}
             onChange={(e) => updateStatus(e.target.value)}
-            className="text-xs px-2 py-1.5 rounded-lg border focus:outline-none focus:ring-1 focus:ring-orange-500 cursor-pointer"
+            className="text-xs px-1.5 md:px-2 py-1.5 rounded-lg border focus:outline-none focus:ring-1 focus:ring-orange-500 cursor-pointer min-h-[36px] max-w-[120px]"
             style={{ background: status.bg, borderColor: status.color + '80', color: status.color }}>
             {STATUS_OPTIONS.map(s => (
               <option key={s.value} value={s.value} style={{ background: '#0d1829', color: '#fff' }}>{s.label}</option>
             ))}
           </select>
-          <button onClick={() => setExpanded(e => !e)} className="text-slate-400 hover:text-white transition">
+          <button onClick={() => setExpanded(e => !e)} className="text-slate-400 hover:text-white transition p-1 min-w-[36px] min-h-[36px] flex items-center justify-center">
             {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           </button>
         </div>
@@ -162,7 +162,7 @@ export default function LeadCard({ lead }) {
           {lead.photos?.length > 0 && (
             <div>
               <p className="text-xs text-slate-500 mb-2">Photos ({lead.photos.length})</p>
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                 {lead.photos.map((url, i) => (
                   <a key={i} href={url} target="_blank" rel="noreferrer">
                     <img src={url} alt="" className="rounded-lg aspect-square object-cover w-full hover:opacity-80 transition" />

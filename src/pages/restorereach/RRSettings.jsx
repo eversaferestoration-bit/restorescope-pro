@@ -68,16 +68,16 @@ export default function RRSettings() {
   );
 
   return (
-    <div className="p-5 md:p-7 max-w-3xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
+    <div className="p-4 md:p-7 max-w-3xl mx-auto">
+      <div className="flex items-start justify-between gap-3 mb-6 flex-wrap">
         <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            <Settings size={22} style={{ color: '#e05a1c' }} /> Settings
+          <h1 className="text-xl md:text-2xl font-bold text-white flex items-center gap-2">
+            <Settings size={20} style={{ color: '#e05a1c' }} /> Settings
           </h1>
-          <p className="text-sm mt-0.5" style={{ color: '#7ba3c8' }}>Configure your company profile for AI content generation</p>
+          <p className="text-xs md:text-sm mt-0.5" style={{ color: '#7ba3c8' }}>Configure your company profile for AI content generation</p>
         </div>
         <button onClick={() => saveMutation.mutate(form)} disabled={saveMutation.isPending}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50 min-h-[44px] shrink-0"
           style={{ background: '#e05a1c' }}>
           {saveMutation.isPending ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save size={14} />}
           {saveMutation.isPending ? 'Saving…' : 'Save Profile'}
@@ -86,7 +86,7 @@ export default function RRSettings() {
 
       <div className="space-y-5">
         <Section title="🏢 Company Information">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="col-span-2">
               <Field label="Company Name *">
                 <input className={inp} style={inpStyle} placeholder="ABC Restoration Co." value={form.company_name} onChange={set('company_name')} />

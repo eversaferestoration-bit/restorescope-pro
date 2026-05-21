@@ -54,7 +54,7 @@ import RRAIDamageScan from '@/pages/restorereach/RRAIDamageScan';
 import RRCompetitorTracker from '@/pages/restorereach/RRCompetitorTracker';
 import RRCitationManager from '@/pages/restorereach/RRCitationManager';
 import RRAutomationEngine from '@/pages/restorereach/RRAutomationEngine';
-import RRAnalytics from '@/pages/restorereach/RRAnalytics.jsx';
+import RRAnalytics from '@/pages/restorereach/RRAnalytics';
 
 function FullScreenLoader({ message = 'Loading RestoreScope Pro...' }) {
   return (

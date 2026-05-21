@@ -278,7 +278,7 @@ export default function RRVisibilityScore() {
 
   return (
     <RRAccessGate isReady={isReady} profileLoading={profileLoading}>
-    <div className="p-5 md:p-7 max-w-5xl mx-auto space-y-6">
+    <div className="p-4 md:p-7 max-w-5xl mx-auto space-y-5 md:space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-white flex items-center gap-2">
@@ -291,9 +291,9 @@ export default function RRVisibilityScore() {
 
       {/* Hero score */}
       <div className="rounded-xl border overflow-hidden" style={{ background: '#0d1829', borderColor: '#1e2d45' }}>
-        <div className="p-6 flex flex-col sm:flex-row items-center gap-6">
+        <div className="p-4 md:p-6 flex flex-col sm:flex-row items-center gap-4 md:gap-6">
           <div className="relative shrink-0">
-            <ScoreRing score={total} color={rating.color} size={140} />
+            <ScoreRing score={total} color={rating.color} size={120} />
           </div>
           <div className="flex-1 text-center sm:text-left">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full mb-2"
@@ -335,7 +335,7 @@ export default function RRVisibilityScore() {
       </div>
 
       {/* Weaknesses + Recommendations side by side */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         {/* Weaknesses */}
         <div className="rounded-xl border overflow-hidden" style={{ background: '#0d1829', borderColor: '#1e2d45' }}>
           <div className="px-5 py-4 border-b flex items-center gap-2" style={{ borderColor: '#1e2d45', background: '#0a1020' }}>

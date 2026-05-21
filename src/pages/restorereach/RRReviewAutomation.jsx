@@ -27,7 +27,7 @@ export default function RRReviewAutomation() {
 
   return (
     <RRAccessGate isReady={isReady} profileLoading={profileLoading}>
-    <div className="p-5 md:p-7 max-w-6xl mx-auto space-y-6">
+    <div className="p-4 md:p-7 max-w-6xl mx-auto space-y-5 md:space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-white flex items-center gap-2">
