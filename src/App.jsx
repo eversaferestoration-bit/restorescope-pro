@@ -54,6 +54,7 @@ import RRAIDamageScan from '@/pages/restorereach/RRAIDamageScan';
 import RRCompetitorTracker from '@/pages/restorereach/RRCompetitorTracker';
 import RRCitationManager from '@/pages/restorereach/RRCitationManager';
 import RRAutomationEngine from '@/pages/restorereach/RRAutomationEngine';
+import RRAnalytics from '@/pages/restorereach/RRAnalytics.jsx';
 
 function FullScreenLoader({ message = 'Loading RestoreScope Pro...' }) {
   return (
@@ -317,7 +318,7 @@ function AuthenticatedRoutes() {
         <Route path="scan" element={<RRAIDamageScan />} />
         <Route path="competitors" element={<RRCompetitorTracker />} />
         <Route path="citations" element={<RRCitationManager />} />
-        <Route path="automation" element={<RRAutomationEngine />} />
+        <Route path="analytics" element={<RRAnalytics />} />
         <Route path="automation" element={<RRAutomationEngine />} />
         <Route path="settings" element={<RRSettings />} />
       </Route>
