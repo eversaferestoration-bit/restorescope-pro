@@ -1,96 +1,78 @@
-import { useMemo, useState } from 'react';
+/* eslint-disable react/display-name */
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { useRRCompany } from '@/hooks/useRRCompany';
 import RRAccessGate from './components/RRAccessGate';
-import { subDays, isWithinInterval, differenceInHours, format, eachDayOfInterval } from 'date-fns';
-import { BarChart2, Download, TrendingUp } from 'lucide-react';
 import {
-  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
-  LineChart, Line, PieChart, Pie, Cell
+  BarChart2, TrendingUp, Star, Phone, CloudLightning, FileText,
+  Download, Calendar
+} from 'lucide-react';
+import {
+  LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip,
+  ResponsiveContainer, CartesianGrid, Cell, PieChart, Pie, Legend
 } from 'recharts';
+import { format, subDays, startOfDay, eachDayOfInterval } from 'date-fns';
 
-// ── Date Range Filter ──────────────────────────────────────────────────────────
-const PRESETS = [
-  { label: '7 Days',  days: 7 },
+const TOOLTIP_STYLE = {
+  contentStyle: { background: '#0d1829', border: '1px solid #1e2d45', borderRadius: 10, fontSize: 12 },
+  labelStyle: { color: '#c8d9eb' },
+  itemStyle: { color: '#7ba3c8' },
+};
+
+const DATE_RANGES = [
+  { label: '7 Days', days: 7 },
   { label: '30 Days', days: 30 },
   { label: '90 Days', days: 90 },
 ];
 
-function DateRangeFilter({ range, onChange }) {
+function StatCard({ label, value, sub, color, icon: IconComp }) {
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="text-xs font-semibold shrink-0" style={{ color: '#7ba3c8' }}>Range:</span>
-      {PRESETS.map(p => (
-        <button key={p.label} onClick={() => onChange({ from: subDays(new Date(), p.days), to: new Date(), label: p.label })}
-          className="text-xs px-3 py-1.5 rounded-lg border transition min-h-[36px]"
-          style={range.label === p.label
-            ? { background: '#e05a1c25', borderColor: '#e05a1c', color: '#e05a1c' }
-            : { background: '#0a1020', borderColor: '#1e2d45', color: '#7ba3c8' }}>
-          {p.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-// ── Metric Card ──────────────────────────────────────────────────────────────
-function MetricCard({ label, value, sub, color, icon }) {
-  return (
-    <div className="rounded-xl border p-4 flex flex-col gap-2" style={{ background: '#0d1829', borderColor: '#1e2d45' }}>
-      <div className="flex items-center justify-between">
-        <span className="text-lg">{icon}</span>
-        <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: color + '20', color }}>{label}</span>
+    <div className="rounded-xl border p-4 md:p-5" style={{ background: '#0d1829', borderColor: '#1e2d45' }}>
+      <div className="flex items-center gap-2.5 mb-2">
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: color + '25' }}>
+          <IconComp size={15} style={{ color }} />
+        </div>
+        <p className="text-xs font-semibold" style={{ color: '#7ba3c8' }}>{label}</p>
       </div>
-      <p className="text-2xl font-bold text-white leading-none">{value}</p>
-      <p className="text-xs" style={{ color: '#3a5a7c' }}>{sub}</p>
+      <p className="text-2xl md:text-3xl font-bold text-white">{value}</p>
+      {sub && <p className="text-xs mt-1" style={{ color }}>{sub}</p>}
     </div>
   );
 }
 
-// ── Chart wrapper ─────────────────────────────────────────────────────────────
 function ChartCard({ title, children }) {
   return (
-    <div className="rounded-xl border overflow-hidden" style={{ background: '#0d1829', borderColor: '#1e2d45' }}>
-      <div className="px-4 py-3 border-b" style={{ borderColor: '#1e2d45', background: '#0a1020' }}>
-        <p className="text-sm font-semibold text-white">{title}</p>
+    <div className="rounded-2xl border overflow-hidden" style={{ background: '#0d1829', borderColor: '#1e2d45' }}>
+      <div className="px-4 md:px-5 py-3.5 border-b" style={{ borderColor: '#1e2d45', background: '#0a1020' }}>
+        <p className="text-sm font-bold text-white">{title}</p>
       </div>
-      <div className="p-4">{children}</div>
+      <div className="p-4 md:p-5">{children}</div>
     </div>
   );
 }
 
-const TIP = { fill: '#0a1020', border: '1px solid #1e2d45' };
-const tipContent = ({ active, payload, label }) => {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="rounded-lg px-3 py-2 text-xs" style={TIP}>
-      <p className="text-white font-semibold mb-1">{label}</p>
-      {payload.map((p, i) => (
-        <p key={i} style={{ color: p.color }}>{p.name}: {p.value}</p>
-      ))}
-    </div>
-  );
-};
+function buildDailySeries(items, days, dateField = 'created_date') {
+  const end = startOfDay(new Date());
+  const start = subDays(end, days - 1);
+  const interval = eachDayOfInterval({ start, end });
+  return interval.map(d => {
+    const key = format(d, 'MMM d');
+    const count = items.filter(i => {
+      const dt = new Date(i[dateField] || 0);
+      return format(dt, 'yyyy-MM-dd') === format(d, 'yyyy-MM-dd');
+    }).length;
+    return { date: key, count };
+  });
+}
 
-// ── Main ──────────────────────────────────────────────────────────────────────
 export default function RRAnalytics() {
   const { companyId, profileLoading, isReady } = useRRCompany();
-  const [range, setRange] = useState({ from: subDays(new Date(), 30), to: new Date(), label: '30 Days' });
+  const [range, setRange] = useState(30);
 
   const { data: leads = [] } = useQuery({
     queryKey: ['emergency-leads', companyId],
     queryFn: () => base44.entities.EmergencyLead.filter({ company_id: companyId }, '-created_date', 500),
-    enabled: !!companyId,
-  });
-  const { data: reviews = [] } = useQuery({
-    queryKey: ['review-requests', companyId],
-    queryFn: () => base44.entities.ReviewRequest.filter({ company_id: companyId }, '-created_date', 500),
-    enabled: !!companyId,
-  });
-  const { data: posts = [] } = useQuery({
-    queryKey: ['gbp-posts', companyId],
-    queryFn: () => base44.entities.GBPPost.filter({ company_id: companyId }, '-created_date', 500),
     enabled: !!companyId,
   });
   const { data: campaigns = [] } = useQuery({
@@ -98,276 +80,204 @@ export default function RRAnalytics() {
     queryFn: () => base44.entities.RRMarketingCampaign.filter({ company_id: companyId }, '-created_date', 200),
     enabled: !!companyId,
   });
+  const { data: reviews = [] } = useQuery({
+    queryKey: ['review-requests', companyId],
+    queryFn: () => base44.entities.ReviewRequest.filter({ company_id: companyId }, '-created_date', 200),
+    enabled: !!companyId,
+  });
+  const { data: gbpPosts = [] } = useQuery({
+    queryKey: ['gbp-posts', companyId],
+    queryFn: () => base44.entities.GBPPost.filter({ company_id: companyId }, '-created_date', 200),
+    enabled: !!companyId,
+  });
+  const { data: storms = [] } = useQuery({
+    queryKey: ['storm-events', companyId],
+    queryFn: () => base44.entities.StormEvent.filter({ company_id: companyId }, '-created_date', 100),
+    enabled: !!companyId,
+  });
 
-  const inRange = (d) => {
-    if (!d) return false;
-    return isWithinInterval(new Date(d), { start: range.from, end: range.to });
-  };
+  // KPI totals
+  const totalLeads = leads.length;
+  const convertedLeads = leads.filter(l => l.status === 'won').length;
+  const convRate = totalLeads > 0 ? Math.round((convertedLeads / totalLeads) * 100) : 0;
+  const reviewCount = reviews.filter(r => r.status === 'reviewed').length;
+  const postsCount = gbpPosts.length;
+  const campaignCount = campaigns.length;
+  const stormCount = storms.length;
 
-  const fLeads    = leads.filter(l => inRange(l.created_date));
-  const fReviews  = reviews.filter(r => inRange(r.sent_at || r.created_date));
-  const fPosts    = posts.filter(p => inRange(p.created_date));
-  const fCampaigns = campaigns.filter(c => inRange(c.created_date));
+  // Time series
+  const leadSeries = buildDailySeries(leads, range);
+  const reviewSeries = buildDailySeries(reviews, range);
 
-  const metrics = useMemo(() => {
-    const total = fLeads.length;
-    const won = fLeads.filter(l => l.status === 'won').length;
-    const conv = total > 0 ? ((won / total) * 100).toFixed(1) : '0.0';
-    const contacted = fLeads.filter(l => l.status !== 'new');
-    const avgResp = contacted.length > 0
-      ? `${Math.round(contacted.reduce((s, l) => s + differenceInHours(new Date(l.updated_date || 0), new Date(l.created_date || 0)), 0) / contacted.length)}h`
-      : 'N/A';
-    const received = fReviews.filter(r => r.status === 'reviewed').length;
-    const reviewRate = fReviews.length > 0 ? ((received / fReviews.length) * 100).toFixed(1) : '0.0';
-    const cityCounts = {};
-    fLeads.forEach(l => { if (l.city) cityCounts[l.city] = (cityCounts[l.city] || 0) + 1; });
-    const bestCity = Object.entries(cityCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A';
-    const svcCounts = {};
-    fLeads.forEach(l => { if (l.service_needed) svcCounts[l.service_needed] = (svcCounts[l.service_needed] || 0) + 1; });
-    const bestSvc = Object.entries(svcCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'N/A';
-    return { total, won, conv, avgResp, reviewRate, bestCity, bestSvc };
-  }, [fLeads, fReviews]);
+  // Campaign type breakdown
+  const campaignTypeMap = {};
+  campaigns.forEach(c => {
+    campaignTypeMap[c.campaign_type] = (campaignTypeMap[c.campaign_type] || 0) + 1;
+  });
+  const campaignPieData = Object.entries(campaignTypeMap).map(([name, value], i) => ({
+    name: name.replace('_', ' '),
+    value,
+    color: ['#e05a1c', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444'][i % 6],
+  }));
 
-  // Chart data
-  const cityData = useMemo(() => {
-    const m = {};
-    fLeads.forEach(l => { if (l.city) m[l.city] = (m[l.city] || 0) + 1; });
-    return Object.entries(m).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([name, value]) => ({ name, value }));
-  }, [fLeads]);
+  // Lead source breakdown
+  const sourceMap = {};
+  leads.forEach(l => {
+    const src = l.service_needed || 'Other';
+    sourceMap[src] = (sourceMap[src] || 0) + 1;
+  });
+  const sourceData = Object.entries(sourceMap)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6)
+    .map(([name, count], i) => ({
+      name: name.length > 18 ? name.slice(0, 16) + '…' : name,
+      count,
+      color: ['#e05a1c', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4'][i % 6],
+    }));
 
-  const serviceData = useMemo(() => {
-    const m = {};
-    fLeads.forEach(l => { if (l.service_needed) m[l.service_needed] = (m[l.service_needed] || 0) + 1; });
-    return Object.entries(m).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([name, value]) => ({ name, value }));
-  }, [fLeads]);
-
-  const trendData = useMemo(() => {
-    const days = eachDayOfInterval({ start: range.from, end: range.to });
-    const step = days.length > 30 ? 7 : 1;
-    const buckets = [];
-    for (let i = 0; i < days.length; i += step) {
-      const d = days[i];
-      const nextD = days[Math.min(i + step - 1, days.length - 1)];
-      const count = fLeads.filter(l => {
-        const ld = new Date(l.created_date || 0);
-        return ld >= d && ld <= nextD;
-      }).length;
-      buckets.push({ name: format(d, step > 1 ? 'MMM d' : 'MMM d'), leads: count });
-    }
-    return buckets;
-  }, [fLeads, range]);
-
-  const COLORS = ['#e05a1c', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4'];
-
-  const handleExportCSV = () => {
-    const rows = [
-      ['Customer', 'City', 'Service', 'Urgency', 'Status', 'Date'],
-      ...fLeads.map(l => [l.customer_name, l.city, l.service_needed, l.urgency_level, l.status, l.created_date ? format(new Date(l.created_date), 'yyyy-MM-dd') : '']),
-    ];
-    const csv = rows.map(r => r.map(v => `"${(v || '').toString().replace(/"/g, '""')}"`).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'leads-report.csv'; a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const METRIC_CARDS = [
-    { label: 'Total Leads',       value: metrics.total,         sub: `${metrics.won} won`,              color: '#e05a1c', icon: '📋' },
-    { label: 'Conversion Rate',   value: metrics.conv + '%',    sub: 'Lead → Won',                      color: '#10b981', icon: '🎯' },
-    { label: 'Avg Response Time', value: metrics.avgResp,       sub: 'New to first contact',             color: '#3b82f6', icon: '⏱️' },
-    { label: 'Review Rate',       value: metrics.reviewRate + '%', sub: 'Requests → Received',           color: '#f59e0b', icon: '⭐' },
-    { label: 'Best City',         value: metrics.bestCity,      sub: 'Highest lead volume',              color: '#8b5cf6', icon: '📍' },
-    { label: 'Best Service',      value: metrics.bestSvc.length > 14 ? metrics.bestSvc.slice(0, 14) + '…' : metrics.bestSvc,
-                                                                sub: 'Most requested',                   color: '#06b6d4', icon: '🔧' },
-  ];
+  // Storm events by severity
+  const severityMap = {};
+  storms.forEach(s => { severityMap[s.severity || 'unknown'] = (severityMap[s.severity || 'unknown'] || 0) + 1; });
+  const stormSeverityData = Object.entries(severityMap).map(([name, value], i) => ({
+    name, value,
+    color: ['#ef4444', '#f59e0b', '#3b82f6', '#10b981'][i % 4],
+  }));
 
   return (
     <RRAccessGate isReady={isReady} profileLoading={profileLoading}>
-      <div className="p-4 md:p-7 max-w-6xl mx-auto space-y-5 md:space-y-6">
+      <div className="p-4 md:p-7 max-w-7xl mx-auto space-y-5 md:space-y-6">
 
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <h1 className="text-xl md:text-2xl font-bold text-white flex items-center gap-2">
               <BarChart2 size={20} style={{ color: '#e05a1c' }} /> Analytics & Reporting
             </h1>
             <p className="text-xs md:text-sm mt-0.5" style={{ color: '#7ba3c8' }}>
-              Marketing performance, lead metrics, and growth insights
+              Track leads, campaigns, reviews, and marketing performance
             </p>
           </div>
-          <button onClick={handleExportCSV}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white hover:opacity-90 transition shrink-0 min-h-[44px]"
-            style={{ background: '#1e2d45' }}>
-            <Download size={14} /> Export CSV
-          </button>
+          {/* Date range */}
+          <div className="flex items-center gap-1 p-1 rounded-xl border shrink-0" style={{ background: '#0a1020', borderColor: '#1e2d45' }}>
+            {DATE_RANGES.map(r => (
+              <button key={r.days} onClick={() => setRange(r.days)}
+                className="text-xs px-3 py-2 rounded-lg font-semibold transition min-h-[36px]"
+                style={range === r.days
+                  ? { background: '#e05a1c', color: '#fff' }
+                  : { color: '#7ba3c8' }}>
+                {r.label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* Date filter */}
-        <div className="rounded-xl border px-4 py-3" style={{ background: '#0d1829', borderColor: '#1e2d45' }}>
-          <DateRangeFilter range={range} onChange={setRange} />
-        </div>
-
-        {/* KPI cards */}
+        {/* KPI Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
-          {METRIC_CARDS.map(m => <MetricCard key={m.label} {...m} />)}
+          <StatCard label="Total Leads" value={totalLeads} sub="All time" color="#e05a1c" icon={Phone} />
+          <StatCard label="Conversion" value={`${convRate}%`} sub={`${convertedLeads} won`} color="#10b981" icon={TrendingUp} />
+          <StatCard label="Reviews" value={reviewCount} sub="Received" color="#f59e0b" icon={Star} />
+          <StatCard label="GBP Posts" value={postsCount} sub="Created" color="#3b82f6" icon={FileText} />
+          <StatCard label="Campaigns" value={campaignCount} sub="All types" color="#8b5cf6" icon={BarChart2} />
+          <StatCard label="Storm Events" value={stormCount} sub="Logged" color="#ef4444" icon={CloudLightning} />
         </div>
 
-        {/* Charts 2-col */}
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-
-          <ChartCard title="📈 Lead Volume Trend">
-            <ResponsiveContainer width="100%" height={220}>
-              <LineChart data={trendData}>
+        {/* Lead Trend + Review Trend */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-5">
+          <ChartCard title={`Lead Trend (Last ${range} Days)`}>
+            <ResponsiveContainer width="100%" height={180}>
+              <LineChart data={leadSeries} margin={{ top: 0, right: 5, bottom: 0, left: -20 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1e2d45" />
-                <XAxis dataKey="name" tick={{ fill: '#3a5a7c', fontSize: 10 }} tickLine={false} />
-                <YAxis tick={{ fill: '#3a5a7c', fontSize: 10 }} tickLine={false} axisLine={false} allowDecimals={false} />
-                <Tooltip content={tipContent} />
-                <Line type="monotone" dataKey="leads" stroke="#e05a1c" strokeWidth={2} dot={false} name="Leads" />
+                <XAxis dataKey="date" tick={{ fill: '#3a5a7c', fontSize: 10 }} axisLine={false} tickLine={false}
+                  interval={Math.floor(leadSeries.length / 5)} />
+                <YAxis tick={{ fill: '#3a5a7c', fontSize: 10 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                <Tooltip {...TOOLTIP_STYLE} formatter={(v) => [v, 'Leads']} />
+                <Line type="monotone" dataKey="count" stroke="#e05a1c" strokeWidth={2.5} dot={false} />
               </LineChart>
             </ResponsiveContainer>
           </ChartCard>
 
-          <ChartCard title="📍 Leads by City">
-            {cityData.length === 0
-              ? <p className="text-center py-10 text-sm" style={{ color: '#3a5a7c' }}>No data in range</p>
-              : <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={cityData} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" stroke="#1e2d45" horizontal={false} />
-                    <XAxis type="number" tick={{ fill: '#3a5a7c', fontSize: 10 }} tickLine={false} axisLine={false} allowDecimals={false} />
-                    <YAxis type="category" dataKey="name" tick={{ fill: '#c8d9eb', fontSize: 10 }} width={80} tickLine={false} />
-                    <Tooltip content={tipContent} />
-                    <Bar dataKey="value" fill="#3b82f6" radius={[0, 4, 4, 0]} name="Leads" />
-                  </BarChart>
-                </ResponsiveContainer>
-            }
+          <ChartCard title={`Review Requests (Last ${range} Days)`}>
+            <ResponsiveContainer width="100%" height={180}>
+              <LineChart data={reviewSeries} margin={{ top: 0, right: 5, bottom: 0, left: -20 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1e2d45" />
+                <XAxis dataKey="date" tick={{ fill: '#3a5a7c', fontSize: 10 }} axisLine={false} tickLine={false}
+                  interval={Math.floor(reviewSeries.length / 5)} />
+                <YAxis tick={{ fill: '#3a5a7c', fontSize: 10 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                <Tooltip {...TOOLTIP_STYLE} formatter={(v) => [v, 'Requests']} />
+                <Line type="monotone" dataKey="count" stroke="#f59e0b" strokeWidth={2.5} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
           </ChartCard>
-
-          <ChartCard title="🔧 Leads by Service">
-            {serviceData.length === 0
-              ? <p className="text-center py-10 text-sm" style={{ color: '#3a5a7c' }}>No data in range</p>
-              : <ResponsiveContainer width="100%" height={220}>
-                  <PieChart>
-                    <Pie data={serviceData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, percent }) => `${name.split(' ')[0]} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
-                      {serviceData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                    </Pie>
-                    <Tooltip content={tipContent} />
-                  </PieChart>
-                </ResponsiveContainer>
-            }
-          </ChartCard>
-
-          <ChartCard title="⭐ Review Requests Sent">
-            {fReviews.length === 0
-              ? <p className="text-center py-10 text-sm" style={{ color: '#3a5a7c' }}>No data in range</p>
-              : <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={[
-                    { name: 'Sent', value: fReviews.length },
-                    { name: 'Reviewed', value: fReviews.filter(r => r.status === 'reviewed').length },
-                    { name: 'Pending', value: fReviews.filter(r => r.status === 'pending').length },
-                  ]}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#1e2d45" />
-                    <XAxis dataKey="name" tick={{ fill: '#c8d9eb', fontSize: 10 }} tickLine={false} />
-                    <YAxis tick={{ fill: '#3a5a7c', fontSize: 10 }} tickLine={false} axisLine={false} allowDecimals={false} />
-                    <Tooltip content={tipContent} />
-                    <Bar dataKey="value" fill="#f59e0b" radius={[4, 4, 0, 0]} name="Count" />
-                  </BarChart>
-                </ResponsiveContainer>
-            }
-          </ChartCard>
-
-          <ChartCard title="🏢 GBP Posts by Status">
-            {fPosts.length === 0
-              ? <p className="text-center py-10 text-sm" style={{ color: '#3a5a7c' }}>No data in range</p>
-              : <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={[
-                    { name: 'Draft', value: fPosts.filter(p => p.status === 'draft').length },
-                    { name: 'Scheduled', value: fPosts.filter(p => p.status === 'scheduled').length },
-                    { name: 'Posted', value: fPosts.filter(p => p.status === 'posted').length },
-                  ]}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#1e2d45" />
-                    <XAxis dataKey="name" tick={{ fill: '#c8d9eb', fontSize: 10 }} tickLine={false} />
-                    <YAxis tick={{ fill: '#3a5a7c', fontSize: 10 }} tickLine={false} axisLine={false} allowDecimals={false} />
-                    <Tooltip content={tipContent} />
-                    <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} name="Posts" />
-                  </BarChart>
-                </ResponsiveContainer>
-            }
-          </ChartCard>
-
-          <ChartCard title="⚡ Campaigns by Type">
-            {fCampaigns.length === 0
-              ? <p className="text-center py-10 text-sm" style={{ color: '#3a5a7c' }}>No data in range</p>
-              : (() => {
-                  const m = {};
-                  fCampaigns.forEach(c => { const t = c.campaign_type || 'other'; m[t] = (m[t] || 0) + 1; });
-                  const data = Object.entries(m).map(([name, value]) => ({ name, value }));
-                  return (
-                    <ResponsiveContainer width="100%" height={220}>
-                      <BarChart data={data}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#1e2d45" />
-                        <XAxis dataKey="name" tick={{ fill: '#c8d9eb', fontSize: 9 }} tickLine={false} />
-                        <YAxis tick={{ fill: '#3a5a7c', fontSize: 10 }} tickLine={false} axisLine={false} allowDecimals={false} />
-                        <Tooltip content={tipContent} />
-                        <Bar dataKey="value" radius={[4, 4, 0, 0]} name="Campaigns">
-                          {data.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  );
-                })()
-            }
-          </ChartCard>
-
         </div>
 
-        {/* Summary table */}
-        <div className="rounded-xl border overflow-hidden" style={{ background: '#0d1829', borderColor: '#1e2d45' }}>
-          <div className="px-4 py-3 border-b flex items-center justify-between" style={{ borderColor: '#1e2d45', background: '#0a1020' }}>
-            <p className="text-sm font-bold text-white">Recent Leads</p>
-            <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: '#e05a1c25', color: '#e05a1c' }}>{fLeads.length}</span>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[500px] text-xs">
-              <thead>
-                <tr style={{ background: '#0a1020' }}>
-                  {['Customer', 'City', 'Service', 'Urgency', 'Status', 'Date'].map(h => (
-                    <th key={h} className="px-3 md:px-4 py-2.5 text-left font-semibold uppercase tracking-wider" style={{ color: '#3a5a7c' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {fLeads.slice(0, 20).map((lead) => (
-                  <tr key={lead.id} style={{ borderTop: '1px solid #1e2d45' }}>
-                    <td className="px-3 md:px-4 py-2.5 text-white font-medium">{lead.customer_name || '—'}</td>
-                    <td className="px-3 md:px-4 py-2.5" style={{ color: '#7ba3c8' }}>{lead.city || '—'}</td>
-                    <td className="px-3 md:px-4 py-2.5" style={{ color: '#7ba3c8' }}>{lead.service_needed || '—'}</td>
-                    <td className="px-3 md:px-4 py-2.5">
-                      <span className="px-2 py-0.5 rounded-full font-semibold whitespace-nowrap" style={{
-                        background: lead.urgency_level === 'critical' ? '#ef444420' : lead.urgency_level === 'high' ? '#f59e0b20' : '#3b82f620',
-                        color: lead.urgency_level === 'critical' ? '#ef4444' : lead.urgency_level === 'high' ? '#f59e0b' : '#3b82f6',
-                      }}>{lead.urgency_level || 'medium'}</span>
-                    </td>
-                    <td className="px-3 md:px-4 py-2.5">
-                      <span className="px-2 py-0.5 rounded-full font-semibold whitespace-nowrap" style={{
-                        background: lead.status === 'won' ? '#10b98120' : lead.status === 'new' ? '#e05a1c20' : '#1e2d45',
-                        color: lead.status === 'won' ? '#10b981' : lead.status === 'new' ? '#e05a1c' : '#7ba3c8',
-                      }}>{lead.status || 'new'}</span>
-                    </td>
-                    <td className="px-3 md:px-4 py-2.5 whitespace-nowrap" style={{ color: '#3a5a7c' }}>
-                      {lead.created_date ? format(new Date(lead.created_date), 'MMM d') : '—'}
-                    </td>
-                  </tr>
-                ))}
-                {fLeads.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="px-4 py-10 text-center" style={{ color: '#3a5a7c' }}>No leads in this date range</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+        {/* Lead by Service + Campaign Types */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-5">
+          <ChartCard title="Leads by Service Type">
+            {sourceData.length === 0 ? (
+              <p className="text-sm text-center py-8" style={{ color: '#3a5a7c' }}>No lead data yet</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={sourceData} layout="vertical" margin={{ top: 0, right: 10, bottom: 0, left: 0 }}>
+                  <XAxis type="number" tick={{ fill: '#3a5a7c', fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <YAxis type="category" dataKey="name" tick={{ fill: '#7ba3c8', fontSize: 10 }} axisLine={false} tickLine={false} width={100} />
+                  <Tooltip {...TOOLTIP_STYLE} formatter={(v) => [v, 'Leads']} />
+                  <Bar dataKey="count" radius={[0, 6, 6, 0]}>
+                    {sourceData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </ChartCard>
+
+          <ChartCard title="Campaign Type Breakdown">
+            {campaignPieData.length === 0 ? (
+              <p className="text-sm text-center py-8" style={{ color: '#3a5a7c' }}>No campaigns yet</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={200}>
+                <PieChart>
+                  <Pie data={campaignPieData} cx="50%" cy="50%" outerRadius={70} dataKey="value" label={({ name, percent }) => `${name} ${Math.round(percent * 100)}%`}
+                    labelLine={false} fontSize={10} fill="#8884d8">
+                    {campaignPieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                  </Pie>
+                  <Tooltip {...TOOLTIP_STYLE} />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </ChartCard>
         </div>
+
+        {/* Storm Severity breakdown */}
+        {stormSeverityData.length > 0 && (
+          <ChartCard title="Storm Events by Severity">
+            <ResponsiveContainer width="100%" height={160}>
+              <BarChart data={stormSeverityData} margin={{ top: 0, right: 5, bottom: 0, left: -20 }}>
+                <XAxis dataKey="name" tick={{ fill: '#7ba3c8', fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: '#3a5a7c', fontSize: 10 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                <Tooltip {...TOOLTIP_STYLE} formatter={(v) => [v, 'Events']} />
+                <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+                  {stormSeverityData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartCard>
+        )}
+
+        {/* Review status breakdown */}
+        <ChartCard title="Review Request Status">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              { label: 'Pending',     count: reviews.filter(r => r.status === 'pending').length,     color: '#f59e0b', bg: '#f59e0b20' },
+              { label: 'Sent',        count: reviews.filter(r => r.status === 'sent').length,        color: '#3b82f6', bg: '#3b82f620' },
+              { label: 'Reviewed',    count: reviews.filter(r => r.status === 'reviewed').length,    color: '#10b981', bg: '#10b98120' },
+              { label: 'No Response', count: reviews.filter(r => r.status === 'no_response').length, color: '#3a5a7c', bg: '#1e2d4580' },
+            ].map(s => (
+              <div key={s.label} className="rounded-xl p-3 text-center" style={{ background: s.bg }}>
+                <p className="text-xl md:text-2xl font-bold" style={{ color: s.color }}>{s.count}</p>
+                <p className="text-xs mt-0.5" style={{ color: s.color }}>{s.label}</p>
+              </div>
+            ))}
+          </div>
+        </ChartCard>
 
       </div>
     </RRAccessGate>

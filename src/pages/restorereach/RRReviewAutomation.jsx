@@ -46,8 +46,8 @@ export default function RRReviewAutomation() {
           { label: 'Sent / Awaiting', value: sent, color: '#3b82f6' },
           { label: 'Conversion Rate', value: `${rate}%`, color: '#e05a1c' },
         ].map(s => (
-          <div key={s.label} className="rounded-xl border p-4 text-center" style={{ background: '#0d1829', borderColor: '#1e2d45' }}>
-            <p className="text-2xl font-bold" style={{ color: s.color }}>{s.value}</p>
+          <div key={s.label} className="rounded-xl border p-3 md:p-4 text-center" style={{ background: '#0d1829', borderColor: '#1e2d45' }}>
+            <p className="text-xl md:text-2xl font-bold" style={{ color: s.color }}>{s.value}</p>
             <p className="text-xs mt-1" style={{ color: '#7ba3c8' }}>{s.label}</p>
           </div>
         ))}

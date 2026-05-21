@@ -144,7 +144,7 @@ Generate emergency restoration marketing content. Return ONLY valid JSON:
             {EVENT_TYPES.map(et => (
               <button key={et.value} type="button"
                 onClick={() => setForm(f => ({ ...f, event_type: et.value }))}
-                className="text-xs px-2.5 py-1.5 rounded-lg border transition"
+                className="text-xs px-2.5 py-2 rounded-lg border transition min-h-[36px]"
                 style={form.event_type === et.value
                   ? { background: '#e05a1c25', borderColor: '#e05a1c', color: '#e05a1c' }
                   : { background: '#0a1020', borderColor: '#1e2d45', color: '#7ba3c8' }}>
@@ -154,7 +154,7 @@ Generate emergency restoration marketing content. Return ONLY valid JSON:
           </div>
         </Field>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Field label="Affected City" req>
             <input className={inp} placeholder="Nashville" value={form.affected_city} onChange={set('affected_city')} />
           </Field>
@@ -165,11 +165,11 @@ Generate emergency restoration marketing content. Return ONLY valid JSON:
             <input type="date" className={inp} value={form.event_date} onChange={set('event_date')} />
           </Field>
           <Field label="Severity">
-            <div className="flex gap-1.5">
+            <div className="flex gap-1.5 flex-wrap">
               {Object.entries(SEVERITY_CONFIG).map(([k, v]) => (
                 <button key={k} type="button"
                   onClick={() => setForm(f => ({ ...f, severity: k }))}
-                  className="flex-1 text-xs py-2 rounded-lg border transition font-medium"
+                  className="flex-1 text-xs py-2 rounded-lg border transition font-medium min-w-[60px] min-h-[36px]"
                   style={form.severity === k
                     ? { background: v.color + '25', borderColor: v.color, color: v.color }
                     : { background: '#0a1020', borderColor: '#1e2d45', color: '#3a5a7c' }}>

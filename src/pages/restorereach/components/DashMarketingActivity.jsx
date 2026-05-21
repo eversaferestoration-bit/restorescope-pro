@@ -59,12 +59,12 @@ export default function DashMarketingActivity({ campaigns, loading }) {
             const Icon = cfg.icon;
             const dateStr = c.created_date || c.created_at;
             return (
-              <div key={c.id} className="flex items-center gap-3 px-5 py-3 hover:bg-white/3 transition-colors" style={{ borderColor: '#1e2d45' }}>
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: cfg.color + '22' }}>
-                  <Icon size={14} style={{ color: cfg.color }} />
+              <div key={c.id} className="flex items-center gap-2 md:gap-3 px-3 md:px-5 py-3 hover:bg-white/3 transition-colors" style={{ borderColor: '#1e2d45' }}>
+                <div className="w-7 h-7 md:w-8 md:h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: cfg.color + '22' }}>
+                  <Icon size={13} style={{ color: cfg.color }} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-white truncate">{c.campaign_name}</p>
+                  <p className="text-xs md:text-sm font-medium text-white truncate">{c.campaign_name}</p>
                   <div className="flex items-center gap-2 mt-0.5">
                     <span className="text-xs" style={{ color: '#7ba3c8' }}>{cfg.label}</span>
                     {c.target_city && <span className="text-xs" style={{ color: '#3a5a7c' }}>· {c.target_city}</span>}

@@ -18,11 +18,11 @@ export function VisibilityBarChart({ competitors, myScore, myName = 'You' }) {
   ].sort((a, b) => b.score - a.score).slice(0, 8);
 
   return (
-    <div className="rounded-2xl border p-5" style={{ background: '#0d1829', borderColor: '#1e2d45' }}>
+    <div className="rounded-2xl border p-4 md:p-5" style={{ background: '#0d1829', borderColor: '#1e2d45' }}>
       <p className="text-sm font-bold text-white mb-4">Visibility Score Comparison</p>
-      <ResponsiveContainer width="100%" height={220}>
-        <BarChart data={data} margin={{ top: 0, right: 10, bottom: 0, left: -20 }}>
-          <XAxis dataKey="name" tick={{ fill: '#7ba3c8', fontSize: 11 }} axisLine={false} tickLine={false} />
+      <ResponsiveContainer width="100%" height={200}>
+        <BarChart data={data} margin={{ top: 0, right: 5, bottom: 20, left: -20 }}>
+          <XAxis dataKey="name" tick={{ fill: '#7ba3c8', fontSize: 10 }} axisLine={false} tickLine={false} angle={-35} textAnchor="end" interval={0} />
           <YAxis tick={{ fill: '#3a5a7c', fontSize: 10 }} domain={[0, 100]} axisLine={false} tickLine={false} />
           <Tooltip {...TOOLTIP_STYLE} formatter={(v) => [`${v}/100`, 'Score']} />
           <Bar dataKey="score" radius={[6, 6, 0, 0]}>
@@ -43,11 +43,11 @@ export function ReviewsBarChart({ competitors }) {
     .map((c, i) => ({ name: c.competitor_name, reviews: c.google_review_count || 0, rating: c.google_rating || 0, color: COLORS[i % COLORS.length] }));
 
   return (
-    <div className="rounded-2xl border p-5" style={{ background: '#0d1829', borderColor: '#1e2d45' }}>
+    <div className="rounded-2xl border p-4 md:p-5" style={{ background: '#0d1829', borderColor: '#1e2d45' }}>
       <p className="text-sm font-bold text-white mb-4">Review Count Comparison</p>
-      <ResponsiveContainer width="100%" height={220}>
-        <BarChart data={data} margin={{ top: 0, right: 10, bottom: 0, left: -20 }}>
-          <XAxis dataKey="name" tick={{ fill: '#7ba3c8', fontSize: 11 }} axisLine={false} tickLine={false} />
+      <ResponsiveContainer width="100%" height={200}>
+        <BarChart data={data} margin={{ top: 0, right: 5, bottom: 20, left: -20 }}>
+          <XAxis dataKey="name" tick={{ fill: '#7ba3c8', fontSize: 10 }} axisLine={false} tickLine={false} angle={-35} textAnchor="end" interval={0} />
           <YAxis tick={{ fill: '#3a5a7c', fontSize: 10 }} axisLine={false} tickLine={false} />
           <Tooltip {...TOOLTIP_STYLE} formatter={(v, n) => [v, n === 'reviews' ? 'Reviews' : 'Rating']} />
           <Bar dataKey="reviews" radius={[6, 6, 0, 0]}>

@@ -43,7 +43,7 @@ export default function ContentInputPanel({ inputs, setInputs, onGenerate, gener
   const set = (k) => (e) => setInputs(f => ({ ...f, [k]: e.target?.value ?? e }));
 
   return (
-    <div className="rounded-xl border overflow-hidden sticky top-4" style={{ background: '#0d1829', borderColor: '#1e2d45' }}>
+    <div className="rounded-xl border overflow-hidden xl:sticky xl:top-4" style={{ background: '#0d1829', borderColor: '#1e2d45' }}>
       <div className="px-5 py-4 border-b flex items-center gap-2" style={{ borderColor: '#1e2d45', background: '#0a1020' }}>
         <Zap size={14} style={{ color: '#e05a1c' }} />
         <h2 className="text-sm font-semibold text-white">Content Settings</h2>
@@ -73,7 +73,7 @@ export default function ContentInputPanel({ inputs, setInputs, onGenerate, gener
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-2 gap-3">
           <Field label="Service">
             <select className={inp} value={inputs.service} onChange={set('service')}>
               {SERVICES.map(s => <option key={s} value={s}>{s}</option>)}

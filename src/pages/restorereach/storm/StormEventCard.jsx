@@ -122,8 +122,8 @@ export default function StormEventCard({ event }) {
   return (
     <div className="rounded-xl border overflow-hidden" style={{ background: '#0d1829', borderColor: event.status === 'active' ? '#ef444460' : '#1e2d45' }}>
       {/* Header */}
-      <div className="flex items-center gap-3 px-5 py-4">
-        <span className="text-xl">{icon}</span>
+      <div className="flex items-start gap-3 px-4 py-3 md:px-5 md:py-4">
+        <span className="text-xl shrink-0 mt-0.5">{icon}</span>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-0.5">
             <p className="text-sm font-bold text-white capitalize">{event.event_type?.replace(/_/g, ' ')}</p>
@@ -136,19 +136,16 @@ export default function StormEventCard({ event }) {
             </span>
             {event.marketing_triggered && (
               <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: '#ef444420', color: '#ef4444' }}>
-                🚨 Campaign Active
+                🚨 Active
               </span>
             )}
           </div>
           <p className="text-xs" style={{ color: '#7ba3c8' }}>📍 {location} · {event.event_date}</p>
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          {/* Status switcher */}
-          <div className="flex gap-1">
+          {/* Status switcher — below info on mobile */}
+          <div className="flex gap-1 mt-2 flex-wrap">
             {Object.entries(STATUS_CONFIG).map(([k, v]) => (
               <button key={k} onClick={() => handleStatusChange(k)}
-                className="text-xs px-2 py-1 rounded-lg border transition"
+                className="text-xs px-2 py-1.5 rounded-lg border transition min-h-[30px]"
                 style={event.status === k
                   ? { background: v.bg, borderColor: v.color, color: v.color }
                   : { background: '#0a1020', borderColor: '#1e2d45', color: '#3a5a7c' }}>
@@ -156,17 +153,18 @@ export default function StormEventCard({ event }) {
               </button>
             ))}
           </div>
-          <button onClick={() => setExpanded(e => !e)} className="text-slate-400 hover:text-white transition">
-            {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-          </button>
         </div>
+
+        <button onClick={() => setExpanded(e => !e)} className="text-slate-400 hover:text-white transition shrink-0 p-1 min-w-[36px] min-h-[36px] flex items-center justify-center">
+          {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        </button>
       </div>
 
       {/* Activate button */}
       {!event.marketing_triggered && (
-        <div className="px-5 pb-4">
+        <div className="px-4 md:px-5 pb-4">
           <button onClick={handleActivate} disabled={activating}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold text-white hover:opacity-90 transition disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold text-white hover:opacity-90 transition disabled:opacity-50 min-h-[44px]"
             style={{ background: '#dc2626' }}>
             {activating
               ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -178,7 +176,7 @@ export default function StormEventCard({ event }) {
 
       {/* Generated content */}
       {expanded && gc && (
-        <div className="border-t px-5 py-4 space-y-4" style={{ borderColor: '#1e2d45' }}>
+        <div className="border-t px-4 md:px-5 py-4 space-y-4" style={{ borderColor: '#1e2d45' }}>
           {/* GBP Post */}
           {gc.gbp_post && (
             <ContentSection label="Emergency GBP Post" color="#3b82f6">

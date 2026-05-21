@@ -96,7 +96,7 @@ export default function RRAIDamageScan() {
 
   return (
     <RRAccessGate isReady={isReady} profileLoading={profileLoading}>
-      <div className="p-5 md:p-7 max-w-5xl mx-auto space-y-6">
+      <div className="p-4 md:p-7 max-w-5xl mx-auto space-y-5 md:space-y-6">
 
         {/* Header */}
         <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -110,7 +110,7 @@ export default function RRAIDamageScan() {
           </div>
           <button
             onClick={() => setShowHistory(s => !s)}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold border transition shrink-0 min-h-[44px]"
             style={showHistory
               ? { background: '#e05a1c25', borderColor: '#e05a1c', color: '#e05a1c' }
               : { background: '#0a1020', borderColor: '#1e2d45', color: '#7ba3c8' }}

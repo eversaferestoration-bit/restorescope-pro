@@ -125,22 +125,22 @@ export default function ContentOutputPanel({ result, generating, onSave, onSched
         {/* Action buttons */}
         <div className="flex flex-wrap gap-2 pt-1">
           <button onClick={onSave} disabled={saving}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white hover:opacity-90 transition disabled:opacity-60"
+            className="flex items-center gap-1.5 px-3 md:px-4 py-2.5 rounded-lg text-xs md:text-sm font-semibold text-white hover:opacity-90 transition disabled:opacity-60 min-h-[40px]"
             style={{ background: '#1e2d45', border: '1px solid #3a5a7c', color: '#7ba3c8' }}>
             {saving ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save size={13} />}
             Save
           </button>
 
           <button onClick={onSchedule}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition"
+            className="flex items-center gap-1.5 px-3 md:px-4 py-2.5 rounded-lg text-xs md:text-sm font-semibold hover:opacity-90 transition min-h-[40px]"
             style={{ background: '#1e2d45', border: '1px solid #3a5a7c', color: '#7ba3c8' }}>
             <Calendar size={13} /> Schedule
           </button>
 
           <button onClick={onCreateCampaign} disabled={saving}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold text-white hover:opacity-90 transition disabled:opacity-60"
+            className="flex items-center gap-1.5 px-3 md:px-4 py-2.5 rounded-lg text-xs md:text-sm font-bold text-white hover:opacity-90 transition disabled:opacity-60 min-h-[40px]"
             style={{ background: '#e05a1c' }}>
-            <Megaphone size={13} /> Create Campaign
+            <Megaphone size={13} /> <span className="hidden sm:inline">Create </span>Campaign
           </button>
 
           <CopyBtn text={allText} label="Copy All" />

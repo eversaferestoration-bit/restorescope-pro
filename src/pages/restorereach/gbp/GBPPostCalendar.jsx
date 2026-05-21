@@ -19,8 +19,8 @@ function EditModal({ post, onClose, onSave }) {
   const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }));
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
-      <div className="w-full max-w-lg rounded-2xl border p-6 space-y-4" style={{ background: '#0d1829', borderColor: '#1e2d45' }}>
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70">
+      <div className="w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl border p-5 space-y-4 max-h-[90vh] overflow-y-auto" style={{ background: '#0d1829', borderColor: '#1e2d45' }}>
         <div className="flex items-center justify-between">
           <h3 className="text-base font-bold text-white">Edit Post</h3>
           <button onClick={onClose}><X size={17} className="text-slate-400" /></button>
@@ -34,7 +34,7 @@ function EditModal({ post, onClose, onSave }) {
           <label className="text-xs text-slate-400 mb-1 block">Body</label>
           <textarea className={inp} style={inpStyle} rows={5} value={form.body} onChange={set('body')} />
         </div>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="text-xs text-slate-400 mb-1 block">Schedule Date</label>
             <input type="date" className={inp} style={inpStyle} value={form.scheduled_date} onChange={set('scheduled_date')} />
@@ -100,10 +100,10 @@ export default function GBPPostCalendar({ companyId }) {
           <h2 className="text-sm font-semibold text-white">GBP Post Calendar</h2>
           <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: '#1e2d45', color: '#7ba3c8' }}>{posts.length}</span>
         </div>
-        <div className="flex gap-1.5">
+        <div className="flex gap-1.5 flex-wrap">
           {['all', 'draft', 'scheduled', 'posted'].map(s => (
             <button key={s} onClick={() => setFilter(s)}
-              className="text-xs px-2.5 py-1 rounded-lg capitalize transition"
+              className="text-xs px-2.5 py-1.5 rounded-lg capitalize transition min-h-[32px]"
               style={filter === s ? { background: '#e05a1c', color: '#fff' } : { background: '#1e2d45', color: '#7ba3c8' }}>
               {s}
             </button>
@@ -124,10 +124,10 @@ export default function GBPPostCalendar({ companyId }) {
           {filtered.map(post => {
             const cfg = STATUS_CONFIG[post.status] || STATUS_CONFIG.draft;
             return (
-              <div key={post.id} className="flex items-start gap-3 px-5 py-4 hover:bg-white/3 transition-colors" style={{ borderColor: '#1e2d45' }}>
+              <div key={post.id} className="flex items-start gap-2 md:gap-3 px-3 md:px-5 py-3 md:py-4 hover:bg-white/3 transition-colors" style={{ borderColor: '#1e2d45' }}>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap mb-1">
-                    <p className="text-sm font-semibold text-white truncate">{post.title}</p>
+                    <p className="text-xs md:text-sm font-semibold text-white truncate">{post.title}</p>
                     <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: cfg.bg, color: cfg.color }}>{cfg.label}</span>
                   </div>
                   <p className="text-xs line-clamp-2 mb-1.5" style={{ color: '#7ba3c8' }}>{post.body}</p>
@@ -139,26 +139,26 @@ export default function GBPPostCalendar({ companyId }) {
                   </div>
                   {post.hashtags && <p className="text-xs mt-1" style={{ color: '#3b82f6' }}>{post.hashtags}</p>}
                 </div>
-                <div className="flex items-center gap-1.5 shrink-0">
+                <div className="flex items-center gap-1 shrink-0">
                   {post.status !== 'posted' && (
                     <button onClick={() => markPosted(post)}
-                      className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg transition hover:text-green-400"
+                      className="flex items-center gap-1 text-xs px-2.5 py-2 rounded-lg transition hover:text-green-400 min-h-[36px] min-w-[36px] justify-center"
                       style={{ background: '#1e2d45', color: '#7ba3c8' }}
                       title="Mark as Posted">
-                      <CheckCircle2 size={12} />
+                      <CheckCircle2 size={13} />
                     </button>
                   )}
                   <button onClick={() => setEditing(post)}
-                    className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg transition hover:text-orange-400"
+                    className="flex items-center gap-1 text-xs px-2.5 py-2 rounded-lg transition hover:text-orange-400 min-h-[36px] min-w-[36px] justify-center"
                     style={{ background: '#1e2d45', color: '#7ba3c8' }}
                     title="Edit">
-                    <Edit2 size={12} />
+                    <Edit2 size={13} />
                   </button>
                   <button onClick={() => deletePost.mutate(post.id)}
-                    className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg transition hover:text-red-400"
+                    className="flex items-center gap-1 text-xs px-2.5 py-2 rounded-lg transition hover:text-red-400 min-h-[36px] min-w-[36px] justify-center"
                     style={{ background: '#1e2d45', color: '#7ba3c8' }}
                     title="Delete">
-                    <Trash2 size={12} />
+                    <Trash2 size={13} />
                   </button>
                 </div>
               </div>
