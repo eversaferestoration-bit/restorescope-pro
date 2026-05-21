@@ -1,0 +1,61 @@
+{
+  "name": "GBPPost",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "body": {
+      "type": "string"
+    },
+    "hashtags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "image_suggestion": {
+      "type": "string"
+    },
+    "service": {
+      "type": "string"
+    },
+    "city": {
+      "type": "string"
+    },
+    "post_type": {
+      "type": "string"
+    },
+    "tone": {
+      "type": "string"
+    },
+    "cta": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "scheduled",
+        "posted",
+        "archived"
+      ],
+      "default": "draft"
+    },
+    "scheduled_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "posted_date": {
+      "type": "string",
+      "format": "date"
+    }
+  },
+  "required": [
+    "company_id",
+    "body"
+  ]
+}
