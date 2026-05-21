@@ -1,0 +1,79 @@
+{
+  "name": "ReviewRequest",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string"
+    },
+    "customer_name": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "job_type": {
+      "type": "string"
+    },
+    "city": {
+      "type": "string"
+    },
+    "technician": {
+      "type": "string"
+    },
+    "review_link": {
+      "type": "string"
+    },
+    "generated_sms": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "sent",
+        "reviewed",
+        "no_response"
+      ],
+      "default": "pending"
+    },
+    "sentiment": {
+      "type": "string",
+      "enum": [
+        "positive",
+        "neutral",
+        "negative",
+        "unknown"
+      ],
+      "default": "unknown"
+    },
+    "sent_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "reviewed_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "followup_2day_sent": {
+      "type": "boolean",
+      "default": false
+    },
+    "followup_5day_sent": {
+      "type": "boolean",
+      "default": false
+    },
+    "followup_stopped": {
+      "type": "boolean",
+      "default": false
+    },
+    "notes": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "customer_name"
+  ]
+}
