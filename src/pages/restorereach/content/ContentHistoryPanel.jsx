@@ -19,13 +19,13 @@ const STATUS_STYLES = {
   completed: { color: '#3a5a7c', bg: '#1e2d45' },
 };
 
-export default function ContentHistoryPanel() {
+export default function ContentHistoryPanel({ companyId }) {
   const [open, setOpen] = useState(false);
 
   const { data: campaigns = [], isLoading } = useQuery({
-    queryKey: ['rr-campaigns'],
-    queryFn: () => base44.entities.RRMarketingCampaign.list('-created_date', 20),
-    enabled: open,
+    queryKey: ['rr-campaigns', companyId],
+    queryFn: () => base44.entities.RRMarketingCampaign.filter({ company_id: companyId }, '-created_date', 20),
+    enabled: open && !!companyId,
   });
 
   return (

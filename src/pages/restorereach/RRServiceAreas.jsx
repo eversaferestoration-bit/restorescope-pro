@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { useAuth } from '@/lib/AuthContext';
-import { Map, Plus, Sparkles } from 'lucide-react';
+import { Map, Plus } from 'lucide-react';
+import { useRRCompany } from '@/hooks/useRRCompany';
+import RRAccessGate from './components/RRAccessGate';
 
 import AddAreaForm from './areas/AddAreaForm';
 import AreaCard from './areas/AreaCard';
@@ -10,14 +11,14 @@ import AreaCard from './areas/AreaCard';
 const PRIORITY_FILTERS = ['all', 'high', 'medium', 'low'];
 
 export default function RRServiceAreas() {
-  const { user } = useAuth();
-  const companyId = user?.email || 'default';
+  const { companyId, profileLoading, isReady } = useRRCompany();
   const [showForm, setShowForm] = useState(false);
   const [priorityFilter, setPriorityFilter] = useState('all');
 
   const { data: areas = [], isLoading } = useQuery({
-    queryKey: ['rr-areas'],
-    queryFn: () => base44.entities.RRServiceArea.list('-created_date', 100),
+    queryKey: ['rr-areas', companyId],
+    queryFn: () => base44.entities.RRServiceArea.filter({ company_id: companyId }, '-created_date', 100),
+    enabled: !!companyId,
   });
 
   const filtered = priorityFilter === 'all' ? areas : areas.filter(a => a.priority_level === priorityFilter);
@@ -25,6 +26,7 @@ export default function RRServiceAreas() {
   const totalPages = areas.reduce((sum, a) => sum + (a.seo_pages?.length || 0), 0);
 
   return (
+    <RRAccessGate isReady={isReady} profileLoading={profileLoading}>
     <div className="p-5 md:p-7 max-w-5xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -95,5 +97,6 @@ export default function RRServiceAreas() {
         </div>
       )}
     </div>
+    </RRAccessGate>
   );
 }

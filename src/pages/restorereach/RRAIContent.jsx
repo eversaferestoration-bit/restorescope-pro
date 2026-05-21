@@ -1,16 +1,17 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { useAuth } from '@/lib/AuthContext';
-import { Zap, Copy, CheckCircle, Save, Calendar, Megaphone, ChevronDown } from 'lucide-react';
+import { Zap } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
+import { useRRCompany } from '@/hooks/useRRCompany';
+import RRAccessGate from './components/RRAccessGate';
 
 import ContentInputPanel from './content/ContentInputPanel';
 import ContentOutputPanel from './content/ContentOutputPanel';
 import ContentHistoryPanel from './content/ContentHistoryPanel';
 
 export default function RRAIContent() {
-  const { user } = useAuth();
+  const { user, companyId, profileLoading, isReady } = useRRCompany();
   const qc = useQueryClient();
 
   const [inputs, setInputs] = useState({
@@ -104,9 +105,9 @@ Return ONLY valid JSON (no markdown) with this exact structure:
   };
 
   const handleSave = () => {
-    if (!result) return;
+    if (!result || !companyId) return;
     saveMutation.mutate({
-      company_id: user?.email || 'default',
+      company_id: companyId,
       campaign_name: result.title,
       campaign_type: 'seo_content',
       status: 'draft',
@@ -117,9 +118,9 @@ Return ONLY valid JSON (no markdown) with this exact structure:
   };
 
   const handleSchedule = () => {
-    if (!result) return;
+    if (!result || !companyId) return;
     base44.entities.GBPPost.create({
-      company_id: user?.email || 'default',
+      company_id: companyId,
       title: result.title,
       body: result.body,
       hashtags: result.hashtags,
@@ -131,14 +132,15 @@ Return ONLY valid JSON (no markdown) with this exact structure:
       cta: result.cta_text,
       status: 'draft',
     }).then(() => {
+      qc.invalidateQueries({ queryKey: ['gbp-posts', companyId] });
       toast({ title: '📅 Added to GBP Post Calendar' });
     });
   };
 
   const handleCreateCampaign = () => {
-    if (!result) return;
+    if (!result || !companyId) return;
     saveMutation.mutate({
-      company_id: user?.email || 'default',
+      company_id: companyId,
       campaign_name: result.title,
       campaign_type: 'seo_content',
       status: 'active',
@@ -149,6 +151,7 @@ Return ONLY valid JSON (no markdown) with this exact structure:
   };
 
   return (
+    <RRAccessGate isReady={isReady} profileLoading={profileLoading}>
     <div className="p-5 md:p-7 max-w-7xl mx-auto space-y-6">
       {/* Header */}
       <div>
@@ -186,7 +189,8 @@ Return ONLY valid JSON (no markdown) with this exact structure:
       </div>
 
       {/* History */}
-      <ContentHistoryPanel />
+      <ContentHistoryPanel companyId={companyId} />
     </div>
+    </RRAccessGate>
   );
 }

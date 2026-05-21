@@ -32,7 +32,7 @@ export default function GBPPostGenerator({ profile, companyId }) {
   const savePost = useMutation({
     mutationFn: (data) => base44.entities.GBPPost.create(data),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['gbp-posts'] });
+      qc.invalidateQueries({ queryKey: ['gbp-posts', companyId] });
       toast({ title: '✅ Post saved to calendar' });
     },
   });

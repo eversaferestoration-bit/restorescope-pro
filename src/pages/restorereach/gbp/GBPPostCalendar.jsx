@@ -66,14 +66,15 @@ export default function GBPPostCalendar({ companyId }) {
   const [filter, setFilter] = useState('all');
 
   const { data: posts = [], isLoading } = useQuery({
-    queryKey: ['gbp-posts'],
-    queryFn: () => base44.entities.GBPPost.list('-created_date', 100),
+    queryKey: ['gbp-posts', companyId],
+    queryFn: () => base44.entities.GBPPost.filter({ company_id: companyId }, '-created_date', 100),
+    enabled: !!companyId,
   });
 
   const updatePost = useMutation({
     mutationFn: ({ id, data }) => base44.entities.GBPPost.update(id, data),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['gbp-posts'] });
+      qc.invalidateQueries({ queryKey: ['gbp-posts', companyId] });
       setEditing(null);
       toast({ title: 'Post updated' });
     },
@@ -82,7 +83,7 @@ export default function GBPPostCalendar({ companyId }) {
   const deletePost = useMutation({
     mutationFn: (id) => base44.entities.GBPPost.delete(id),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['gbp-posts'] });
+      qc.invalidateQueries({ queryKey: ['gbp-posts', companyId] });
       toast({ title: 'Post deleted' });
     },
   });

@@ -1,18 +1,19 @@
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { useAuth } from '@/lib/AuthContext';
 import { CloudLightning, Zap } from 'lucide-react';
+import { useRRCompany } from '@/hooks/useRRCompany';
+import RRAccessGate from './components/RRAccessGate';
 
 import StormEventForm from './storm/StormEventForm';
 import StormEventCard from './storm/StormEventCard';
 
 export default function RRStormMode() {
-  const { user } = useAuth();
-  const companyId = user?.email || 'default';
+  const { user, companyId, profileLoading, isReady } = useRRCompany();
 
   const { data: events = [], isLoading } = useQuery({
-    queryKey: ['storm-events'],
-    queryFn: () => base44.entities.StormEvent.list('-created_date', 50),
+    queryKey: ['storm-events', companyId],
+    queryFn: () => base44.entities.StormEvent.filter({ company_id: companyId }, '-created_date', 50),
+    enabled: !!companyId,
   });
 
   const active = events.filter(e => e.status === 'active');
@@ -20,6 +21,7 @@ export default function RRStormMode() {
   const triggered = events.filter(e => e.marketing_triggered);
 
   return (
+    <RRAccessGate isReady={isReady} profileLoading={profileLoading}>
     <div className="p-5 md:p-7 max-w-5xl mx-auto space-y-6">
       {/* Header */}
       <div>
@@ -89,5 +91,6 @@ export default function RRStormMode() {
         )}
       </div>
     </div>
+    </RRAccessGate>
   );
 }

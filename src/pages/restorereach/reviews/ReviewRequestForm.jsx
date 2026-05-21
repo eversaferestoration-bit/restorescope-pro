@@ -86,7 +86,7 @@ Return ONLY the SMS message text, nothing else.`;
   const saveMutation = useMutation({
     mutationFn: (data) => base44.entities.ReviewRequest.create(data),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['review-requests'] });
+      qc.invalidateQueries({ queryKey: ['review-requests', companyId] });
       toast({ title: '✅ Review request saved' });
       setForm({ customer_name: '', phone: '', email: '', job_type: 'Water Damage', city: '', technician: '', review_link: profile?.google_review_link || '' });
       setGeneratedSms('');

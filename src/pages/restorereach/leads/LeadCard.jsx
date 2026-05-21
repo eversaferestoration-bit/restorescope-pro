@@ -29,7 +29,7 @@ export default function LeadCard({ lead }) {
 
   const updateMutation = useMutation({
     mutationFn: (data) => base44.entities.EmergencyLead.update(lead.id, data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['emergency-leads'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['emergency-leads'], exact: false }),
   });
 
   const updateStatus = (value) => {

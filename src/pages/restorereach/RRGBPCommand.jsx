@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { useAuth } from '@/lib/AuthContext';
 import { Building2 } from 'lucide-react';
+import { useRRCompany } from '@/hooks/useRRCompany';
+import RRAccessGate from './components/RRAccessGate';
 
 import GBPProfileSettings from './gbp/GBPProfileSettings';
 import GBPHealthChecklist from './gbp/GBPHealthChecklist';
@@ -10,26 +11,22 @@ import GBPPostCalendar from './gbp/GBPPostCalendar';
 import GBPSuspensionScanner from './gbp/GBPSuspensionScanner';
 
 export default function RRGBPCommand() {
-  const { user } = useAuth();
-
-  const { data: profileArr = [] } = useQuery({
-    queryKey: ['rr-profile'],
-    queryFn: () => base44.entities.RRCompanyProfile.filter({ created_by: user?.email }),
-  });
-  const profile = profileArr[0];
-  const companyId = profile?.id || user?.email || 'default';
+  const { user, profile, companyId, profileLoading, isReady } = useRRCompany();
 
   const { data: areas = [] } = useQuery({
-    queryKey: ['rr-areas'],
-    queryFn: () => base44.entities.RRServiceArea.list(),
+    queryKey: ['rr-areas', companyId],
+    queryFn: () => base44.entities.RRServiceArea.filter({ company_id: companyId }, '-created_date', 100),
+    enabled: !!companyId,
   });
 
   const { data: gbpPosts = [] } = useQuery({
-    queryKey: ['gbp-posts'],
-    queryFn: () => base44.entities.GBPPost.list('-created_date', 100),
+    queryKey: ['gbp-posts', companyId],
+    queryFn: () => base44.entities.GBPPost.filter({ company_id: companyId }, '-created_date', 100),
+    enabled: !!companyId,
   });
 
   return (
+    <RRAccessGate isReady={isReady} profileLoading={profileLoading}>
     <div className="p-5 md:p-7 max-w-6xl mx-auto space-y-8">
       {/* Header */}
       <div>
@@ -56,5 +53,6 @@ export default function RRGBPCommand() {
       {/* Suspension Risk Scanner */}
       <GBPSuspensionScanner profile={profile} gbpPosts={gbpPosts.length} areas={areas} />
     </div>
+    </RRAccessGate>
   );
 }

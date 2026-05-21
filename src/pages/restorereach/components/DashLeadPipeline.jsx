@@ -31,7 +31,8 @@ function LeadRow({ lead }) {
   const updateStatus = useMutation({
     mutationFn: ({ id, status }) => base44.entities.EmergencyLead.update(id, { status }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['emergency-leads'] });
+      // Invalidate all emergency-lead queries regardless of companyId segment
+      qc.invalidateQueries({ queryKey: ['emergency-leads'], exact: false });
       toast({ title: 'Status updated' });
     },
   });

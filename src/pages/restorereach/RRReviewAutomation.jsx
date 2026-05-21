@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { useAuth } from '@/lib/AuthContext';
 import { Star } from 'lucide-react';
+import { useRRCompany } from '@/hooks/useRRCompany';
+import RRAccessGate from './components/RRAccessGate';
 
 import ReviewRequestForm from './reviews/ReviewRequestForm';
 import ReviewTrackingTable from './reviews/ReviewTrackingTable';
@@ -9,12 +10,12 @@ import FollowUpAutomation from './reviews/FollowUpAutomation';
 import AIReviewResponder from './reviews/AIReviewResponder';
 
 export default function RRReviewAutomation() {
-  const { user } = useAuth();
-  const companyId = user?.email || 'default';
+  const { user, companyId, profileLoading, isReady } = useRRCompany();
 
   const { data: requests = [], isLoading } = useQuery({
-    queryKey: ['review-requests'],
-    queryFn: () => base44.entities.ReviewRequest.list('-created_date', 100),
+    queryKey: ['review-requests', companyId],
+    queryFn: () => base44.entities.ReviewRequest.filter({ company_id: companyId }, '-created_date', 100),
+    enabled: !!companyId,
   });
 
   // Stats
@@ -25,6 +26,7 @@ export default function RRReviewAutomation() {
   const rate = total > 0 ? Math.round((reviewed / total) * 100) : 0;
 
   return (
+    <RRAccessGate isReady={isReady} profileLoading={profileLoading}>
     <div className="p-5 md:p-7 max-w-6xl mx-auto space-y-6">
       {/* Header */}
       <div>
@@ -63,5 +65,6 @@ export default function RRReviewAutomation() {
       {/* AI Response Generator */}
       <AIReviewResponder />
     </div>
+    </RRAccessGate>
   );
 }

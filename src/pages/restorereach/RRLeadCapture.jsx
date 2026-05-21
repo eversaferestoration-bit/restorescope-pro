@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { useAuth } from '@/lib/AuthContext';
 import { Zap, Users, AlertTriangle } from 'lucide-react';
+import { useRRCompany } from '@/hooks/useRRCompany';
+import RRAccessGate from './components/RRAccessGate';
 
 import LeadCaptureForm from './leads/LeadCaptureForm';
 import LeadCard from './leads/LeadCard';
@@ -26,16 +27,16 @@ const URGENCY_FILTERS = [
 ];
 
 export default function RRLeadCapture() {
-  const { user } = useAuth();
-  const companyId = user?.email || 'default';
+  const { user, companyId, profileLoading, isReady } = useRRCompany();
 
   const [statusFilter, setStatusFilter] = useState('all');
   const [urgencyFilter, setUrgencyFilter] = useState('all');
   const [showForm, setShowForm] = useState(false);
 
   const { data: leads = [], isLoading } = useQuery({
-    queryKey: ['emergency-leads'],
-    queryFn: () => base44.entities.EmergencyLead.list('-created_date', 100),
+    queryKey: ['emergency-leads', companyId],
+    queryFn: () => base44.entities.EmergencyLead.filter({ company_id: companyId }, '-created_date', 100),
+    enabled: !!companyId,
   });
 
   const filtered = leads.filter(l => {
@@ -49,6 +50,7 @@ export default function RRLeadCapture() {
   const wonLeads = leads.filter(l => l.status === 'won');
 
   return (
+    <RRAccessGate isReady={isReady} profileLoading={profileLoading}>
     <div className="p-5 md:p-7 max-w-5xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -149,5 +151,6 @@ export default function RRLeadCapture() {
         </div>
       )}
     </div>
+    </RRAccessGate>
   );
 }

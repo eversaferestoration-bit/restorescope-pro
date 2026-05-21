@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { useAuth } from '@/lib/AuthContext';
+import { useRRCompany } from '@/hooks/useRRCompany';
+import RRAccessGate from './components/RRAccessGate';
 import {
   TrendingUp, Building2, Star, Radio, FileText, Link, Camera,
   CheckCircle, AlertCircle, XCircle, ArrowUpRight, ChevronRight,
@@ -247,30 +248,28 @@ function RecommendationItem({ text, index }) {
 // ─── main ─────────────────────────────────────────────────────────────────────
 
 export default function RRVisibilityScore() {
-  const { user } = useAuth();
+  const { profile, companyId, profileLoading, isReady } = useRRCompany();
 
-  const { data: profileArr = [] } = useQuery({
-    queryKey: ['rr-profile'],
-    queryFn: () => base44.entities.RRCompanyProfile.filter({ created_by: user?.email }),
-  });
   const { data: gbpPosts = [] } = useQuery({
-    queryKey: ['gbp-posts'],
-    queryFn: () => base44.entities.GBPPost.list('-created_date', 200),
+    queryKey: ['gbp-posts', companyId],
+    queryFn: () => base44.entities.GBPPost.filter({ company_id: companyId }, '-created_date', 200),
+    enabled: !!companyId,
   });
   const { data: reviews = [] } = useQuery({
-    queryKey: ['rr-reviews'],
-    queryFn: () => base44.entities.ReviewRequest.list(),
+    queryKey: ['review-requests', companyId],
+    queryFn: () => base44.entities.ReviewRequest.filter({ company_id: companyId }, '-created_date', 200),
+    enabled: !!companyId,
   });
   const { data: areas = [] } = useQuery({
-    queryKey: ['rr-areas'],
-    queryFn: () => base44.entities.RRServiceArea.list(),
+    queryKey: ['rr-areas', companyId],
+    queryFn: () => base44.entities.RRServiceArea.filter({ company_id: companyId }, '-created_date', 100),
+    enabled: !!companyId,
   });
   const { data: leads = [] } = useQuery({
-    queryKey: ['emergency-leads'],
-    queryFn: () => base44.entities.EmergencyLead.list(),
+    queryKey: ['emergency-leads', companyId],
+    queryFn: () => base44.entities.EmergencyLead.filter({ company_id: companyId }, '-created_date', 200),
+    enabled: !!companyId,
   });
-
-  const profile = profileArr[0];
   const { total, categories } = computeScores(profile, gbpPosts, reviews, areas, leads);
   const rating = getRating(total);
 
@@ -278,6 +277,7 @@ export default function RRVisibilityScore() {
   const allRecommendations = categories.flatMap(c => c.recommendations);
 
   return (
+    <RRAccessGate isReady={isReady} profileLoading={profileLoading}>
     <div className="p-5 md:p-7 max-w-5xl mx-auto space-y-6">
       {/* Header */}
       <div>
@@ -379,5 +379,6 @@ export default function RRVisibilityScore() {
         </div>
       </div>
     </div>
+    </RRAccessGate>
   );
 }

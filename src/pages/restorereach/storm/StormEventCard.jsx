@@ -50,7 +50,7 @@ export default function StormEventCard({ event }) {
 
   const updateMutation = useMutation({
     mutationFn: (data) => base44.entities.StormEvent.update(event.id, data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['storm-events'] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['storm-events'], exact: false }),
   });
 
   const handleStatusChange = (status) => {
@@ -102,9 +102,9 @@ export default function StormEventCard({ event }) {
         gbp_post_id: gbpPostId,
       });
 
-      qc.invalidateQueries({ queryKey: ['storm-events'] });
-      qc.invalidateQueries({ queryKey: ['rr-campaigns'] });
-      qc.invalidateQueries({ queryKey: ['gbp-posts'] });
+      qc.invalidateQueries({ queryKey: ['storm-events'], exact: false });
+      qc.invalidateQueries({ queryKey: ['rr-campaigns'], exact: false });
+      qc.invalidateQueries({ queryKey: ['gbp-posts'], exact: false });
       toast({ title: '🚨 Storm Campaign Activated!', description: 'Campaign created, GBP post saved, storm triggered.' });
     } catch (err) {
       toast({ title: 'Activation failed', description: err?.message, variant: 'destructive' });

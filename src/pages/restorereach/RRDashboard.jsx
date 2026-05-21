@@ -1,8 +1,9 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
-import { useAuth } from '@/lib/AuthContext';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { startOfMonth } from 'date-fns';
+import { useRRCompany } from '@/hooks/useRRCompany';
+import RRAccessGate from './components/RRAccessGate';
 import {
   Phone, Star, MapPin, TrendingUp, CloudLightning, Zap,
   Building2, FileText, AlertCircle, CheckCircle, Radio,
@@ -17,40 +18,38 @@ import DashRecommendedActions from '@/pages/restorereach/components/DashRecommen
 import DashStormStatus from '@/pages/restorereach/components/DashStormStatus';
 
 export default function RRDashboard() {
-  const { user } = useAuth();
-  const navigate = useNavigate();
+  const { user, profile: companyProfile, companyId, profileLoading, isReady } = useRRCompany();
 
-  // EmergencyLead is the live lead entity used across the app
+  // All queries scoped to authenticated companyId — prevents cross-company data leakage
   const { data: leads = [], isLoading: leadsLoading } = useQuery({
-    queryKey: ['emergency-leads'],
-    queryFn: () => base44.entities.EmergencyLead.list('-created_date', 200),
+    queryKey: ['emergency-leads', companyId],
+    queryFn: () => base44.entities.EmergencyLead.filter({ company_id: companyId }, '-created_date', 200),
+    enabled: !!companyId,
   });
 
   const { data: areas = [] } = useQuery({
-    queryKey: ['rr-areas'],
-    queryFn: () => base44.entities.RRServiceArea.list(),
+    queryKey: ['rr-areas', companyId],
+    queryFn: () => base44.entities.RRServiceArea.filter({ company_id: companyId }, '-created_date', 100),
+    enabled: !!companyId,
   });
 
   const { data: campaigns = [], isLoading: campaignsLoading } = useQuery({
-    queryKey: ['rr-campaigns'],
-    queryFn: () => base44.entities.RRMarketingCampaign.list('-created_date', 100),
+    queryKey: ['rr-campaigns', companyId],
+    queryFn: () => base44.entities.RRMarketingCampaign.filter({ company_id: companyId }, '-created_date', 100),
+    enabled: !!companyId,
   });
 
   const { data: gbpPostsData = [] } = useQuery({
-    queryKey: ['gbp-posts'],
-    queryFn: () => base44.entities.GBPPost.list('-created_date', 200),
+    queryKey: ['gbp-posts', companyId],
+    queryFn: () => base44.entities.GBPPost.filter({ company_id: companyId }, '-created_date', 200),
+    enabled: !!companyId,
   });
 
   const { data: reviewsData = [] } = useQuery({
-    queryKey: ['review-requests'],
-    queryFn: () => base44.entities.ReviewRequest.list('-created_date', 200),
+    queryKey: ['review-requests', companyId],
+    queryFn: () => base44.entities.ReviewRequest.filter({ company_id: companyId }, '-created_date', 200),
+    enabled: !!companyId,
   });
-
-  const { data: profile } = useQuery({
-    queryKey: ['rr-profile'],
-    queryFn: () => base44.entities.RRCompanyProfile.filter({ created_by: user?.email }),
-  });
-  const companyProfile = profile?.[0];
 
   // Derived metrics — all from correct entities
   const now = new Date();
@@ -87,6 +86,7 @@ export default function RRDashboard() {
   const stormStatus = recentStorm ? 'active' : stormEvents.length > 0 ? 'monitoring' : 'inactive';
 
   return (
+    <RRAccessGate isReady={isReady} profileLoading={profileLoading}>
     <div className="p-5 md:p-7 max-w-7xl mx-auto space-y-8">
       {/* Header */}
       <div className="flex items-start justify-between">
@@ -151,5 +151,6 @@ export default function RRDashboard() {
         />
       </div>
     </div>
+    </RRAccessGate>
   );
 }
