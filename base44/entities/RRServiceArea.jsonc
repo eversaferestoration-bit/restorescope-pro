@@ -1,0 +1,57 @@
+{
+  "name": "RRServiceArea",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string"
+    },
+    "city": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string"
+    },
+    "county": {
+      "type": "string"
+    },
+    "zip_codes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "priority_level": {
+      "type": "string",
+      "enum": [
+        "high",
+        "medium",
+        "low"
+      ],
+      "default": "medium"
+    },
+    "services_offered": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "seo_status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "pending",
+        "none"
+      ],
+      "default": "none"
+    },
+    "last_content_created": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "company_id",
+    "city",
+    "state"
+  ]
+}

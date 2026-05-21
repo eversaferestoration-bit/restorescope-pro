@@ -1,0 +1,65 @@
+{
+  "name": "RRMarketingCampaign",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string"
+    },
+    "campaign_name": {
+      "type": "string"
+    },
+    "campaign_type": {
+      "type": "string",
+      "enum": [
+        "gbp_post",
+        "seo_content",
+        "social",
+        "storm_alert",
+        "review_request",
+        "email"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "active",
+        "paused",
+        "completed"
+      ],
+      "default": "draft"
+    },
+    "target_city": {
+      "type": "string"
+    },
+    "target_service": {
+      "type": "string"
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "end_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "content_generated": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "posts_created": {
+      "type": "integer",
+      "default": 0
+    },
+    "leads_generated": {
+      "type": "integer",
+      "default": 0
+    }
+  },
+  "required": [
+    "company_id",
+    "campaign_name"
+  ]
+}

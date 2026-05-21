@@ -1,0 +1,79 @@
+{
+  "name": "RRLeadCapture",
+  "type": "object",
+  "properties": {
+    "company_id": {
+      "type": "string"
+    },
+    "customer_name": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string",
+      "format": "email"
+    },
+    "property_address": {
+      "type": "string"
+    },
+    "service_needed": {
+      "type": "string"
+    },
+    "urgency_level": {
+      "type": "string",
+      "enum": [
+        "emergency",
+        "urgent",
+        "standard",
+        "quote_only"
+      ],
+      "default": "standard"
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "gbp",
+        "website",
+        "social",
+        "storm_alert",
+        "referral",
+        "direct",
+        "other"
+      ],
+      "default": "direct"
+    },
+    "photos": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "notes": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "new",
+        "contacted",
+        "qualified",
+        "converted",
+        "lost"
+      ],
+      "default": "new"
+    },
+    "assigned_to": {
+      "type": "string"
+    },
+    "created_date": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "company_id",
+    "customer_name"
+  ]
+}

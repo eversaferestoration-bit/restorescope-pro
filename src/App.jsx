@@ -40,6 +40,17 @@ import BetaManagement from '@/pages/BetaManagement';
 import BetaUsers from '@/pages/BetaUsers';
 import BetaFeedbackAdmin from '@/pages/BetaFeedbackAdmin';
 
+import RRLayout from '@/pages/restorereach/RRLayout';
+import RRDashboard from '@/pages/restorereach/RRDashboard';
+import RRGBPCommand from '@/pages/restorereach/RRGBPCommand';
+import RRAIContent from '@/pages/restorereach/RRAIContent';
+import RRReviewAutomation from '@/pages/restorereach/RRReviewAutomation';
+import RRStormMode from '@/pages/restorereach/RRStormMode';
+import RRLeadCapture from '@/pages/restorereach/RRLeadCapture';
+import RRServiceAreas from '@/pages/restorereach/RRServiceAreas';
+import RRVisibilityScore from '@/pages/restorereach/RRVisibilityScore';
+import RRSettings from '@/pages/restorereach/RRSettings';
+
 function FullScreenLoader({ message = 'Loading RestoreScope Pro...' }) {
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-background">
@@ -287,6 +298,19 @@ function AuthenticatedRoutes() {
           </PageTransition>
         }
         />
+      </Route>
+
+      {/* RestoreReach AI Module */}
+      <Route path="/restorereach" element={<RRLayout />}>
+        <Route index element={<RRDashboard />} />
+        <Route path="gbp" element={<RRGBPCommand />} />
+        <Route path="content" element={<RRAIContent />} />
+        <Route path="reviews" element={<RRReviewAutomation />} />
+        <Route path="storm" element={<RRStormMode />} />
+        <Route path="leads" element={<RRLeadCapture />} />
+        <Route path="areas" element={<RRServiceAreas />} />
+        <Route path="visibility" element={<RRVisibilityScore />} />
+        <Route path="settings" element={<RRSettings />} />
       </Route>
 
       <Route path="*" element={<PageNotFound />} />

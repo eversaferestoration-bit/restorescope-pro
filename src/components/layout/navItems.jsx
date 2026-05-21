@@ -13,11 +13,13 @@ import {
   TrendingUp,
   Shield,
   FlaskConical,
+  Zap,
 } from 'lucide-react';
 
 export const primaryNavItems = [
   { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
   { label: 'Jobs', path: '/jobs', icon: FolderOpen },
+  { label: 'RestoreReach AI', path: '/restorereach', icon: Zap },
 ];
 
 export const secondaryNavItems = [

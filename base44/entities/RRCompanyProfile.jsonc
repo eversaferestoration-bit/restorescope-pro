@@ -1,0 +1,73 @@
+{
+  "name": "RRCompanyProfile",
+  "type": "object",
+  "properties": {
+    "company_name": {
+      "type": "string"
+    },
+    "owner_name": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string",
+      "format": "email"
+    },
+    "website": {
+      "type": "string"
+    },
+    "address": {
+      "type": "string"
+    },
+    "city": {
+      "type": "string"
+    },
+    "state": {
+      "type": "string"
+    },
+    "zip": {
+      "type": "string"
+    },
+    "service_radius_miles": {
+      "type": "integer"
+    },
+    "primary_services": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "brand_voice": {
+      "type": "string"
+    },
+    "google_business_profile_url": {
+      "type": "string"
+    },
+    "google_review_link": {
+      "type": "string"
+    },
+    "facebook_url": {
+      "type": "string"
+    },
+    "instagram_url": {
+      "type": "string"
+    },
+    "linkedin_url": {
+      "type": "string"
+    },
+    "logo_url": {
+      "type": "string"
+    },
+    "brand_colors": {
+      "type": "string"
+    },
+    "created_by": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "company_name"
+  ]
+}
