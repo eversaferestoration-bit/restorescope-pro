@@ -4,7 +4,7 @@ import { GripVertical } from 'lucide-react';
 
 export default function KanbanColumn({ stage, leads, onDrop, count }) {
   const dragOverRef = useRef(null);
-  const [isDraggingOver, setIsDraggingOver] = React.useState(false);
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
 
   const handleDragOver = (e) => {
     e.preventDefault();
